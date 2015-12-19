@@ -7,14 +7,15 @@ Overall design
 •	Sensor controller will enforce that all sensors have a unique name.  If it doesn’t then it will silently change one.  Sensor names can’t be empty strings.
 •	Don’t actually create any real sensors until user clicks “start session”
 •	GUI saves off ‘dialog’ for each sensor and reloads it if it has one... otherwise it makes one.
-•	
+
 Use case – User want to add a new sensor to GUI
 1.	In menu user clicks ‘Add Sensor’ button.
-2.	View tell controller to add a new sensor with some default sensor type.
-3.	The MainController tells the SensorController to create a new sensor.
-4.	The SensorController then notifies MainController that a change occurred with a sensor (and passes it the new sensor).   
-5.	The Main Controller then calls view.updateSensor() which will check if the sensor ID already has a layout… which it won’t so the view will create one using all the sensor info.  Along with the layout the form will also create a button for the new sensor.  
-6.	The Main Controller then calls view.showSensor() and passes it the ID to show the one it just created. 
+2.	View tell presenter to add a new sensor with some default sensor type.
+3.	The MainPresenter tells the SensorController to create a new sensor.
+4.	The SensorController then notifies MainPresenter that a change occurred with a sensor (and passes it the new sensor).   
+5.	The Main presenter then calls view.updateSensor() which will check if the sensor ID already has a layout… which it won’t so the view will create one using all the sensor info.  Along with the layout the form will also create a button for the new sensor.  
+6.	The Main presenter then calls view.showSensor() and passes it the ID to show the one it just created. 
+
 Use case – User wants to trigger camera from GUI
 Use case – Sensor sends out new text message which should appear in GUI.
 Use case – Sensor status goes from good to bad.

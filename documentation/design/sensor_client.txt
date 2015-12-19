@@ -1,0 +1,20 @@
+class SensorClient
+
+class fields:
+
+    int next_sensor_id = 0 
+
+public methods
+    __init__(SensorController controller) - assign next sensor id and then increment it (self.sensor_id = SensorClient.next_sensor_id)
+    
+    update_setting(str setting_name, new_value) - update 'settings' dict and sticks then notifies that it was changed.
+    
+    
+    
+public fields
+    str sensor_name - unique name (e.g. green_seeker_row1_could_inlude_serial_number)
+    str sensor_type - e.g. green_seeker
+    int sensor_id
+    dict settings (e.g. { 'baud':9600, 'port':'COM26'... }
+    
+    

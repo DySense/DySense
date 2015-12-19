@@ -1,1 +1,21 @@
 Use single underscore prefix for private fields or methods
+def method1()
+    ''' dsldkfjdsf ''' is a docstring - use to describe methods, classes and sometimes files.
+    code is here
+    
+Named tuple - tuple + object syntax
+x[0] to get first element of tuple or x.some_name to get first element
+
+(windows - shift right click "copy as path")
+filepath - C:\Users\Kyle\Documents\DySense\documentation\design\sensor_meta_file.txt
+directory - C:\Users\Kyle\Documents\DySense\documentation\design\
+filename - sensor_meta_file.txt
+filename_no_ext = sensor_meta_file
+ext - .txt
+To split a filepath:
+directory, filename = os.path.split(filepath)
+filename_no_ext, ext = os.path.splitext(filename)
+To re-make a filepath:
+new_filepath = os.path.join(directory, new_filename)
+
+

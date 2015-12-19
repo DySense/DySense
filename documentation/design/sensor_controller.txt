@@ -1,0 +1,13 @@
+class SensorController
+
+Public Methods
+
+    add_sensor(SensorClient new_sensor) - validates that sensor name is unique and adds to list of sensors.
+    
+    remove_sensor(int sensor_id) - search through sensor_clients and remove one that has matching id. 
+
+Public Fields
+
+    list sensor_clients - list of SensorClient instances
+
+

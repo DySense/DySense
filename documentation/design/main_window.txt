@@ -1,6 +1,20 @@
-Main Window
+class MainWindow
+
+Has 3 main components
+SensorViewer - interface to currently selected sensor
+SensorSelecter - for now just a vertical layout of buttons with sensor names 
+Menu - Replaces SensorViewer and shows options that apply to all sensors or application options (e.g. save sensor setup).
+
 Public Methods
 
+    __init__(MainPresenter presenter)
+
+    update_sensor(SensorClient sensor) - Check if already has a 'layout' for sensor id and if it doesn't it creates one.
+                                         Then it goes through and loads name/type/settings.
+    
+    show_sensor(int sensor_id) - Changes the 'SensorViewer' part of GUI to show 'layout' for corresponding sensor id.
+
 Public Fields
-SensorController controller
+
+    SensorController controller
 

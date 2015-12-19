@@ -1,6 +1,25 @@
 Main Presenter
+
 Public Methods
 
-Public Fields
-SensorController controller
+    __init__() - will call _load_sensor_metadata()
 
+    save_sensor_setup(str filepath) - save current SensorClients to file and notify user where it was saved via popup dialog.
+
+    load_sensor_setup(str filepath) - read list of sensor information (e.g. type, name, settings...) and create a SensorClient for each one.
+
+    add_new_sensor() - if not running then create some default SensorClient (e.g. name=new_sensor1) with a default type and then show it to user.
+
+    delete_sensor(int sensor_id) - if not running then tell sensor controller to delete sensor.
+
+Private Methods
+
+    _load_sensor_metadata(str relative_filepath) - load file as either dictionary or named tuple or our own custom class.. (SensorMetadata)
+
+Public Fields
+
+    SensorController controller
+
+    dict metadata - created from (load_sensor_metadata) { 'green_seeker':SensorMetadata,  'irt':SensorMetadata }
+
+    bool running 

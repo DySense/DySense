@@ -1,0 +1,25 @@
+There is only one of these files for the entire application.
+The user doesn't make this... we do.
+
+YAML?
+
+Put this at
+DySense/config/sensor_setups/
+DySense/config/sensor_type_metadata.txt <---------------
+
+For each sensor type:
+    type_name (e.g. green_seeker)
+    for each setting:
+        - setting name (e.g. baud)
+        - data type (int, str, float)
+        - default value 
+        - min value (optional)
+        - max value (optional)
+        - unit (e.g. 'Hz', 'Seconds') (optional)
+    for each special command:
+        - command name (e.g. 'trigger_camera')
+    data stream settings
+        - data name ('temperature', 'red channel')
+        - type (not data type) (e.g. 'point_cloud', 'numeric')
+        - units (e.g. 'Hz', 'Seconds')
+        
