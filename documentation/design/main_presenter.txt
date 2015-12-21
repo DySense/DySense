@@ -1,9 +1,17 @@
 Main Presenter
-
+ 
 Public Methods
 
     __init__() - will call _load_sensor_metadata()
 
+    set_active_sensor(sensor_id) - just updates field
+    
+    handle_sensor_command(str command_name) - if sensors_connected then calls self.controller.handle_command(command_name, self.active_sensor_id)
+    
+    handle_new_message_from_sensor(str message) - tells view.
+    
+    handle_sensor_changed(SensorClient client) - decides what color corresponds to sensor client and then calls view.update_sensor(client, color)
+    
     save_sensor_setup(str filepath) - save current SensorClients to file and notify user where it was saved via popup dialog.
 
     load_sensor_setup(str filepath) - read list of sensor information (e.g. type, name, settings...) and create a SensorClient for each one.
@@ -21,5 +29,9 @@ Public Fields
     SensorController controller
 
     dict metadata - created from (load_sensor_metadata) { 'green_seeker':SensorMetadata,  'irt':SensorMetadata }
+    
+    int active_sensor_id - sensor ID that is currently being shown (unless the menu is being shown then it's the last sensor that was just being shown). -1 if no active sensor.
 
-    bool running 
+    bool session_running - set to true when user clicks "start data collection"
+    
+    bool sensors_connected - set to true when actual sensors (threads/processes) are created.

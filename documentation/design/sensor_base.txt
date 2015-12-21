@@ -1,0 +1,25 @@
+1 of these classes for each programming language we support. 
+
+Could either run as a thread or a process.  Must run on same computer as sensor client that's connect to it.
+
+2 input streams 
+Time - include UTC time and computer (system) time when the sensor client sent the message.
+Commands - just a string (e.g. "start", "close", "trigger", "pause")
+
+3 output streams
+Data - output at full rate
+Messages - just strings 
+Status - (state, health)
+  State
+    - paused - not trying to collect data
+        - good - nothing bad has happened   (WHITE)
+        - bad - failed to open serial port  (RED)
+    - started - trying to collect data      
+        - good - actually getting data      (GREEN)
+        - bad - not getting data            (RED)
+  
+Public Methods:
+
+Public Fields:
+
+

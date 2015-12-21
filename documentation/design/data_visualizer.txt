@@ -1,0 +1,7 @@
+class DataVisualizer
+
+In charge of showing sensor data in separate tabs.
+
+Public Methods:
+
+

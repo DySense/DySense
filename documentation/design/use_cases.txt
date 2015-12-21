@@ -17,7 +17,18 @@ Use case – User want to add a new sensor to GUI
 6.	The Main presenter then calls view.showSensor() and passes it the ID to show the one it just created. 
 
 Use case – User wants to trigger camera from GUI
+1. User clicks on camera sensor button to show SensorViewer.
+2. This looks up in a dictionary what sensor id is associated with pressed button.
+3. View calls it's own show_sensor() button using the id it found.
+4. User clicks 'trigger' button.
+5. Callback in View uses button text as the command and does something like self.presenter.handle_sensor_command(button_text)
+6. Presenter tells controller which finds correct sensor client to actually send the command.
+7. TODO - handle if message can't be sent.
+
 Use case – Sensor sends out new text message which should appear in GUI.
+1. Sensor calls self.send_message() which is in SensorBase
+2. A callback gets called in sensor client which tells sensor 
+
 Use case – Sensor status goes from good to bad.
 Use case – User loads a new configuration file
 Use case – User wants to change sensor name

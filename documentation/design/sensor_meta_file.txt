@@ -13,12 +13,14 @@ For each sensor type:
         - setting name (e.g. baud)
         - data type (int, str, float)
         - default value 
-        - min value (optional)
+        - min value (optional) 
         - max value (optional)
         - unit (e.g. 'Hz', 'Seconds') (optional)
     for each special command:
         - command name (e.g. 'trigger_camera')
     data stream settings
+        - labeled_output - set to true if every piece of data sent out also has a label (e.g. 'temp', 1.2, 'temp', 2.3, 'altitude', 232)
+        - visualize_separately - set to true if each sensor should go in it's own tab.
         - data name ('temperature', 'red channel')
         - type (not data type) (e.g. 'point_cloud', 'numeric')
         - units (e.g. 'Hz', 'Seconds')

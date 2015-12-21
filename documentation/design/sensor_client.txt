@@ -9,9 +9,20 @@ public methods
     
     update_setting(str setting_name, new_value) - update 'settings' dict and sticks then notifies that it was changed.
     
+    new_sensor_message_callback() - calls presenter.handle_new_message_from_sensor()
     
+    sensor_status_callback() - update class fields and then calls presenter.handle_sensor_changed()
+    
+    send_command(str command) 
     
 public fields
+
+    Presenter presenter
+    
+    str sensor_state - (paused / started)
+    str sensor_health - (good / bad)
+    bool sensor_connected - true if sensor is created
+
     str sensor_name - unique name (e.g. green_seeker_row1_could_inlude_serial_number)
     str sensor_type - e.g. green_seeker
     int sensor_id
