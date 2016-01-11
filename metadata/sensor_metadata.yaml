@@ -1,0 +1,50 @@
+version: "1.0"
+sensors:
+    test:
+      version: "1.0"
+      settings:
+        - output_rate: 
+            type: float
+            description: How fast sensor should output data.
+            units: Hz
+            default_value: 1
+            min_value: 0
+            max_value: 1000000
+        - test_float:
+            type: float
+            description: Any number that is a floating point number.
+            default_value: 1.25
+        - test_int:
+            type: int
+            description: Between 0 and 100.
+            default_value: 0
+        - test_string:
+            type: str
+            description: Any string that's not empty.
+            default_value: 'example'
+        - test_bool:
+            type: bool
+            description: Either true or false.
+            default_value: true
+      labeled_output: false
+      data:
+        - utc_time:
+            type: float
+            units: seconds
+        - counter:
+            type: str
+        - rand_int:
+            type: int
+            min_value: 0
+            max_value: 100
+        - rand_float:
+            type: float
+            min_value: 0.0
+            max_value: 1.0
+        - system_time:
+            type: float
+            units: seconds
+      special_commands:
+        - crash
+        - trigger
+        

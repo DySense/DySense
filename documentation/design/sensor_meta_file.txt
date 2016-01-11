@@ -16,6 +16,7 @@ For each sensor type:
         - min value (optional) 
         - max value (optional)
         - unit (e.g. 'Hz', 'Seconds') (optional)
+        - possible_gps_source (optional)
     for each special command:
         - command name (e.g. 'trigger_camera')
     data stream settings

@@ -11,6 +11,7 @@ Data - output at full rate
 Messages - just strings 
 Status - (state, health)
   State
+    - setup - haven't connect, still starting up sensor
     - paused - not trying to collect data
         - good - nothing bad has happened   (WHITE)
         - bad - failed to open serial port  (RED)
@@ -19,6 +20,12 @@ Status - (state, health)
         - bad - not getting data            (RED)
   
 Public Methods:
+
+    send_message(str msg) - send message over ZMQ socket
+    
+    update_heath(str health) - send update packet over ZMQ socket.
+    
+    update_state(str state) - send update packet over ZMQ socket.
 
 Public Fields:
 

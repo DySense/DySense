@@ -1,4 +1,4 @@
-Main Presenter
+MainPresenter
  
 Public Methods
 
@@ -11,6 +11,8 @@ Public Methods
     handle_new_message_from_sensor(str message) - tells view.
     
     handle_sensor_changed(SensorClient client) - decides what color corresponds to sensor client and then calls view.update_sensor(client, color)
+    
+    connect_all_sensors() - loop through sensor_controller sensor clients and calls connect on each one.
     
     save_sensor_setup(str filepath) - save current SensorClients to file and notify user where it was saved via popup dialog.
 
@@ -26,7 +28,7 @@ Private Methods
 
 Public Fields
 
-    SensorController controller
+    list controllers - SensorController and SensorControllerClients
 
     dict metadata - created from (load_sensor_metadata) { 'green_seeker':SensorMetadata,  'irt':SensorMetadata }
     

@@ -1,17 +1,32 @@
 class SensorClient
 
+Runs in a backround thread.  The startup procedure is
+  
+  0) The sensor client binds to a ZMQ REP (sync server) socket on all interfaces and gets an open port. 
+  
+  1) Call a factory method with the sensor type which will either start sensor as thread or as process using 'multiprocessing' and 'threading.Thread' modules. For threads this passes the port, settings, sensor name, etc to the constructor.  For processes they get passed as args.  This returns a handle to the process or thread so it can be closed later.
+  
+  2) The sensor client then listens on socket for new connection.  Once it gets one it expects the first message that it receives to be the output_stream port number of the sensor.  It then takes this port number and opens a 
+  
+  3)  
+
 class fields:
 
     int next_sensor_id = 0 
 
 public methods
-    __init__(SensorController controller) - assign next sensor id and then increment it (self.sensor_id = SensorClient.next_sensor_id)
+
+    __init__(SensorController controller) - assign next sensor id and then increment it (self.sensor_id = SensorClient.next_sensor_id) and also gets it's reserved port.
     
     update_setting(str setting_name, new_value) - update 'settings' dict and sticks then notifies that it was changed.
     
     new_sensor_message_callback() - calls presenter.handle_new_message_from_sensor()
     
     sensor_status_callback() - update class fields and then calls presenter.handle_sensor_changed()
+    
+    connect() - creates the sensor and goes through startup procedure.
+    
+    disconnect() - sends a command to shutdown and then waits for sensor to shutdown.
     
     send_command(str command) 
     
@@ -25,6 +40,7 @@ public fields
 
     str sensor_name - unique name (e.g. green_seeker_row1_could_inlude_serial_number)
     str sensor_type - e.g. green_seeker
+    bool is_main_gps_source - set to true if GPS data is included.
     int sensor_id
     dict settings (e.g. { 'baud':9600, 'port':'COM26'... }
     

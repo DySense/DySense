@@ -1,0 +1,18 @@
+class SensorControllerServer
+
+Public Methods
+
+    start(str addr) - binds and listens for new connections.  When it gets one it starts a handler.  
+    
+    
+    
+    update_program_status(str status) - send update for program status to notify clients when a sensor stops working.
+
+    ----
+    Has same methods as Presenter for updating window (e.g. handle_sensor_changed)
+    ----
+    
+Public Fields
+
+
+

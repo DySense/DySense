@@ -10,6 +10,10 @@ Public Methods
 
 Public Fields
 
+    SensorClient gps_source_client (this is a normal sensor which inherits from base sensor)
+    
+    SensorClient gps_broadcast_client (this gets time/position/info and broadcast out on the presibed port)
+
     list sensor_clients - list of SensorClient instances
 
 

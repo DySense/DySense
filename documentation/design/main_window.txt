@@ -47,8 +47,6 @@ Public Methods
     
     append_sensor_message(sensor_id, message) - looks up layout associated with sensor ID and appends message to it's message center.
     
-    
-
 Public Fields
 
     SensorController controller

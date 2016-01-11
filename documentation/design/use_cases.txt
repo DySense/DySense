@@ -27,11 +27,34 @@ Use case – User wants to trigger camera from GUI
 
 Use case – Sensor sends out new text message which should appear in GUI.
 1. Sensor calls self.send_message() which is in SensorBase
-2. A callback gets called in sensor client which tells sensor 
+2. A callback gets called in sensor client which tells presenter using handle_new_message_from_sensor()
+3. Presenter tells view using append_sensor_message() and the active sensor id.
+4. View looks up layout for sensor and adds it to the append message.
 
 Use case – Sensor status goes from good to bad.
+1. Sensor calls update_heath() 
+2. A callback gets called in sensor client which tells present using handle_sensor_changed()
+
 Use case – User loads a new configuration file
+1) User clicks 'load sensor setup' button.
+2) A file selection dialog is shown and if the user picks a file then tells presenter using load_sensor_setup()
+...
+
+Use case - User wants to connect to sensors.
+1) User clicks connect sensors
+2) View calls presenter.connect_all_sensors() which calls client.connect()
+3) Client either starts new process or thread and either way passes it the port number and waits for a connection.
+   The sensor should back 3 new ports to the client, which is what it subscribes to.  The connection that's already
+   opened is used for time/commands.
+   
+Use case - GPS sends back position data and when sensor client gets it 
+
+Use case - User wants to use a remote GPS between multiple computers.
+ 1) Sensor client 
+
 Use case – User wants to change sensor name
+1) In SensorViewer user changes 
+
 Use case – User wants to change sensor type
 
 
