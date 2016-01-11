@@ -17,9 +17,17 @@ class TestWindow(QWidget):
         
         self.presenter = presenter
         
+        # Lookup table of controller information.
+        # key - controller id 
+        # value - dictionary of controller info.
         self.controllers = {}
-        self.sensors = {}
         
+        # Lookup table of sensor information.
+        # key - tuple of (controller id, sensor id)
+        # value - dictionary of sensor info.
+        self.sensors = {}
+    
+        # For keeping track of number of button presses.
         self.test_step = 0
         
         self.start_button = QtGui.QPushButton("Add Sensor")
@@ -38,10 +46,30 @@ class TestWindow(QWidget):
         
     def start_button_clicked(self):
         
+        # Should already have one controller (the local one on this computer).
+        # The main API to the presenter is you set an active controller (and active sensor) and then most
+        # of the methods you call are directed towards whatever's active.  So it's critical you keep those
+        # 'active ids' in the presenter in-sync with what's on the screen.
+        # Normally this 'setting active' would happen from user clicking on the controller in the tree view.
         self.presenter.active_controller_id = self.controllers.keys()[0]
         
         if self.test_step == 0:
             self.display_message("Telling presenter to add new sensor...")
+            # If we don't include a 'settings' element then the controller will load the default values 
+            # from the metadata file.  This sensor version must match what's in the metadata file.
+            # Note this program is mostly asynchronous.  For example when 'add_sensor()' is called below
+            # all it does is fires off a message and then immediately returns.  There's no instance feedback
+            # to whether or not something worked or not. The message will be processed and sometime later
+            # something else happens in return.  In this case update_all_sensor_info() will be called which
+            # just means we received an entire sensor 'snapshot' of the new sensor.   The new 'snapshot' will
+            # also contain a 'metadata' key which should contain everything from the metadata file for that
+            # sensor type.  That's why so much stuff spits out after adding a sensor.. if you look through it
+            # it's mostly metadata stuff.  It would probably be easiest to set a breakpoint and use the debugger
+            # to view it's structure.  No promise that it's perfect.  Also sorry about the really long IDs for
+            # the controllers.  It's a globally unique ID... this might change in the future but just assume it's
+            # some unique string.  You'll notice sometimes the 'message center' says things change even though
+            # they didn't change... that's because sometimes things change together e.g. sensor status the health
+            # and state always change together, or the controller info always gets sent out all at once.  
             new_sensor_info = {'version': '1.0',
                                'sensor_type': 'test',
                                'sensor_name': 'sensor1'}
