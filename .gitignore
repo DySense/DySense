@@ -51,6 +51,7 @@ Thumbs.db
 EevaOutput/
 .settings/
 
+*egg-info*
 *.project
 *.pydevproject
 *.ewd
