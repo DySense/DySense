@@ -252,12 +252,12 @@ class SensorController(object):
             settings = {}
             try:
                 for setting_metadata in metadata['settings']:
-                    sensor_name = setting_metadata.keys()[0]
+                    setting_name = setting_metadata.keys()[0]
                     try:
                         sensor_default_value = setting_metadata.values()[0]['default_value']
                     except KeyError:
                         sensor_default_value = None
-                    settings[sensor_name] = sensor_default_value 
+                    settings[setting_name] = sensor_default_value 
             except KeyError:
                 pass 
         
