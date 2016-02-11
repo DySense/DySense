@@ -168,7 +168,7 @@ class SensorController(object):
         
         router_id, message = self.sensor_socket.recv_multipart()
         message = json.loads(message)
-        sensor_id = message['sensor_id']
+        sensor_id = str(message['sensor_id'])
         self.sensor_router_ids[sensor_id] = router_id 
         try:
             sensor = self.find_sensor(sensor_id)

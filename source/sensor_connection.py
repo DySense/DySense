@@ -9,7 +9,7 @@ class SensorConnection(object):
         '''Constructor'''
         
         self.version = version
-        self.sensor_id = sensor_id
+        self.sensor_id = str(sensor_id)
         self.sensor_type = sensor_type
         self.sensor_name = sensor_name
         self.settings = settings

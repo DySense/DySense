@@ -70,12 +70,15 @@ class TestWindow(QWidget):
             # some unique string.  You'll notice sometimes the 'message center' says things change even though
             # they didn't change... that's because sometimes things change together e.g. sensor status the health
             # and state always change together, or the controller info always gets sent out all at once.  
+            #new_sensor_info = {'version': '1.0',
+            #                   'sensor_type': 'kinectv2_msdk',
+            #                   'sensor_name': 'kinectv2_1'}
             new_sensor_info = {'version': '1.0',
                                'sensor_type': 'test',
-                               'sensor_name': 'sensor1'}
+                               'sensor_name': 'test_sensor_name'}
             self.presenter.add_sensor(new_sensor_info)
             self.start_button.setText('Change Sensor Name')
-            
+  
         if self.test_step == 1:
             if len(self.sensors) == 0:
                 return

@@ -76,4 +76,26 @@ class TestSensor(SensorBase):
         if command == 'crash':
             raise Exception("Intentional crash for testing.")
         
+if __name__ == '__main__':
+
+    import argparse
+    parser = argparse.ArgumentParser(description='''Test Sensor''')
+    parser.add_argument('id' )
+    parser.add_argument('settings')
+    parser.add_argument('connect_endpoint')
+    
+    import json
+    args = vars(parser.parse_args())
+    sensor_id = args['id']
+    settings = json.loads(args['settings'])
+    connect_endpoint = args['connect_endpoint']
+    
+    import zmq
+    context = zmq.Context()
+
+    sensor = TestSensor(sensor_id, settings, context, connect_endpoint)
+    
+    print "starting test sensor!"
+    sensor.run()
+    print "closing test sensor!"
         

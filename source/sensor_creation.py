@@ -6,23 +6,26 @@ import logging
 import sys
 import threading
 import subprocess
-
-# Import python sensor classes that are started as threads.
-from sensors.irt_ue import IRT_UE
-from sensors.test import TestSensor
+import json
 
 def create_sensor(sensor_type, sensor_id, sensor_settings, context, local_endpoint, remote_endpoint):
     '''
     '''
     sensor = None
     
-    # TODO support remote sensors
-    startup_args = (sensor_id, sensor_settings, context, local_endpoint)
+    local_startup_args = [sensor_id, sensor_settings, context, local_endpoint]
+    remote_startup_args = [sensor_id, sensor_settings, remote_endpoint]
     
+    # Use local imports for threads in case they have dependencies that other users don't care about.
     if sensor_type == 'irt_ue':
-        sensor = create_thread(IRT_UE, startup_args)
+        from sensors.irt_ue import IRT_UE
+        sensor = create_thread(IRT_UE, local_startup_args)
     if sensor_type == 'test':
-        sensor = create_thread(TestSensor, startup_args)
+        from sensors.test import TestSensor
+        sensor = create_thread(TestSensor, local_startup_args)
+        #sensor = create_process('../sensors/test.py', remote_startup_args, True)
+    if sensor_type == 'kinectv2_msdk':
+        pass
     
     return sensor
 
@@ -36,13 +39,21 @@ def create_thread(class_name, startup_args):
     sensor_thread.start()
     return sensor_thread
     
-def create_process(relative_path, startup_args):
+def create_process(relative_path, startup_args, python=False):
     
-    absolute_path = os.path.join(os.path.abspath(sys.path[0]), relative_path)
+    startup_args[0] = str(startup_args[0]) # make sure ID is a string.
+    startup_args[1] = json.dumps(startup_args[1]) # serialize sensor settings
 
-    # The os.setsid() is passed in the argument preexec_fn so
-    # it's run after the fork() and before  exec() to run the shell
-    sensor_process = subprocess.Popen([absolute_path, ' '.join(startup_args)], shell=False)
-    
+    absolute_path = os.path.join(os.path.abspath(sys.path[0]), relative_path)
+    try:
+        if not python:
+            sensor_process = subprocess.Popen([absolute_path] + startup_args, shell=False)
+        else:
+            # Need to include sys.executable when using python.
+            sensor_process = subprocess.Popen([sys.executable, absolute_path] + startup_args, shell=False)
+    except WindowsError as e:
+        print absolute_path
+        raise
+            
     return sensor_process
     

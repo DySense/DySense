@@ -48,3 +48,39 @@ sensors:
         - crash
         - trigger
         
+    kinectv2_msdk:
+      version: "1.0"
+      settings:
+        - color_period: 
+            type: float
+            description: How fast to save color images. 0 is max rate. Negative to disable.
+            units: seconds
+            default_value: 1
+            min_value: -1
+            max_value: 100000
+        - depth_period: 
+            type: float
+            description: How fast to save depth data. 0 is max rate. Negative to disable.
+            units: seconds
+            default_value: 1
+            min_value: -1
+            max_value: 100000
+        - ir_period: 
+            type: float
+            description: How fast to save infrared images. 0 is max rate. Negative to disable.
+            units: seconds
+            default_value: 1
+            min_value: -1
+            max_value: 100000
+      labeled_output: true
+      data:
+        - utc_time:
+            type: float
+            units: seconds
+        - color_file_name:
+            type: string
+        - depth_file_name:
+            type: string
+        - ir_file_name:
+            type: string
+        
