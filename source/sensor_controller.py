@@ -7,6 +7,7 @@ import threading
 import uuid
 
 from sensor_connection import SensorConnection
+from sensor_creation import SensorDriverFactory, SensorCloseTimeout
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
 
@@ -38,6 +39,9 @@ class SensorController(object):
         self.next_sensor_id = 1
         
         self.stop_request = threading.Event()
+        
+        # Used for creating new sensor drivers. Can't instantiate it until we know what endpoints we're bound to.
+        self.sensor_driver_factory = None
         
         # Endpoints for sensors and managers to connect to.
         # Need to bind to all interfaces for managers since they can connect from another computer.
@@ -112,6 +116,8 @@ class SensorController(object):
         self.sensor_socket.bind(self.sensor_local_endpoint)
         self.sensor_remote_endpoint = self.bind_to_first_open_endpoint(self.sensor_socket, self.sensor_remote_endpoints)
 
+        self.sensor_driver_factory = SensorDriverFactory(self.context, self.sensor_local_endpoint, self.sensor_remote_endpoint)
+
     def run_message_loop(self):
     
         # Use a poller so we can use timeout to check if any sensors aren't responding.
@@ -142,15 +148,21 @@ class SensorController(object):
     def close_down(self):
         
         for sensor in self.sensors:
-            sensor.close()
+            self.close_down_sensor(sensor)
             
-        # TODO wait for sensors to close
-        
         if self.manager_socket:
             self.manager_socket.close()
             
         if self.sensor_socket:
             self.sensor_socket.close()
+            
+    def close_down_sensor(self, sensor):
+        
+        self._send_sensor_message(sensor.sensor_id, 'command', 'close')
+        try:
+            sensor.close()
+        except SensorCloseTimeout:
+            pass # TODO notify managers that sensor failed to close down.
             
     def process_new_messages(self, poller, timeout):
 
@@ -264,7 +276,7 @@ class SensorController(object):
         sensor_name = self._make_sensor_name_unique(sensor_name)
         
         new_sensor = SensorConnection(metadata['version'], self.next_sensor_id, sensor_type, sensor_name,
-                                      SENSOR_HEARTBEAT_PERIOD, settings, metadata, self)
+                                      SENSOR_HEARTBEAT_PERIOD, settings, metadata, self, self.sensor_driver_factory)
         self.next_sensor_id += 1
     
         self.sensors.append(new_sensor)
@@ -276,9 +288,7 @@ class SensorController(object):
         
         sensor = self.find_sensor(sensor_id)
         
-        # TODO figure out close down sequence better.
-        sensor.close()
-        self._send_sensor_message(sensor_id, 'close', '')
+        self.close_down_sensor(sensor)
         self.sensors.remove(sensor)
         
         self._send_manager_message('all', 'sensor_removed', sensor_id)
@@ -309,7 +319,10 @@ class SensorController(object):
         
     def handle_send_sensor_command(self, manager, sensor_id, command):
 
-        self._send_sensor_message(sensor_id, 'command', command)
+        if command == 'close':
+            self.close_down_sensor(self.find_sensor(sensor_id))
+        else:
+            self._send_sensor_message(sensor_id, 'command', command)
     
     def handle_send_sensor_time(self, manager, sensor_id, utc_time, sys_time):
         
@@ -327,7 +340,7 @@ class SensorController(object):
             if not self.session_active:
                 self.start_session()
                 
-            sensor.setup(self.context, self.sensor_local_endpoint, self.sensor_remote_endpoint)
+            sensor.setup()
 
     def handle_new_sensor_data(self, sensor, data):
         

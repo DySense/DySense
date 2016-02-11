@@ -86,7 +86,7 @@ class MainPresenter(QObject):
     
     def close_sensor(self):
         
-        self._send_message_to_active_sensor('send_sensor_command', 'close', self.active_sensor_id)
+        self._send_message_to_active_sensor('send_sensor_command', 'close')
     
     def close_all_sensors(self, only_on_active_controller):
         

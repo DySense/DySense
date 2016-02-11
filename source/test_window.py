@@ -107,9 +107,15 @@ class TestWindow(QWidget):
             self.display_message("Telling presenter to pause active sensor...")
             self.presenter.pause_sensor()
             #self.presenter.pause_all_sensors(True)
-            self.start_button.setText('Remove Sensor')
+            self.start_button.setText('Close Sensor')
             
         if self.test_step == 5:
+            
+            self.display_message("Telling presenter to close active sensor...")
+            self.presenter.close_sensor()
+            self.start_button.setText('Remove Sensor')
+            
+        if self.test_step == 6:
             
             self.display_message("Telling presenter to remove active sensor...")
             self.presenter.remove_sensor(self.presenter.active_sensor_id)

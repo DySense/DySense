@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 import time
-from sensor_creation import create_sensor
 
 class SensorConnection(object):
     
-    def __init__(self, version, sensor_id, sensor_type, sensor_name, heartbeat_period, settings, metadata, observer):
+    def __init__(self, version, sensor_id, sensor_type, sensor_name, heartbeat_period, settings, metadata, observer, driver_factory):
         '''Constructor'''
         
         self.version = version
@@ -22,9 +21,12 @@ class SensorConnection(object):
         
         self.text_messages = []
         
-        self.sensor = None
+        # Either thread or process object that sensor driver runs in.
+        self.sensor_driver = None
         
         self.observer = observer
+        
+        self.driver_factory = driver_factory
         
         # How often (in seconds) we should receive a new message from sensor and how often we should send one back.
         self.heartbeat_period = heartbeat_period
@@ -97,28 +99,32 @@ class SensorConnection(object):
         self.sensor_health = new_value
         self.observer.notify_sensor_changed(self.sensor_id, 'sensor_health', self.sensor_health)
         
-    def setup(self, context, local_endpoint, remote_endpoint):
+    def setup(self):
         
-        self.sensor = create_sensor(self.sensor_type, self.sensor_id, self.settings, context, local_endpoint, remote_endpoint)
+        self.sensor_driver = self.driver_factory.create_sensor(self.sensor_type, self.sensor_id, self.settings)
         
-        if self.sensor:
+        if self.sensor_driver:
             self.update_connection_state('setup')
         
         # Save when we setup sensor to help for detecting timeout if sensor never responds at all.
         self.interface_connection_time = time.time()
         
-        return self.sensor is not None
+        return self.sensor_driver is not None
     
     def close(self):
-        
-        if self.sensor:
-            # TODO send close command and wait for processes to close
-            self.sensor = None
+        '''Close down process or thread associated with connection.  Need to send close message before calling this.'''
+        if self.sensor_driver:
+            self.sensor_driver.close(timeout=3) # TODO allow sensor driver to specify timeout
+            self.sensor_driver = None
             
         self.update_connection_state('closed')
 
     def stopped_responding(self):
         '''Return true if it's been too long since we've received a new message from sensor.'''
+        
+        if self.connection_state in ['closed']:
+            return False # Shouldn't be receiving messages.
+        
         if self.interface_connection_time == 0 or self.last_message_processing_time == 0:
             # Haven't tried to receive any messages yet so can't know if we're timed out.
             return False 
