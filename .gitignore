@@ -76,4 +76,5 @@ EevaOutput/
 *.elay
 *.html
 *.spec
+*.pyc
 

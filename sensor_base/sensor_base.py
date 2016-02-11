@@ -4,8 +4,6 @@ import time
 import zmq
 import json
 
-from source.timeout_watcher import TimeoutWatcher 
-
 class SensorBase(object):
     '''
     Base class for all sensor drivers.
@@ -15,7 +13,7 @@ class SensorBase(object):
     public method is run() which handles everything.
     '''
 
-    def __init__(self, sensor_id, context, connect_endpoint, min_loop_period=0, max_closing_time=0):
+    def __init__(self, sensor_id, context, connect_endpoint, min_loop_period=0, max_closing_time=0, heartbeat_period=0.5):
         '''
         Base constructor.
         
@@ -23,12 +21,15 @@ class SensorBase(object):
             connect_endpoint - controller endpoint to connect to and get messages from.
             min_loop_period - minimum duration (in seconds) that data collection loop will run.
             max_closing_time - maximum number of seconds sensor needs to wrap up before being force closed.
+            heartbeat_period - How often (in seconds) we should receive a new message from client and
+                                 how often we should send one back.
         '''
         self.sensor_id = sensor_id
         self.context = context
         self.connect_endpoint = connect_endpoint
         self.min_loop_period = max(0, min_loop_period)
         self.max_closing_time = max(0, max_closing_time)
+        self.heartbeat_period = max(0.1, heartbeat_period)
         
         # Set to true when receive 'close' command from client.
         self.received_close_request = False
@@ -43,10 +44,32 @@ class SensorBase(object):
         
         # Associate callback methods with different message types.
         self.message_table = { 'command': self.handle_command, 
-                               'time': self.handle_new_time }
+                               'time': self.handle_new_time,
+                               'heartbeat': self.handle_new_heartbeat }
         
-        # For detecting when connection times out.
-        self.tw = TimeoutWatcher()
+        # ZMQ socket for communicating with sensor controller.
+        self.socket = None
+        
+        # If we don't receive a new message in this time then consider client dead. (in seconds) 
+        self.client_timeout_thresh = self.heartbeat_period * 10
+        
+        # How long to wait for client to send first message before timing out. (in seconds)
+        self.max_time_to_receive_message = self.client_timeout_thresh * 1.5
+        
+        # Last system time that we tried to process new messages from client.
+        self.last_message_processing_time = 0
+        
+        # Last system time that we received a new message from client.
+        self.last_received_message_time = 0
+        
+        # Last time sensor sent out heartbeat message.
+        self.last_sent_heartbeat_time = 0
+        
+        # Time that interface was connected to client.
+        self.interface_connection_time = 0
+    
+        # How many message have been received from client.
+        self.num_messages_received = 0
         
     @property
     def time(self):
@@ -97,24 +120,23 @@ class SensorBase(object):
                 
                 # Handle any messages received over receive socket.
                 self.process_new_messages()
-                
-                if self.tw.client_timed_out():
-                    pass # TODO raise exception once controller is sending heartbeats
-                    #raise Exception("Controller connection timed out.") 
+
+                if self.client_timed_out():
+                    raise Exception("Controller connection timed out.") 
                 
                 if self.received_close_request:
                     self.send_text('Closing...')
                     break # end main loop
-                
-                if self.tw.need_to_send_heartbeat():
+
+                if self.need_to_send_heartbeat():
                     self.send_message('new_sensor_heartbeat', ' ')
-                    self.tw.last_sent_heartbeat_time = time.time()
-                    
+                    self.last_sent_heartbeat_time = time.time()
+     
                 if self.time == 0:
                     # Don't read data from sensor until we have a valid timestamp for it.
                     #continue
                     pass # TODO re-enable continue once time is working
-                
+   
                 if self.paused:
                     time.sleep(0.1)
                     continue
@@ -129,7 +151,7 @@ class SensorBase(object):
                     time.sleep(max(0, time_to_sleep))
                 
         except Exception as e:
-            self.send_text(str(e))
+            self.send_text("{}".format(repr(e)))
         finally:
             self.received_close_request = False
             self.pause()
@@ -168,11 +190,10 @@ class SensorBase(object):
         '''Set up client socket and then send status update to controller.'''
         self.socket = self.context.socket(zmq.DEALER)
         self.socket.connect(self.connect_endpoint)
-        print "Sensor ID {} connected to {}".format(self.sensor_id, self.connect_endpoint)
 
         self.send_status_update()
         
-        self.tw.interface_connection_time = time.time()
+        self.interface_connection_time = time.time()
         
     def close_interface(self):
         '''Close down socket.'''
@@ -203,9 +224,12 @@ class SensorBase(object):
             message_type - provide context of message being sent (e.g. 'text')
             message_body - tuple or simple type.  All elements must be JSON serializable.
         '''
-        self.socket.send(json.dumps({'sensor_id': self.sensor_id,
-                                     'type': message_type,
-                                     'body': message_body}))
+        try:
+            self.socket.send(json.dumps({'sensor_id': self.sensor_id,
+                                         'type': message_type,
+                                         'body': message_body}))
+        except AttributeError:
+            pass # socket isn't created so can't send message
     
     def handle_new_time(self, times):
         '''
@@ -236,10 +260,10 @@ class SensorBase(object):
             message_callback = self.message_table[message['type']]
             message_callback(message['body'])
             
-            self.tw.num_messages_received += 1
-            self.tw.last_received_message_time = time.time()
+            self.num_messages_received += 1
+            self.last_received_message_time = time.time()
             
-        self.tw.last_message_processing_time = time.time()
+        self.last_message_processing_time = time.time()
 
     def handle_command(self, command):
         '''
@@ -258,3 +282,27 @@ class SensorBase(object):
             self.resume()
         else:
             self.handle_special_command(command)
+            
+    def handle_new_heartbeat(self, unused):
+        # Don't need to do anything since all messages are treated as heartbeats.
+        pass
+            
+    def client_timed_out(self):
+        '''Return true if it's been too long since we've received a new message from client.'''
+        if self.interface_connection_time == 0 or self.last_message_processing_time == 0:
+            # Haven't tried to receive any messages yet so can't know if we're timed out.
+            return False 
+        
+        if self.num_messages_received == 0:
+            # Give client more time to send first message.
+            time_since_connecting = self.last_message_processing_time - self.interface_connection_time
+            return time_since_connecting > self.max_time_to_receive_message
+            
+        # We're getting messages so use normal timeout.
+        time_since_last_message = self.last_message_processing_time - self.last_received_message_time
+        return time_since_last_message > self.client_timeout_thresh
+            
+    def need_to_send_heartbeat(self):
+        '''Return true if it's time to send a heartbeat message to client.'''
+        time_since_last_heartbeat = time.time() - self.last_sent_heartbeat_time 
+        return time_since_last_heartbeat > self.heartbeat_period

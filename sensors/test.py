@@ -71,3 +71,9 @@ class TestSensor(SensorBase):
         
         self.counter += 1
         
+    def handle_special_command(self, command):
+        
+        if command == 'crash':
+            raise Exception("Intentional crash for testing.")
+        
+        

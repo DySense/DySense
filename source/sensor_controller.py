@@ -8,6 +8,8 @@ import uuid
 
 from sensor_connection import SensorConnection
 
+SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
+
 class ManagerConnection(object):
     
     def __init__(self, router_id, is_on_different_computer):
@@ -113,7 +115,7 @@ class SensorController(object):
     def run_message_loop(self):
     
         # Use a poller so we can use timeout to check if any sensors aren't responding.
-        timeout = 1000 # milliseconds
+        timeout = SENSOR_HEARTBEAT_PERIOD * 1000 # milliseconds
         poller = zmq.Poller()
         poller.register(self.manager_socket, zmq.POLLIN)
         poller.register(self.sensor_socket, zmq.POLLIN)
@@ -126,9 +128,16 @@ class SensorController(object):
             self.process_new_messages(poller, timeout)
 
             for sensor in self.sensors:
+                # Mark that we've tried to receive message from sensor.
+                sensor.last_message_processing_time = time.time()
+                
                 if sensor.stopped_responding():
-                    # TODO Notify UI and close down sensor
-                    pass
+                    # TODO verify it should be 'timed_out'
+                    sensor.update_connection_state('timed_out')
+                else:
+                    if sensor.need_to_send_heartbeat():
+                        self._send_sensor_message(sensor.sensor_id, 'heartbeat', '')
+                        sensor.last_sent_heartbeat_time = time.time()
             
     def close_down(self):
         
@@ -164,7 +173,7 @@ class SensorController(object):
         try:
             sensor = self.find_sensor(sensor_id)
         except ValueError:
-            print "Could handle message from sensor {} since it doesn't exist.".format(sensor_id)
+            print "Couldn't handle message from sensor {} since it doesn't exist.".format(sensor_id)
             return
         
         message_callback = self.message_callbacks[message['type']]
@@ -173,6 +182,10 @@ class SensorController(object):
             message_callback(sensor, *message_body)
         else:
             message_callback(sensor, message_body)
+            
+        sensor.last_received_message_time = time.time()
+        sensor.last_message_processing_time = time.time()
+        sensor.num_messages_received += 1
         
     def process_new_message_from_manager(self):
         
@@ -250,7 +263,8 @@ class SensorController(object):
         
         sensor_name = self._make_sensor_name_unique(sensor_name)
         
-        new_sensor = SensorConnection(metadata['version'], self.next_sensor_id, sensor_type, sensor_name, settings, metadata, self)
+        new_sensor = SensorConnection(metadata['version'], self.next_sensor_id, sensor_type, sensor_name,
+                                      SENSOR_HEARTBEAT_PERIOD, settings, metadata, self)
         self.next_sensor_id += 1
     
         self.sensors.append(new_sensor)
@@ -301,13 +315,6 @@ class SensorController(object):
         
         self._send_sensor_message(sensor_id, 'time', (utc_time, sys_time))
 
-    def send_out_heartbeats(self):
-        
-        for sensor in self.sensors:
-            # Need to have received a message from a sensor before we can send it a heartbeat.
-            if sensor.id in self.sensor_router_ids:
-                self._send_sensor_message(sensor.id, 'heartbeat', '')
-
     def handle_setup_sensor(self, manager, sensor_id, message_body):
         
         if int(sensor_id) == 0:
@@ -339,6 +346,7 @@ class SensorController(object):
         sensor.update_sensor_health(health)
         
     def handle_new_sensor_heartbeat(self, sensor, unused):
+        # Don't need to do anything since all sensor messages are treated as heartbeats.
         pass
         
     def handle_sensor_closed(self, sensor_id):
