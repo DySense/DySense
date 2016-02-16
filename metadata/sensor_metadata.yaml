@@ -83,4 +83,37 @@ sensors:
             type: string
         - ir_file_name:
             type: string
+            
+    gps_nmea_test:
+      version: "1.0"
+      settings:
+        - test_file_path: 
+            type: string
+            description: Absolute path to text file with NMEA messages.
+            default_value: None
+        - output_rate: 
+            type: float
+            description: How fast sensor should output data.
+            units: Hz
+            default_value: 10
+            min_value: 0
+            max_value: 1000000
+        - required_fix: 
+            type: string
+            description: GPS fix ID that must be maintained. 'None' to disable check.
+            default_value: None
+        - required_precision: 
+            type: float
+            description: The max standard deviation of latitude/longitude error for usable data.
+            units: TODO
+            default_value: 1
+            min_value: 0
+            max_value: 100000
+      labeled_output: true
+      data:
+        - utc_time:
+            type: float
+            units: seconds
+        - position:
+            type: list
         

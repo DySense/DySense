@@ -74,8 +74,12 @@ class TestWindow(QWidget):
             #                   'sensor_type': 'kinectv2_msdk',
             #                   'sensor_name': 'kinectv2_1'}
             new_sensor_info = {'version': '1.0',
-                               'sensor_type': 'test',
+                               'sensor_type': 'gps_nmea_test',
                                'sensor_name': 'test_sensor_name'}
+            new_sensor_info['settings'] = {'test_file_path': r"C:\Users\Kyle\Documents\DySense\nmea_logs\SXBlueGGA.txt",
+                                           'output_rate': 10,
+                                           'required_fix': 'none',
+                                           'required_precision': 0}
             self.presenter.add_sensor(new_sensor_info)
             self.start_button.setText('Change Sensor Name')
   

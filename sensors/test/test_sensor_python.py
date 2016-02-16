@@ -40,7 +40,7 @@ class TestSensor(SensorBase):
             self.test_bool = bool(settings['test_bool'])
             self.output_period = 1.0 / self.output_rate
         except (KeyError, ValueError, ZeroDivisionError) as e:
-            raise ValueError("Bad sensor setting.  Exception {}".format(e))
+            raise ValueError("Bad sensor setting.  Exception {}".format(repr(e)))
         
         # Set base class fields.
         self.min_loop_period = self.output_period

@@ -27,14 +27,17 @@ class SensorDriverFactory(object):
         
         # Use local imports for threads in case they have dependencies that other users don't care about.
         if sensor_type == 'irt_ue':
-            from sensors.irt_ue import IRT_UE
+            from sensors.irt.irt_ue import IRT_UE
             sensor = SensorDriverThread(IRT_UE, local_startup_args)
         if sensor_type == 'test':
-            from sensors.test import TestSensor
+            from sensors.test.test_sensor_python import TestSensor
             sensor = SensorDriverThread(TestSensor, local_startup_args)
             #sensor = SensorDriverProcess('../sensors/test.py', remote_startup_args, language='python')
         if sensor_type == 'kinectv2_msdk':
             pass
+        if sensor_type == 'gps_nmea_test':
+            from sensors.gps.gps_nmea_test import GpsNmeaTest
+            sensor = SensorDriverThread(GpsNmeaTest, local_startup_args)
         
         sensor.run()
         
