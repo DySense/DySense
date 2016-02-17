@@ -1,6 +1,6 @@
 version: "1.0"
 sensors:
-    test:
+    test_sensor_python:
       version: "1.0"
       settings:
         - output_rate: 
@@ -112,6 +112,9 @@ sensors:
       labeled_output: true
       data:
         - utc_time:
+            type: float
+            units: seconds
+        - sys_time:
             type: float
             units: seconds
         - position:

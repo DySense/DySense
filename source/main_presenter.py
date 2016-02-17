@@ -48,6 +48,10 @@ class MainPresenter(QObject):
 
         self._send_message('add_controller', (endpoint, name))
         
+    def change_controller_data_source(self, data_source_name, new_value):
+
+        self._send_message_to_active_controller('change_data_source', (data_source_name, new_value))
+        
     def remove_controller(self, controller_id):
 
         self._send_message('remove_controller', controller_id)
@@ -59,6 +63,13 @@ class MainPresenter(QObject):
     def remove_sensor(self, sensor_id):
         
         self._send_message_to_active_controller('remove_sensor', sensor_id)
+        
+    def remove_all_sensors(self, only_on_active_controller):
+        
+        if only_on_active_controller:
+            self._send_message_to_active_controller('remove_sensor', 'all')
+        else:
+            self._send_message_to_all_controllers('remove_sensor', 'all')
     
     def setup_sensor(self):
         
@@ -141,7 +152,7 @@ class MainPresenter(QObject):
         
     def _send_message_to_all_sensors(self, message_type, message_body, only_on_active_controller=True):
         controller_id = self.active_controller_id if only_on_active_controller else 'all'
-        self._send_message_to_sensor(message_type, message_body, 0, controller_id)
+        self._send_message_to_sensor(message_type, message_body, 'all', controller_id)
 
     def _send_message_to_sensor(self, sensor_message_type, sensor_message_body, sensor_id, controller_id):
         message_body = (sensor_id, sensor_message_body)

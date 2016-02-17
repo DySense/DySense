@@ -5,6 +5,7 @@ import zmq
 import json
 import threading
 import uuid
+from collections import namedtuple
 
 from sensor_connection import SensorConnection
 from sensor_creation import SensorDriverFactory, SensorCloseTimeout
@@ -33,9 +34,13 @@ class SensorController(object):
         self._session_active = False
         self._session_name = 'N/A'
         
+        self._time_source = {"controller_id": "none", "sensor_id": '-1', "receiving": False}
+        self._position_source = {"controller_id": "none", "sensor_id": '-1', "receiving": False}
+        self._orientation_source = {"controller_id": "none", "sensor_id": '-1', "receiving": False}
+        
         self.controller_id = str(uuid.uuid4())
         
-        # Start ID at 1 since 0 represents all sensors.
+        # Start ID at 1 since 0 represents all sensors. Note IDs are always stored as strings.. not integers.
         self.next_sensor_id = 1
         
         self.stop_request = threading.Event()
@@ -60,13 +65,13 @@ class SensorController(object):
         self.message_callbacks = { # From Managers
                                   'request_connect': self.handle_request_connect,
                                   'add_sensor': self.handle_add_sensor,
-                                  'remove_sensor': self.handle_remove_sensor, 
+                                  'remove_sensor': self.handle_remove_sensor,
                                   'request_sensor': self.handle_request_sensor,
                                   'setup_sensor': self.handle_setup_sensor,
                                   'change_sensor_info': self.handle_change_sensor_info,
                                   'change_sensor_setting': self.handle_change_sensor_setting,
                                   'send_sensor_command': self.handle_send_sensor_command,
-                                  'send_sensor_time': self.handle_send_sensor_time,
+                                  'change_data_source': self.handle_change_data_source,
                                   
                                    # From Sensors
                                   'new_sensor_data': self.handle_new_sensor_data,
@@ -80,7 +85,10 @@ class SensorController(object):
         return {'id': self.controller_id,
                 'version': self.version,
                 'session_active': self.session_active,
-                'session_name': self.session_name}
+                'session_name': self.session_name,
+                'time_source': self.time_source,
+                'position_source': self.position_source,
+                'orientation_source': self.orientation_source}
         
     @property
     def session_active(self):
@@ -96,6 +104,30 @@ class SensorController(object):
     @session_name.setter
     def session_name(self, new_value):
         self._session_name = new_value
+        self.send_entire_controller_info()
+        
+    @property
+    def time_source(self):
+        return self._time_source
+    @time_source.setter
+    def time_source(self, new_value):
+        self._time_source = new_value
+        self.send_entire_controller_info()
+        
+    @property
+    def position_source(self):
+        return self._position_source
+    @position_source.setter
+    def position_source(self, new_value):
+        self._position_source = new_value
+        self.send_entire_controller_info()
+        
+    @property
+    def orientation_source(self):
+        return self._orientation_source
+    @orientation_source.setter
+    def orientation_source(self, new_value):
+        self._orientation_source = new_value
         self.send_entire_controller_info()
         
     def run(self):
@@ -121,7 +153,7 @@ class SensorController(object):
     def run_message_loop(self):
     
         # Use a poller so we can use timeout to check if any sensors aren't responding.
-        timeout = SENSOR_HEARTBEAT_PERIOD * 1000 # milliseconds
+        timeout = SENSOR_HEARTBEAT_PERIOD * 1000  # milliseconds
         poller = zmq.Poller()
         poller.register(self.manager_socket, zmq.POLLIN)
         poller.register(self.sensor_socket, zmq.POLLIN)
@@ -129,7 +161,7 @@ class SensorController(object):
         while True:
             
             if self.stop_request.is_set():
-                break # from main loop
+                break  # from main loop
             
             self.process_new_messages(poller, timeout)
 
@@ -162,7 +194,7 @@ class SensorController(object):
         try:
             sensor.close()
         except SensorCloseTimeout:
-            pass # TODO notify managers that sensor failed to close down.
+            pass  # TODO notify managers that sensor failed to close down.
             
     def process_new_messages(self, poller, timeout):
 
@@ -222,7 +254,7 @@ class SensorController(object):
                 socket.bind(endpoint)
                 return endpoint
             except (zmq.ZMQBindError, zmq.ZMQError):
-                continue # Try next endpoint
+                continue  # Try next endpoint
   
         raise Exception("Failed to bind to any of the following endpoints {}".format(endpoints))
         
@@ -275,7 +307,7 @@ class SensorController(object):
         
         sensor_name = self._make_sensor_name_unique(sensor_name)
         
-        new_sensor = SensorConnection(metadata['version'], self.next_sensor_id, sensor_type, sensor_name,
+        new_sensor = SensorConnection(metadata['version'], str(self.next_sensor_id), sensor_type, sensor_name,
                                       SENSOR_HEARTBEAT_PERIOD, settings, metadata, self, self.sensor_driver_factory)
         self.next_sensor_id += 1
     
@@ -286,12 +318,15 @@ class SensorController(object):
     def handle_remove_sensor(self, manager, sensor_id):
         '''Search through sensors and remove one that has matching id.'''
         
-        sensor = self.find_sensor(sensor_id)
+        if sensor_id == 'all':
+            sensors = self.sensors
+        else:
+            sensors = [self.find_sensor(sensor_id)]
         
-        self.close_down_sensor(sensor)
-        self.sensors.remove(sensor)
-        
-        self._send_manager_message('all', 'sensor_removed', sensor_id)
+        for sensor in sensors[:]:
+            self.close_down_sensor(sensor)
+            self.sensors.remove(sensor)
+            self._send_manager_message('all', 'sensor_removed', sensor.sensor_id)
 
     def handle_request_sensor(self, manager, sensor_id):
         
@@ -300,14 +335,14 @@ class SensorController(object):
         self.send_entire_sensor_info(manager.id, sensor)
         
     def handle_change_sensor_setting(self, manager, sensor_id, change):
-        
+
         sensor = self.find_sensor(sensor_id)
         
         setting_name, value = change
         sensor.update_setting(setting_name, value)
         
     def handle_change_sensor_info(self, manager, sensor_id, change):
-        
+
         sensor = self.find_sensor(sensor_id)
         
         info_name, value = change
@@ -319,18 +354,31 @@ class SensorController(object):
         
     def handle_send_sensor_command(self, manager, sensor_id, command):
 
-        if command == 'close':
-            self.close_down_sensor(self.find_sensor(sensor_id))
+        if sensor_id == 'all':
+            sensors = self.sensors
         else:
-            self._send_sensor_message(sensor_id, 'command', command)
+            sensors = [self.find_sensor(sensor_id)]
+
+        for sensor in sensors:
+            if command == 'close':
+                self.close_down_sensor(sensor)
+            else:
+                self._send_sensor_message(sensor.sensor_id, 'command', command)
     
-    def handle_send_sensor_time(self, manager, sensor_id, utc_time, sys_time):
-        
-        self._send_sensor_message(sensor_id, 'time', (utc_time, sys_time))
+    def handle_change_data_source(self, manager, data_source_name, data_source_info):
+
+        data_source_info['receiving'] = False
+
+        if data_source_name == 'time':
+            self.time_source = data_source_info
+        if data_source_name == 'position':
+            self.position_source = data_source_info
+        if data_source_name == 'orientation':
+            self.orientation_source = data_source_info
 
     def handle_setup_sensor(self, manager, sensor_id, message_body):
         
-        if int(sensor_id) == 0:
+        if sensor_id == 'all':
             sensors = self.sensors
         else:
             sensors = [self.find_sensor(sensor_id)]
@@ -344,8 +392,20 @@ class SensorController(object):
 
     def handle_new_sensor_data(self, sensor, data):
         
-        # TODO send to all managers at some rate
-        # Also check for GPS or State flags
+        if (sensor.sensor_id == self.time_source['sensor_id']) and (self.controller_id == self.time_source['controller_id']):
+            sys_time = data['sys_time']
+            if sys_time <= 0:
+                # Time came from another controller so timestamp when we received it to account for future latency.
+                sys_time = time.time()
+
+            new_time = (data['utc_time'], sys_time)
+            self._send_sensor_message('all', 'time', new_time)
+        if (sensor.sensor_id == self.position_source['sensor_id']) and (self.controller_id == self.position_source['controller_id']):
+            pass  # TODO call handle_position_source()
+        if (sensor.sensor_id == self.orientation_source['sensor_id']) and (self.controller_id == self.orientation_source['controller_id']):
+            pass  # TODO call handle_orientation_source()
+        
+        # TODO manage manager subscriptions 
         self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, data))
 
     def handle_new_sensor_text(self, sensor, text):
@@ -380,7 +440,7 @@ class SensorController(object):
     def find_sensor(self, sensor_id):
         
         for sensor in self.sensors:
-            if sensor.sensor_id == sensor_id:
+            if sensor.sensor_id == str(sensor_id):
                 return sensor
             
         raise ValueError
@@ -389,10 +449,10 @@ class SensorController(object):
         
         message = {'id': self.controller_id, 'type': message_type, 'body': message_body}
         
-        if manager_id == 'all': # send to all managers
+        if manager_id == 'all':  # send to all managers
             for router_id in self.managers.keys():
                 self.manager_socket.send_multipart([router_id, json.dumps(message)])
-        else: # just send to a single manager
+        else:  # just send to a single manager
             router_id = manager_id
             self.manager_socket.send_multipart([router_id, json.dumps(message)])
 
@@ -400,19 +460,19 @@ class SensorController(object):
         
         message = {'type': message_type, 'body': message_body}
 
-        if int(sensor_id) == 0: # send to all sensors
+        if sensor_id == 'all':  # send to all sensors
             for router_id in self.sensor_router_ids.values():
                 self.sensor_socket.send_multipart([router_id, json.dumps(message)])
-        else: # just send to single sensor
+        else:  # just send to single sensor
             try:
                 router_id = self.sensor_router_ids[sensor_id]
                 self.sensor_socket.send_multipart([router_id, json.dumps(message)])
             except KeyError:
-                pass # haven't received message from sensor yet so don't know how to address it.
+                pass  # haven't received message from sensor yet so don't know how to address it.
 
     def _make_sensor_name_unique(self, sensor_name):
         
-        existing_sensor_names = [s.name for s in self.sensors]
+        existing_sensor_names = [s.sensor_name for s in self.sensors]
         original_sensor_name = sensor_name
         
         while sensor_name in existing_sensor_names:

@@ -13,7 +13,8 @@ class SensorBase(object):
     public method is run() which handles everything.
     '''
 
-    def __init__(self, sensor_id, context, connect_endpoint, min_loop_period=0, max_closing_time=0, heartbeat_period=0.5):
+    def __init__(self, sensor_id, context, connect_endpoint, min_loop_period=0, max_closing_time=0, 
+                 heartbeat_period=0.5, wait_for_valid_time=True):
         '''
         Base constructor.
         
@@ -24,12 +25,13 @@ class SensorBase(object):
             heartbeat_period - How often (in seconds) we should receive a new message from client and
                                  how often we should send one back.
         '''
-        self.sensor_id = sensor_id
+        self.sensor_id = str(sensor_id)
         self.context = context
         self.connect_endpoint = connect_endpoint
         self.min_loop_period = max(0, min_loop_period)
         self.max_closing_time = max(0, max_closing_time)
         self.heartbeat_period = max(0.1, heartbeat_period)
+        self.wait_for_valid_time = wait_for_valid_time
         
         # Set to true when receive 'close' command from client.
         self.received_close_request = False
@@ -132,10 +134,9 @@ class SensorBase(object):
                     self.send_message('new_sensor_heartbeat', ' ')
                     self.last_sent_heartbeat_time = time.time()
      
-                if self.time == 0:
+                if self.wait_for_valid_time and self.time == 0:
                     # Don't read data from sensor until we have a valid timestamp for it.
-                    #continue
-                    pass # TODO re-enable continue once time is working
+                    continue
    
                 if self.paused:
                     time.sleep(0.1)
@@ -208,9 +209,14 @@ class SensorBase(object):
         state = 'paused' if self.paused else 'started'
         self.send_message('new_sensor_status', (state, self.health))
         
-    def handle_data(self, data):
+    def handle_data(self, data, labeled=False):
         '''Send data to client.'''
-        self.send_message('new_sensor_data', (data,))
+        if labeled:
+            # Data should be a dictionary so can send that normally.
+            self.send_message('new_sensor_data', data)
+        else:
+            # Make sure data is sent as a tuple.
+            self.send_message('new_sensor_data', (data,))
 
     def send_text(self, text):
         '''Send text message to client (like print)'''

@@ -30,7 +30,7 @@ class TestWindow(QWidget):
         # For keeping track of number of button presses.
         self.test_step = 0
         
-        self.start_button = QtGui.QPushButton("Add Sensor")
+        self.start_button = QtGui.QPushButton("Add Test Sensor")
 
         self.message_center_text_edit = QtGui.QTextEdit()
         self.message_center_text_edit.setMinimumSize(QtCore.QSize(1000, 0))
@@ -55,74 +55,81 @@ class TestWindow(QWidget):
         
         if self.test_step == 0:
             self.display_message("Telling presenter to add new sensor...")
-            # If we don't include a 'settings' element then the controller will load the default values 
-            # from the metadata file.  This sensor version must match what's in the metadata file.
-            # Note this program is mostly asynchronous.  For example when 'add_sensor()' is called below
-            # all it does is fires off a message and then immediately returns.  There's no instance feedback
-            # to whether or not something worked or not. The message will be processed and sometime later
-            # something else happens in return.  In this case update_all_sensor_info() will be called which
-            # just means we received an entire sensor 'snapshot' of the new sensor.   The new 'snapshot' will
-            # also contain a 'metadata' key which should contain everything from the metadata file for that
-            # sensor type.  That's why so much stuff spits out after adding a sensor.. if you look through it
-            # it's mostly metadata stuff.  It would probably be easiest to set a breakpoint and use the debugger
-            # to view it's structure.  No promise that it's perfect.  Also sorry about the really long IDs for
-            # the controllers.  It's a globally unique ID... this might change in the future but just assume it's
-            # some unique string.  You'll notice sometimes the 'message center' says things change even though
-            # they didn't change... that's because sometimes things change together e.g. sensor status the health
-            # and state always change together, or the controller info always gets sent out all at once.  
             #new_sensor_info = {'version': '1.0',
             #                   'sensor_type': 'kinectv2_msdk',
             #                   'sensor_name': 'kinectv2_1'}
+
+            # Add test sensor
             new_sensor_info = {'version': '1.0',
-                               'sensor_type': 'gps_nmea_test',
-                               'sensor_name': 'test_sensor_name'}
-            new_sensor_info['settings'] = {'test_file_path': r"C:\Users\Kyle\Documents\DySense\nmea_logs\SXBlueGGA.txt",
-                                           'output_rate': 10,
-                                           'required_fix': 'none',
-                                           'required_precision': 0}
+                               'sensor_type': 'test_sensor_python',
+                               'sensor_name': 'test_sensor'}
             self.presenter.add_sensor(new_sensor_info)
-            self.start_button.setText('Change Sensor Name')
-  
-        if self.test_step == 1:
-            if len(self.sensors) == 0:
-                return
-            self.presenter.active_sensor_id = self.sensors.keys()[0][1]
             
-            self.display_message("Telling presenter to change sensor name to test_sensor1...")
-            self.presenter.change_sensor_info('sensor_name', 'test_sensor1')
             self.start_button.setText('Setup Sensor')
             
-        if self.test_step == 2:
+        if self.test_step == 1:
             
             self.display_message("Telling presenter to setup active sensor...")
             self.presenter.setup_sensor()
             #self.presenter.setup_all_sensors(True)
             self.start_button.setText('Start Sensor')
             
-        if self.test_step == 3:
+        if self.test_step == 2:
             
             self.display_message("Telling presenter to start active sensor...")
             self.presenter.resume_sensor()
             #self.presenter.resume_all_sensors(True)
-            self.start_button.setText('Pause Sensor')
+            self.start_button.setText('Add GPS')
             
+        if self.test_step == 3:
+            self.display_message("Telling presenter to add gps...")
+            # Add test GPS source
+            new_gps_info = {'version': '1.0',
+                               'sensor_type': 'gps_nmea_test',
+                               'sensor_name': 'gps'}
+            new_gps_info['settings'] = {'test_file_path': r"C:\Users\Kyle\Documents\DySense\nmea_logs\SXBlueGGA.txt",
+                                           'output_rate': 10,
+                                           'required_fix': 'none',
+                                           'required_precision': 0}
+            self.presenter.add_sensor(new_gps_info)
+            
+            self.start_button.setText('Setup GPS')
+        
         if self.test_step == 4:
+            
+            self.display_message("Telling presenter to set sensor 2 as time source..")
+            new_time_source = {"controller_id": self.presenter.active_controller_id, "sensor_id": '2'}
+            self.presenter.change_controller_data_source('time', new_time_source)
+            
+            self.display_message("Telling presenter to setup GPS...")
+            self.presenter.setup_sensor()
+            
+            self.start_button.setText('Start GPS')
+        
+        if self.test_step == 5:
+            self.display_message("Telling presenter to start GPS...")
+            self.presenter.resume_sensor()
+            
+            self.start_button.setText('Pause Test Sensor')
+            self.presenter.active_sensor_id = '1'
+            
+        if self.test_step == 6:
             
             self.display_message("Telling presenter to pause active sensor...")
             self.presenter.pause_sensor()
             #self.presenter.pause_all_sensors(True)
-            self.start_button.setText('Close Sensor')
+            self.start_button.setText('Close Sensors')
             
-        if self.test_step == 5:
+        if self.test_step == 7:
             
-            self.display_message("Telling presenter to close active sensor...")
-            self.presenter.close_sensor()
-            self.start_button.setText('Remove Sensor')
+            self.display_message("Telling presenter to close all sensors...")
+            self.presenter.close_all_sensors(True)
+            self.start_button.setText('Remove Sensors')
             
-        if self.test_step == 6:
+        if self.test_step == 8:
             
-            self.display_message("Telling presenter to remove active sensor...")
-            self.presenter.remove_sensor(self.presenter.active_sensor_id)
+            self.display_message("Telling presenter to remove all sensors...")
+            self.presenter.remove_all_sensors(True);
             self.start_button.setText('Done')
         
         self.test_step += 1
@@ -132,24 +139,30 @@ class TestWindow(QWidget):
         
     def update_all_controller_info(self, controller_id, controller_info):
         self.controllers[controller_id] = controller_info
-        self.display_message("Controller: ({}) received with info\n{}".format(controller_id, controller_info))
+        self.display_message("Controller: {} updated info".format(controller_id))
         
     def remove_controller(self, controller_id):
-        self.display_message("Controller: ({}) removed".format(controller_id))
+        self.display_message("Controller: {} removed".format(controller_id))
         
     def update_all_sensor_info(self, controller_id, sensor_id, sensor_info):
+        sensor_info['posted_about_receiving_data'] = False
         self.sensors[(controller_id, sensor_id)] = sensor_info
-        self.display_message("Sensor: ({}:{}) received with info\n{}".format(controller_id, sensor_info['sensor_name'],
-                                                                            str(sensor_info).replace(',', ',\n')))
+        self.display_message("Sensor: {} received".format(sensor_info['sensor_name']))
+        self.presenter.active_sensor_id = sensor_id
     
     def update_sensor_info(self, controller_id, sensor_id, info_name, value):
-        self.display_message("Sensor ({}:{}) had \'{}\' changed to {}".format(controller_id, sensor_id, info_name, value))
+        self.display_message("Sensor {} had \'{}\' changed to {}".format(self.sensors[(controller_id, sensor_id)]['sensor_name'],
+                                                                        info_name, value))
+        #self.display_message("Sensor ({}:{}) had \'{}\' changed to {}".format(controller_id, sensor_id, info_name, value))
     
     def remove_sensor(self, controller_id, sensor_id):
-        self.display_message("Sensor ({}:{}) removed".format(controller_id, sensor_id))
+        self.display_message("Sensor {} removed".format(sensor_id))
     
     def show_new_sensor_data(self, controller_id, sensor_id, data):
-        self.display_message("Sensor ({}:{}) new data {}".format(controller_id, sensor_id, data))
+        
+        if not self.sensors[(controller_id, sensor_id)]['posted_about_receiving_data']:
+            self.display_message("Sensor {} new data {}".format(sensor_id, data))
+            self.sensors[(controller_id, sensor_id)]['posted_about_receiving_data'] = True
     
     def append_sensor_message(self, controller_id, sensor_id, text):
-        self.display_message("Sensor ({}:{}) new text {}".format(controller_id, sensor_id, text)) 
+        self.display_message("Sensor {} new text {}".format(sensor_id, text)) 

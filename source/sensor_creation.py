@@ -29,7 +29,7 @@ class SensorDriverFactory(object):
         if sensor_type == 'irt_ue':
             from sensors.irt.irt_ue import IRT_UE
             sensor = SensorDriverThread(IRT_UE, local_startup_args)
-        if sensor_type == 'test':
+        if sensor_type == 'test_sensor_python':
             from sensors.test.test_sensor_python import TestSensor
             sensor = SensorDriverThread(TestSensor, local_startup_args)
             #sensor = SensorDriverProcess('../sensors/test.py', remote_startup_args, language='python')

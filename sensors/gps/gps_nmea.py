@@ -18,7 +18,7 @@ from sensor_base.sensor_base import SensorBase
 class GpsNmea(SensorBase):
     
     def __init__(self, required_fix, required_precision, **kargs):
-        SensorBase.__init__(self, **kargs)
+        SensorBase.__init__(self, wait_for_valid_time=False, **kargs)
     
         self.fix_types = {'0': 'None',
                           '1': 'GPS',
@@ -101,6 +101,9 @@ class GpsNmea(SensorBase):
                     self.last_fix = fix
                     self.send_text('Current fix: {}'.format(self.fix_types[fix]))
                     
-                self.handle_data((utc_time, message_read_time, latitude, longitude, altitude))
+                self.handle_data({'utc_time': utc_time,
+                                  'sys_time': message_read_time,
+                                  'position': (latitude, longitude, altitude)},
+                                 labeled=True)
     
             return True # success
