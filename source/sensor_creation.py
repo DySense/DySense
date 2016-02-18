@@ -33,6 +33,8 @@ class SensorDriverFactory(object):
             from sensors.test.test_sensor_python import TestSensor
             sensor = SensorDriverThread(TestSensor, local_startup_args)
             #sensor = SensorDriverProcess('../sensors/test.py', remote_startup_args, language='python')
+        if sensor_type == 'test_sensor_csharp':
+            sensor = SensorDriverProcess('../sensors/test/test_sensor_csharp/DySenseTestSensorCS.exe', remote_startup_args, language='csharp')
         if sensor_type == 'kinectv2_msdk':
             pass
         if sensor_type == 'gps_nmea_test':

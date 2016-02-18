@@ -61,13 +61,17 @@ class TestWindow(QWidget):
 
             # Add test sensor
             new_sensor_info = {'version': '1.0',
-                               'sensor_type': 'test_sensor_python',
+                               'sensor_type': 'test_sensor_csharp',
                                'sensor_name': 'test_sensor'}
             self.presenter.add_sensor(new_sensor_info)
             
             self.start_button.setText('Setup Sensor')
             
         if self.test_step == 1:
+            
+            if len(self.sensors) == 0:
+                self.display_message("No new sensor received..")
+                return
             
             self.display_message("Telling presenter to setup active sensor...")
             self.presenter.setup_sensor()

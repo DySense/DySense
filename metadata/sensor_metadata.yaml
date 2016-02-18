@@ -48,6 +48,42 @@ sensors:
         - crash
         - trigger
         
+        
+    test_sensor_csharp:
+      version: "1.0"
+      settings:
+        - output_rate: 
+            type: float
+            description: How fast sensor should output data.
+            units: Hz
+            default_value: 1
+            min_value: 0
+            max_value: 1000000
+        - test_float:
+            type: float
+            description: Any number that is a floating point number.
+            default_value: 1.25
+      labeled_output: false
+      data:
+        - utc_time:
+            type: float
+            units: seconds
+        - counter:
+            type: str
+        - rand_int:
+            type: int
+            min_value: 0
+            max_value: 100
+        - rand_float:
+            type: float
+            min_value: 0.0
+            max_value: 1.0
+        - system_time:
+            type: float
+            units: seconds
+      special_commands:
+        - crash
+        
     kinectv2_msdk:
       version: "1.0"
       settings:

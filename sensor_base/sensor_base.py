@@ -237,23 +237,6 @@ class SensorBase(object):
         except AttributeError:
             pass # socket isn't created so can't send message
     
-    def handle_new_time(self, times):
-        '''
-        Process new time reference received from client.
-        
-        Correct for any time that has elapsed since utc_time was last updated.
-        Save this time off so we can use it to calculate a more precise timestamp later.
-        
-        Args:
-            times - tuple of (utc_time, sys_time) where sys_time is the system time from time.time()
-                    when utc_time was last updated.
-        '''
-        utc_time, sys_time = times
-        
-        self._last_received_sys_time = time.time()
-        corrected_utc_time = utc_time + (self._last_received_sys_time - sys_time)
-        self._last_received_utc_time = corrected_utc_time
-    
     def process_new_messages(self):
         '''Receive and process all messages in socket queue.'''
         while True:
@@ -275,8 +258,7 @@ class SensorBase(object):
         '''
         Deal with a new command (e.g. 'close') received from client.
         
-        Should be called when a new command is received.  If the command isn't a generic one
-        then it will be passed to handle_special_command.
+        If the command isn't a generic one then it will be passed to handle_special_command.
         '''
         if command == 'close':
             self.received_close_request = True
@@ -288,6 +270,23 @@ class SensorBase(object):
             self.resume()
         else:
             self.handle_special_command(command)
+            
+    def handle_new_time(self, times):
+        '''
+        Process new time reference received from client.
+        
+        Correct for any time that has elapsed since utc_time was last updated.
+        Save this time off so we can use it to calculate a more precise timestamp later.
+        
+        Args:
+            times - tuple of (utc_time, sys_time) where sys_time is the system time from time.time()
+                    when utc_time was last updated.
+        '''
+        utc_time, sys_time = times
+        
+        self._last_received_sys_time = time.time()
+        corrected_utc_time = utc_time + (self._last_received_sys_time - sys_time)
+        self._last_received_utc_time = corrected_utc_time
             
     def handle_new_heartbeat(self, unused):
         # Don't need to do anything since all messages are treated as heartbeats.

@@ -443,7 +443,7 @@ class SensorController(object):
             if sensor.sensor_id == str(sensor_id):
                 return sensor
             
-        raise ValueError
+        raise ValueError("Sensor {} not in list of sensor IDs {}".format(sensor_id, [s.id for s in self.sensors]))
     
     def _send_manager_message(self, manager_id, message_type, message_body):
         
