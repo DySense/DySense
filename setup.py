@@ -19,6 +19,6 @@ if __name__ == "__main__":
               'pyserial',
 			  'pyyaml',
 			  'pyzmq',
-			  'pyqt4'
+			  #'pyqt4' PyQt needs to be installed separately
           ],
           zip_safe=False)

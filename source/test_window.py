@@ -55,14 +55,18 @@ class TestWindow(QWidget):
         
         if self.test_step == 0:
             self.display_message("Telling presenter to add new sensor...")
-            #new_sensor_info = {'version': '1.0',
-            #                   'sensor_type': 'kinectv2_msdk',
-            #                   'sensor_name': 'kinectv2_1'}
+            new_sensor_info = {'version': '1.0',
+                               'sensor_type': 'kinectv2_msdk',
+                               'sensor_name': 'kinectv2_1'}
+            new_sensor_info['settings'] = {'out_directory': r"C:\Users\Poland PheMU\Documents\DySenseDrivers\DySenseKinectV2\test_output",
+                                           'color_period': 2,
+                                           'depth_period': 0,
+                                           'ir_period': -1 }
 
             # Add test sensor
-            new_sensor_info = {'version': '1.0',
-                               'sensor_type': 'test_sensor_csharp',
-                               'sensor_name': 'test_sensor'}
+            #new_sensor_info = {'version': '1.0',
+            #                   'sensor_type': 'test_sensor_csharp',
+            #                   'sensor_name': 'test_sensor'}
             self.presenter.add_sensor(new_sensor_info)
             
             self.start_button.setText('Setup Sensor')
@@ -91,7 +95,7 @@ class TestWindow(QWidget):
             new_gps_info = {'version': '1.0',
                                'sensor_type': 'gps_nmea_test',
                                'sensor_name': 'gps'}
-            new_gps_info['settings'] = {'test_file_path': r"C:\Users\Kyle\Documents\DySense\nmea_logs\SXBlueGGA.txt",
+            new_gps_info['settings'] = {'test_file_path': r"C:\Users\Poland PheMU\Documents\DySense\nmea_logs\SXBlueGGA.txt",
                                            'output_rate': 10,
                                            'required_fix': 'none',
                                            'required_precision': 0}

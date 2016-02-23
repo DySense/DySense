@@ -87,6 +87,10 @@ sensors:
     kinectv2_msdk:
       version: "1.0"
       settings:
+        - out_directory: 
+            type: string
+            description: Where to save output files.
+            default_value: " "
         - color_period: 
             type: float
             description: How fast to save color images. 0 is max rate. Negative to disable.
@@ -113,13 +117,14 @@ sensors:
         - utc_time:
             type: float
             units: seconds
-        - color_file_name:
+        - sys_time:
+            type: float
+            units: seconds
+        - type:
             type: string
-        - depth_file_name:
+        - file_name:
             type: string
-        - ir_file_name:
-            type: string
-            
+  
     gps_nmea_test:
       version: "1.0"
       settings:

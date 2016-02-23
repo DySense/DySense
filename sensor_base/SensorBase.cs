@@ -20,10 +20,10 @@ namespace DySense
         // Unique sensor ID.
         string sensorID;
 
-        // Controller endpoint to connect to and get message from.
+        // Controller endpoint to connect to and get messages from.
         string connectEndpoint;
 
-        // Minimum duration (in seconds) that data collection loop will run.
+        // Minimum duration (in seconds) that data collection loop will run if WaitForNextLoop() is used.
         public double MinLoopPeriod { get; set; }
 
         // Maximum number of seconds sensor needs to wrap up before being force closed.
@@ -69,12 +69,15 @@ namespace DySense
         double interfaceConnectionTime;
     
         // How many message have been received from client.
-        int numMessageReceived;
+        int numMessageReceived = 0;
+        
+        // The time that the current run() loop started at. Used for throttling how fast the main loop runs.
+        double runLoopStartTime;
 
         // Associate callback methods with different message types.
         Dictionary<string, Func<object, bool>> messageTable;
 
-        public SensorBase(string sensorID, string connectEndpoint, double minLoopPeriod = 0,
+        public SensorBase(string sensorID, string connectEndpoint, double minLoopPeriod = 0.25,
             double maxClosingTime=0, double heartbeatPeriod=0.5, bool waitForValidTime=true)
         {
             this.sensorID = sensorID;
@@ -94,6 +97,7 @@ namespace DySense
             };
         }
 
+        // Return current UTC time (from sensor controller).  Uses system time offset since last received message to improve resolution.
         public double Time
         {
             get 
@@ -112,8 +116,10 @@ namespace DySense
             }
         }
 
+        // Return current system time in seconds.
         public double SysTime { get { return (DateTime.Now.ToUniversalTime() - new DateTime (1970, 1, 1)).TotalSeconds; } }
     
+        // True if sensor is in a paused state.
         public bool Paused 
         {
             get  { return this._paused; }
@@ -124,6 +130,7 @@ namespace DySense
             }
         }
 
+        // Either "good" or "bad"
         public string Health 
         {
             get  { return this._health; }
@@ -149,7 +156,7 @@ namespace DySense
                 while (true)
                 {
                     // Save off time so we can limit how fast loop runs.
-                    double loopStartTime = SysTime;
+                    runLoopStartTime = SysTime;
 
                     // Handle any messages received over socket.
                     ProcessNewMessages();
@@ -171,29 +178,14 @@ namespace DySense
                         this.lastSentHeartbeatTime = SysTime; 
                     }
 
-                    if (waitForValidTime && (Time == 0))
+                    if (!ShouldRecordData())
                     {
-                        // Don't read data from sensor until we have a valid timestamp for it.
-                        continue;
-                    }
-
-                    if (Paused)
-                    {
-                        //await Task.Delay(100);
                         Thread.Sleep(100);
                         continue;
                     }
 
                     // Give the sensor a chance to read in new data.
                     ReadNewData();
-
-                    double loopDuration = SysTime - loopStartTime;
-                    if (loopDuration < this.MinLoopPeriod)
-                    {
-                        double timeToWait = this.MinLoopPeriod - loopDuration;
-                        Thread.Sleep((int)(Math.Max(0, timeToWait) * 1000));
-                        //await Task.Delay((int)(Math.Max(0, timeToWait)*1000));
-                    }
                 }
 	        }
 	        catch (Exception e)
@@ -206,6 +198,27 @@ namespace DySense
                 Pause();
                 Close();
                 CloseInterface();
+            }
+        }
+
+        // Return true if the sensor is in a state where it should be trying to record data.
+        protected bool ShouldRecordData()
+        {
+            bool stillNeedTimeReference = waitForValidTime && (Time == 0);
+            return !(stillNeedTimeReference || Paused);
+        }
+
+        // Can optionally be called at the end of ReadNewData() to limit how fast main loop runs.
+        // This uses the MinLoopPeriod attribute to determine how long to wait.  If the amount of
+        // time has already exceed MinLoopPeriod then this method will return right away.
+        protected void WaitForNextLoop()
+        {
+            double loopDuration = SysTime - runLoopStartTime;
+            if (loopDuration < this.MinLoopPeriod)
+            {
+                double timeToWait = this.MinLoopPeriod - loopDuration;
+                Thread.Sleep((int)(Math.Max(0, timeToWait) * 1000));
+                //await Task.Delay((int)(Math.Max(0, timeToWait)*1000));
             }
         }
 

@@ -4,6 +4,7 @@ import threading
 import zmq
 import sys
 import yaml
+import os
 
 from test_window import TestWindow
 from main_presenter import MainPresenter
@@ -17,7 +18,7 @@ if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     
     zmq_context = zmq.Context()
-    
+
     # Load metadata before adding any controllers so can verify version.
     with open("../metadata/sensor_metadata.yaml", 'r') as stream:
         sensor_metadata = yaml.load(stream)

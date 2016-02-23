@@ -1,0 +1,14 @@
+ideal - sensor can check for and process messages at 0.25 seconds and send back heartbeat at some rate.
+
+request -> wait -> receive (example Camera)
+request -> receive (example IRT)
+receive (example Kinect)
+
+all of these options could either run at full rate or throttled down.
+
+If running full rate
+    - It can't block for more than 0.25 seconds.  The sensor then needs to have a flag to signify that it's still waiting so doesn't request again. The sensor should have a maximum receive time that if it exceeds this time then the status goes to bad.
+    - Need to limit processing message loop.  If running at 100Hz just let it keep calling readNewData().
+
+If running throttled down that's fine because then use waitForNextReading()
+
