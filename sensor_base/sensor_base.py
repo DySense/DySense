@@ -136,6 +136,7 @@ class SensorBase(object):
      
                 if self.wait_for_valid_time and self.time == 0:
                     # Don't read data from sensor until we have a valid timestamp for it.
+                    time.sleep(0.1)
                     continue
    
                 if self.paused:
