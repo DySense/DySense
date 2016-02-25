@@ -48,9 +48,15 @@ class MainPresenter(QObject):
 
         self._send_message('add_controller', (endpoint, name))
         
-    def change_controller_data_source(self, data_source_name, new_value):
+    def change_controller_data_source(self, data_source_name, sensor_id, controller_id):
+        
+        # We need to provide the metadata since the controller might not know anything about the sensor.
+        # TODO - need to change this to just self.sensors once Ethan merges in changes
+        source_metadata = self.view.sensors[(controller_id, sensor_id)]['metadata']
+        
+        new_source = {"controller_id": controller_id, "sensor_id": sensor_id, 'metadata': source_metadata}
 
-        self._send_message_to_active_controller('change_data_source', (data_source_name, new_value))
+        self._send_message_to_active_controller('change_data_source', (data_source_name, new_source))
         
     def remove_controller(self, controller_id):
 
@@ -110,6 +116,10 @@ class MainPresenter(QObject):
     def change_sensor_setting(self, setting_name, value):
         
         self._send_message_to_active_sensor('change_sensor_setting', (setting_name, value))
+
+    def change_controller_setting(self, setting_name, value):
+        
+        self._send_message_to_active_controller('change_controller_setting', (setting_name, value))
 
     def receive_messages(self):
         ''''''

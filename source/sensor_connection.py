@@ -24,8 +24,10 @@ class SensorConnection(object):
         # Either thread or process object that sensor driver runs in.
         self.sensor_driver = None
         
+        # Notified when one of the public connection fields change.
         self.observer = observer
         
+        # Used to create new sensors.
         self.driver_factory = driver_factory
         
         # How often (in seconds) we should receive a new message from sensor and how often we should send one back.

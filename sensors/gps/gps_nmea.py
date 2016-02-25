@@ -101,9 +101,6 @@ class GpsNmea(SensorBase):
                     self.last_fix = fix
                     self.send_text('Current fix: {}'.format(self.fix_types[fix]))
                     
-                self.handle_data({'utc_time': utc_time,
-                                  'sys_time': message_read_time,
-                                  'position': (latitude, longitude, altitude)},
-                                 labeled=True)
+                self.handle_data((utc_time, message_read_time, latitude, longitude, altitude))
     
             return True # success

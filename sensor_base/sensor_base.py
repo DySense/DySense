@@ -210,14 +210,10 @@ class SensorBase(object):
         state = 'paused' if self.paused else 'started'
         self.send_message('new_sensor_status', (state, self.health))
         
-    def handle_data(self, data, labeled=False):
+    def handle_data(self, data):
         '''Send data to client.'''
-        if labeled:
-            # Data should be a dictionary so can send that normally.
-            self.send_message('new_sensor_data', data)
-        else:
-            # Make sure data is sent as a tuple.
-            self.send_message('new_sensor_data', (data,))
+        # Make sure data is sent as a tuple.
+        self.send_message('new_sensor_data', (data,))
 
     def send_text(self, text):
         '''Send text message to client (like print)'''

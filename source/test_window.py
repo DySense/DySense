@@ -28,9 +28,9 @@ class TestWindow(QWidget):
         self.sensors = {}
     
         # For keeping track of number of button presses.
-        self.test_step = 0
+        self.test_step = -1
         
-        self.start_button = QtGui.QPushButton("Add Test Sensor")
+        self.start_button = QtGui.QPushButton("Set Output Directory")
 
         self.message_center_text_edit = QtGui.QTextEdit()
         self.message_center_text_edit.setMinimumSize(QtCore.QSize(1000, 0))
@@ -53,8 +53,15 @@ class TestWindow(QWidget):
         # Normally this 'setting active' would happen from user clicking on the controller in the tree view.
         self.presenter.active_controller_id = self.controllers.keys()[0]
         
+        if self.test_step == -1:
+            output_directory = r"C:\Users\Poland PheMU\Documents\dysense_test_output"
+            self.display_message("Setting output session to {}".format(output_directory))
+            self.presenter.change_controller_setting("base_out_directory", output_directory)
+            self.start_button.setText('Add Test Sensor')
+        
         if self.test_step == 0:
             self.display_message("Telling presenter to add new sensor...")
+            '''
             new_sensor_info = {'version': '1.0',
                                'sensor_type': 'kinectv2_msdk',
                                'sensor_name': 'kinectv2_1'}
@@ -62,11 +69,11 @@ class TestWindow(QWidget):
                                            'color_period': 2,
                                            'depth_period': 0,
                                            'ir_period': -1 }
-
+            '''
             # Add test sensor
-            #new_sensor_info = {'version': '1.0',
-            #                   'sensor_type': 'test_sensor_csharp',
-            #                   'sensor_name': 'test_sensor'}
+            new_sensor_info = {'version': '1.0',
+                               'sensor_type': 'test_sensor_csharp',
+                               'sensor_name': 'test_sensor'}
             self.presenter.add_sensor(new_sensor_info)
             
             self.start_button.setText('Setup Sensor')
@@ -106,8 +113,7 @@ class TestWindow(QWidget):
         if self.test_step == 4:
             
             self.display_message("Telling presenter to set sensor 2 as time source..")
-            new_time_source = {"controller_id": self.presenter.active_controller_id, "sensor_id": '2'}
-            self.presenter.change_controller_data_source('time', new_time_source)
+            self.presenter.change_controller_data_source('time', sensor_id='2', controller_id=self.presenter.active_controller_id)
             
             self.display_message("Telling presenter to setup GPS...")
             self.presenter.setup_sensor()

@@ -3,47 +3,46 @@ sensors:
     test_sensor_python:
       version: "1.0"
       settings:
-        - output_rate: 
-            type: float
-            description: How fast sensor should output data.
-            units: Hz
-            default_value: 1
-            min_value: 0
-            max_value: 1000000
-        - test_float:
-            type: float
-            description: Any number that is a floating point number.
-            default_value: 1.25
-        - test_int:
-            type: int
-            description: Between 0 and 100.
-            default_value: 0
-        - test_string:
-            type: str
-            description: Any string that's not empty.
-            default_value: 'example'
-        - test_bool:
-            type: bool
-            description: Either true or false.
-            default_value: true
-      labeled_output: false
+        - name: output_rate
+          type: float
+          description: How fast sensor should output data.
+          units: Hz
+          default_value: 1
+          min_value: 0
+          max_value: 1000000
+        - name: test_float
+          type: float
+          description: Any number that is a floating point number.
+          default_value: 1.25
+        - name: test_int
+          type: int
+          description: Between 0 and 100.
+          default_value: 0
+        - name: test_string
+          type: str
+          description: Any string that's not empty.
+          default_value: 'example'
+        - name: test_bool
+          type: bool
+          description: Either true or false.
+          default_value: true
       data:
-        - utc_time:
-            type: float
-            units: seconds
-        - counter:
-            type: str
-        - rand_int:
-            type: int
-            min_value: 0
-            max_value: 100
-        - rand_float:
-            type: float
-            min_value: 0.0
-            max_value: 1.0
-        - system_time:
-            type: float
-            units: seconds
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: counter
+          type: str
+        - name: rand_int
+          type: int
+          min_value: 0
+          max_value: 100
+        - name: rand_float
+          type: float
+          min_value: 0.0
+          max_value: 1.0
+        - name: system_time
+          type: float
+          units: seconds
       special_commands:
         - crash
         - trigger
@@ -52,112 +51,117 @@ sensors:
     test_sensor_csharp:
       version: "1.0"
       settings:
-        - output_rate: 
-            type: float
-            description: How fast sensor should output data.
-            units: Hz
-            default_value: 1
-            min_value: 0
-            max_value: 1000000
-        - test_float:
-            type: float
-            description: Any number that is a floating point number.
-            default_value: 1.25
-      labeled_output: false
+        - name: output_rate
+          type: float
+          description: How fast sensor should output data.
+          units: Hz
+          default_value: 1
+          min_value: 0
+          max_value: 1000000
+        - name: test_float
+          type: float
+          description: Any number that is a floating point number.
+          default_value: 1.25
       data:
-        - utc_time:
-            type: float
-            units: seconds
-        - counter:
-            type: str
-        - rand_int:
-            type: int
-            min_value: 0
-            max_value: 100
-        - rand_float:
-            type: float
-            min_value: 0.0
-            max_value: 1.0
-        - system_time:
-            type: float
-            units: seconds
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: counter
+          type: str
+        - name: rand_int
+          type: int
+          min_value: 0
+          max_value: 100
+        - name: rand_float
+          type: float
+          min_value: 0.0
+          max_value: 1.0
+        - name: system_time
+          type: float
+          units: seconds
       special_commands:
         - crash
         
     kinectv2_msdk:
       version: "1.0"
       settings:
-        - out_directory: 
-            type: string
-            description: Where to save output files.
-            default_value: " "
-        - color_period: 
-            type: float
-            description: How fast to save color images. 0 is max rate. Negative to disable.
-            units: seconds
-            default_value: 1
-            min_value: -1
-            max_value: 100000
-        - depth_period: 
-            type: float
-            description: How fast to save depth data. 0 is max rate. Negative to disable.
-            units: seconds
-            default_value: 1
-            min_value: -1
-            max_value: 100000
-        - ir_period: 
-            type: float
-            description: How fast to save infrared images. 0 is max rate. Negative to disable.
-            units: seconds
-            default_value: 1
-            min_value: -1
-            max_value: 100000
-      labeled_output: true
+        - name: out_directory
+          type: string
+          description: Where to save output files.
+          default_value: " "
+        - name: color_period
+          type: float
+          description: How fast to save color images. 0 is max rate. Negative to disable.
+          units: seconds
+          default_value: 1
+          min_value: -1
+          max_value: 100000
+        - name: depth_period
+          type: float
+          description: How fast to save depth data. 0 is max rate. Negative to disable.
+          units: seconds
+          default_value: 1
+          min_value: -1
+          max_value: 100000
+        - name: ir_period
+          type: float
+          description: How fast to save infrared images. 0 is max rate. Negative to disable.
+          units: seconds
+          default_value: 1
+          min_value: -1
+          max_value: 100000
       data:
-        - utc_time:
-            type: float
-            units: seconds
-        - sys_time:
-            type: float
-            units: seconds
-        - type:
-            type: string
-        - file_name:
-            type: string
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: sys_time
+          type: float
+          units: seconds
+        - name: type
+          type: string
+        - name: file_name
+          type: string
   
     gps_nmea_test:
       version: "1.0"
       settings:
-        - test_file_path: 
-            type: string
-            description: Absolute path to text file with NMEA messages.
-            default_value: None
-        - output_rate: 
-            type: float
-            description: How fast sensor should output data.
-            units: Hz
-            default_value: 10
-            min_value: 0
-            max_value: 1000000
-        - required_fix: 
-            type: string
-            description: GPS fix ID that must be maintained. 'None' to disable check.
-            default_value: None
-        - required_precision: 
-            type: float
-            description: The max standard deviation of latitude/longitude error for usable data.
-            units: TODO
-            default_value: 1
-            min_value: 0
-            max_value: 100000
-      labeled_output: true
+        - name: test_file_path
+          type: string
+          description: Absolute path to text file with NMEA messages.
+          default_value: None
+        - name: output_rate
+          type: float
+          description: How fast sensor should output data.
+          units: Hz
+          default_value: 10
+          min_value: 0
+          max_value: 1000000
+        - name: required_fix
+          type: string
+          description: GPS fix ID that must be maintained. 'None' to disable check.
+          default_value: None
+        - name: required_precision
+          type: float
+          description: The max standard deviation of latitude/longitude error for usable data.
+          units: TODO
+          default_value: 1
+          min_value: 0
+          max_value: 100000
+      tags: [time, position, orientation]
       data:
-        - utc_time:
-            type: float
-            units: seconds
-        - sys_time:
-            type: float
-            units: seconds
-        - position:
-            type: list
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: sys_time
+          type: float
+          units: seconds
+        - name: latitude
+          type: float
+          tags: [position_x]
+        - name: longitude
+          type: float
+          tags: [position_y]
+        - name: altitude
+          type: float
+          tags: [position_z]
         

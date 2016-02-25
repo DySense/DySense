@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 
+import os
 import time
 import zmq
 import json
 import threading
 import uuid
-from collections import namedtuple
+import datetime
 
 from sensor_connection import SensorConnection
 from sensor_creation import SensorDriverFactory, SensorCloseTimeout
+from csv_log import CSVLog
+from controller_data_sources import *
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
 
@@ -33,13 +36,19 @@ class SensorController(object):
         
         self._session_active = False
         self._session_name = 'N/A'
+        self.session_path = "None"
         
-        self._time_source = {"controller_id": "none", "sensor_id": '-1', "receiving": False}
-        self._position_source = {"controller_id": "none", "sensor_id": '-1', "receiving": False}
-        self._orientation_source = {"controller_id": "none", "sensor_id": '-1', "receiving": False}
+        self._time_source = TimeDataSource(callback=self.send_entire_controller_info)
+        self._position_sources = [PositionDataSource(callback=self.send_entire_controller_info)]
+        self._orientation_sources = [OrientationDataSource(callback=self.send_entire_controller_info)]
         
         self.controller_id = str(uuid.uuid4())
         
+        self.settings = {'base_out_directory': 'None',
+                         'platform_name': 'None',
+                         'platform_id': 'None',
+                         'surveyed': True}
+
         # Start ID at 1 since 0 represents all sensors. Note IDs are always stored as strings.. not integers.
         self.next_sensor_id = 1
         
@@ -72,6 +81,8 @@ class SensorController(object):
                                   'change_sensor_setting': self.handle_change_sensor_setting,
                                   'send_sensor_command': self.handle_send_sensor_command,
                                   'change_data_source': self.handle_change_data_source,
+                                  'change_controller_setting': self.handle_change_controller_setting,
+                                  'new_data_source_data': self.handle_data_source_data,
                                   
                                    # From Sensors
                                   'new_sensor_data': self.handle_new_sensor_data,
@@ -86,9 +97,10 @@ class SensorController(object):
                 'version': self.version,
                 'session_active': self.session_active,
                 'session_name': self.session_name,
-                'time_source': self.time_source,
-                'position_source': self.position_source,
-                'orientation_source': self.orientation_source}
+                'time_source': self.time_source.public_info,
+                'position_sources': [source.public_info for source in self.position_sources],
+                'orientation_sources': [source.public_info for source in self.orientation_sources],
+                'settings': self.settings}
         
     @property
     def session_active(self):
@@ -111,23 +123,42 @@ class SensorController(object):
         return self._time_source
     @time_source.setter
     def time_source(self, new_value):
-        self._time_source = new_value
+        self._time_source = TimeDataSource(callback=self.send_entire_controller_info,
+                                           controller_id=new_value['controller_id'],
+                                           sensor_id=new_value['sensor_id'],
+                                           sensor_metadata=new_value['metadata'])
         self.send_entire_controller_info()
         
     @property
-    def position_source(self):
-        return self._position_source
-    @position_source.setter
-    def position_source(self, new_value):
-        self._position_source = new_value
+    def position_sources(self):
+        return self._position_sources
+    @position_sources.setter
+    def position_sources(self, new_value):
+        if len(new_value) == 0:
+            new_value = self.position_sources
+            # TODO notify that source was invalid
+        self._position_sources = []
+        for val in new_value:
+            self._position_sources.append(PositionDataSource(callback=self.send_entire_controller_info,
+                                                             controller_id=val['controller_id'],
+                                                             sensor_id=val['sensor_id'],
+                                                             sensor_metadata=val['metadata']))
         self.send_entire_controller_info()
         
     @property
-    def orientation_source(self):
-        return self._orientation_source
-    @orientation_source.setter
-    def orientation_source(self, new_value):
-        self._orientation_source = new_value
+    def orientation_sources(self):
+        return self._orientation_sources
+    @orientation_sources.setter
+    def orientation_sources(self, new_value):
+        if len(new_value) == 0:
+            new_value = self.orientation_sources
+            # TODO notify that source was invalid
+        self._orientation_sources = []
+        for val in new_value:
+            self._orientation_sources.append(OrientationDataSource(callback=self.send_entire_controller_info,
+                                                                   controller_id=val['controller_id'],
+                                                                   sensor_id=val['sensor_id'],
+                                                                   sensor_metadata=val['metadata']))
         self.send_entire_controller_info()
         
     def run(self):
@@ -276,6 +307,9 @@ class SensorController(object):
     def handle_add_sensor(self, manager, sensor_info):
         '''Validate that sensor name is unique and adds to list of sensors.'''
         
+        if self.session_active:
+            return # TODO notify why sensor wasn't added
+        
         if sensor_info['sensor_type'] not in self.sensor_metadata:
             # TODO return that sensor type doesn't even exist on this version.
             return
@@ -296,9 +330,9 @@ class SensorController(object):
             settings = {}
             try:
                 for setting_metadata in metadata['settings']:
-                    setting_name = setting_metadata.keys()[0]
+                    setting_name = setting_metadata['name']
                     try:
-                        sensor_default_value = setting_metadata.values()[0]['default_value']
+                        sensor_default_value = setting_metadata['default_value']
                     except KeyError:
                         sensor_default_value = None
                     settings[setting_name] = sensor_default_value 
@@ -317,6 +351,10 @@ class SensorController(object):
 
     def handle_remove_sensor(self, manager, sensor_id):
         '''Search through sensors and remove one that has matching id.'''
+        
+        # TODO need a way of closing down session
+        if self.session_active:
+            return # TODO notify why sensor wasn't removed
         
         if sensor_id == 'all':
             sensors = self.sensors
@@ -376,6 +414,16 @@ class SensorController(object):
         if data_source_name == 'orientation':
             self.orientation_source = data_source_info
 
+    def handle_change_controller_setting(self, manager, settings_name, settings_value):
+
+        if self.session_active:
+            return # TODO notify that session is active
+        
+        if not settings_name in self.settings:
+            return # TODO notify that name was invalid
+
+        self.settings[settings_name] = settings_value
+
     def handle_setup_sensor(self, manager, sensor_id, message_body):
         
         if sensor_id == 'all':
@@ -384,29 +432,42 @@ class SensorController(object):
             sensors = [self.find_sensor(sensor_id)]
         
         for sensor in sensors:
-        
-            if not self.session_active:
-                self.start_session()
-                
             sensor.setup()
 
     def handle_new_sensor_data(self, sensor, data):
         
-        if (sensor.sensor_id == self.time_source['sensor_id']) and (self.controller_id == self.time_source['controller_id']):
-            sys_time = data['sys_time']
-            if sys_time <= 0:
-                # Time came from another controller so timestamp when we received it to account for future latency.
-                sys_time = time.time()
+        self.try_process_data_source_data(sensor.sensor_id, self.controller_id, data)
 
-            new_time = (data['utc_time'], sys_time)
-            self._send_sensor_message('all', 'time', new_time)
-        if (sensor.sensor_id == self.position_source['sensor_id']) and (self.controller_id == self.position_source['controller_id']):
-            pass  # TODO call handle_position_source()
-        if (sensor.sensor_id == self.orientation_source['sensor_id']) and (self.controller_id == self.orientation_source['controller_id']):
-            pass  # TODO call handle_orientation_source()
+        sensor.output_file.write(data)
         
         # TODO manage manager subscriptions 
         self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, data))
+    
+    def handle_data_source_data(self, manager, sensor_id, controller_id, data):
+
+        self.try_process_data_source_data(sensor_id, controller_id, data)
+
+    def try_process_data_source_data(self, sensor_id, controller_id, data):
+        
+        if self.time_source.matches(sensor_id, controller_id):
+            sys_time = data[self.time_source.sys_time_idx]
+            if sys_time <= 0:
+                # Time came from another controller so timestamp when we received it to account for future latency.
+                sys_time = time.time()
+                
+            utc_time = data[self.time_source.utc_time_idx]
+
+            new_time = (utc_time, sys_time)
+            self._send_sensor_message('all', 'time', new_time)
+            
+            # Now that we have a valid UTC time we can start a new session
+            if not self.session_active:
+                self.start_session(utc_time)
+            
+        #if (sensor.sensor_id == self.position_source['sensor_id']) and (self.controller_id == self.position_source['controller_id']):
+        #    pass  # TODO call handle_position_source()
+        #if (sensor.sensor_id == self.orientation_source['sensor_id']) and (self.controller_id == self.orientation_source['controller_id']):
+        #    pass  # TODO call handle_orientation_source()
 
     def handle_new_sensor_text(self, sensor, text):
         
@@ -431,11 +492,32 @@ class SensorController(object):
     def notify_sensor_changed(self, sensor_id, info_name, value):
         self._send_manager_message('all', 'sensor_changed', (sensor_id, info_name, value))
         
-    def start_session(self):
+    def start_session(self, utc_time):
         
-        self.session_name = time.strftime("%Y-%m-%d_%H-%M-%S")
+        formatted_time = datetime.datetime.fromtimestamp(utc_time).strftime("%Y%m%d_%H%M%S")
+        
+        self.session_name = "{}_{}_{}".format(self.settings['platform_name'],
+                                              self.settings['platform_id'],
+                                              formatted_time)
+        
+        self.session_path = os.path.join(self.settings['base_out_directory'], self.session_name)
         
         self.session_active = True
+
+        data_logs_path = os.path.join(self.session_path, 'data_logs/')
+        
+        if not os.path.exists(data_logs_path):
+            os.makedirs(data_logs_path)
+
+        for sensor in self.sensors:
+            
+            sensor_csv_file_name = "{}_{}_{}.csv".format(sensor.sensor_name,
+                                                         sensor.sensor_id,
+                                                         formatted_time)
+            
+            sensor_csv_file_path = os.path.join(data_logs_path, sensor_csv_file_name)
+            
+            sensor.output_file = CSVLog(sensor_csv_file_path, buffer_size=1)
 
     def find_sensor(self, sensor_id):
         
