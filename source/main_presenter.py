@@ -146,6 +146,13 @@ class MainPresenter(QObject):
     def change_controller_setting(self, setting_name, value):
         
         self._send_message_to_active_controller('change_controller_setting', (setting_name, value))
+        
+    def send_controller_command(self, command_name, send_to_all_controllers):
+        
+        if send_to_all_controllers:
+            self._send_message_to_all_controllers('controller_command', command_name)
+        else:
+            self._send_message_to_active_controller('controller_command', command_name)
 
     def receive_messages(self):
         ''''''

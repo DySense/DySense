@@ -125,29 +125,41 @@ class TestWindow(QWidget):
             self.display_message("Telling presenter to start GPS...")
             self.presenter.resume_sensor()
             
-            self.start_button.setText('Change sensor name')
+            self.start_button.setText('Start session')
             self.presenter.active_sensor_id = '1'
-            
+        
         if self.test_step == 6:
+            self.display_message("Telling presenter to start session...")
+            self.presenter.send_controller_command('start_session', send_to_all_controllers=False)
+            
+            self.start_button.setText('Change sensor name')
+            
+        if self.test_step == 7:
             self.display_message("Telling presenter to change sensor name...")
             self.presenter.change_sensor_info('sensor_name', 'cant do this')
             
             self.start_button.setText('Pause Test Sensor')
             
-        if self.test_step == 7:
+        if self.test_step == 8:
             
             self.display_message("Telling presenter to pause active sensor...")
             self.presenter.pause_sensor()
             #self.presenter.pause_all_sensors(True)
+            self.start_button.setText('Stop Session')
+            
+        if self.test_step == 9:
+            
+            self.display_message("Telling presenter to stop session...")
+            self.presenter.send_controller_command('stop_session', send_to_all_controllers=False)
             self.start_button.setText('Close Sensors')
             
-        if self.test_step == 8:
+        if self.test_step == 10:
             
             self.display_message("Telling presenter to close all sensors...")
             self.presenter.close_all_sensors(True)
             self.start_button.setText('Remove Sensors')
             
-        if self.test_step == 9:
+        if self.test_step == 11:
             
             self.display_message("Telling presenter to remove all sensors...")
             self.presenter.remove_all_sensors(True);

@@ -59,6 +59,9 @@ class SensorController(object):
         
         self.stop_request = threading.Event()
         
+        # Last utc time received from timesource.  Set to None when a session is stopped.
+        self.first_received_utc_time = None
+        
         # Used for creating new sensor drivers. Can't instantiate it until we know what endpoints we're bound to.
         self.sensor_driver_factory = None
         
@@ -88,6 +91,7 @@ class SensorController(object):
                                   'change_data_source': self.handle_change_data_source,
                                   'change_controller_setting': self.handle_change_controller_setting,
                                   'new_data_source_data': self.handle_data_source_data,
+                                  'controller_command': self.handle_controller_command,
                                   
                                    # From Sensors
                                   'new_sensor_data': self.handle_new_sensor_data,
@@ -199,10 +203,11 @@ class SensorController(object):
     
     def close_session_logging(self):
         
-        handlers = self.log.handlers[:]
+        session_log = getLogger('session')
+        handlers = session_log.handlers[:]
         for handler in handlers:
             handler.close()
-            self.log.removeHandler(handler)
+            session_log.removeHandler(handler)
         
     def log_message(self, msg, level, manager=None):
         
@@ -402,7 +407,6 @@ class SensorController(object):
     def handle_remove_sensor(self, manager, sensor_id):
         '''Search through sensors and remove one that has matching id.'''
         
-        # TODO need a way of closing down session
         if self.session_active:
             self.log_message('Cannot remove sensor while session is active.', logging.ERROR, manager)
             return 
@@ -495,6 +499,9 @@ class SensorController(object):
         
         self.try_process_data_source_data(sensor.sensor_id, self.controller_id, data)
 
+        if not self.session_active:
+            return # TODO - need to update data sources 'receiving' even if we're not logging data.
+
         sensor.output_file.write(data)
         
         # TODO manage manager subscriptions 
@@ -517,14 +524,24 @@ class SensorController(object):
             new_time = (utc_time, sys_time)
             self._send_sensor_message('all', 'time', new_time)
             
-            # Now that we have a valid UTC time we can start a new session
-            if not self.session_active:
-                self.start_session(utc_time)
+            # Save off utc time in case we need to use it for timestamping a new session.
+            # Only grab the first one since the test GPS files rely on that.
+            if not self.first_received_utc_time:
+                self.first_received_utc_time = utc_time
             
         #if (sensor.sensor_id == self.position_source['sensor_id']) and (self.controller_id == self.position_source['controller_id']):
         #    pass  # TODO call handle_position_source()
         #if (sensor.sensor_id == self.orientation_source['sensor_id']) and (self.controller_id == self.orientation_source['controller_id']):
         #    pass  # TODO call handle_orientation_source()
+
+    def handle_controller_command(self, manager, command_name):
+        
+        if command_name == 'start_session':
+            self.try_start_session(manager) 
+        elif command_name == 'stop_session':
+            self.stop_session(manager)
+        else:
+            self.log_message("Controller command {} not supported".format(command_name), logging.ERROR, manager)
 
     def handle_new_sensor_text(self, sensor, text):
         
@@ -548,6 +565,19 @@ class SensorController(object):
         
     def notify_sensor_changed(self, sensor_id, info_name, value):
         self._send_manager_message('all', 'sensor_changed', (sensor_id, info_name, value))
+        
+    def try_start_session(self, manager):
+        
+        if self.first_received_utc_time is None:
+            self.log_message("Can't start session. Haven't received a valid UTC time yet.  This will change in the near future so that the controller has a state that is automatically updated instead of sending an error.", logging.ERROR, manager)
+            return
+        
+        # TODO
+        # First the controller starts all data sources (time, position, orientation).
+        # Waits until receiving all data sources.
+        # Actually starts session this will enable data logging.
+        # Tells all sensors to start.
+        self.start_session(self.first_received_utc_time)
         
     def start_session(self, utc_time):
         
@@ -578,9 +608,16 @@ class SensorController(object):
             
             sensor.output_file = CSVLog(sensor_csv_file_path, buffer_size=1)
             
-    def stop_session(self):
+    def stop_session(self, manager):
+        
+        # TODO pause all sensors
+        
+        
+        # Invalidate time-stamp so we don't use it again.
+        self.first_received_utc_time = None
         
         self.close_session_logging()
+        self.session_active = False
 
     def find_sensor(self, sensor_id):
         
