@@ -85,9 +85,14 @@ class SensorConnection(object):
         self.observer.notify_sensor_changed(self.sensor_id, 'sensor_name', self.sensor_name)
         
     def update_setting(self, setting_name, new_value):
-        raise NotImplementedError
-        # TODO also handle is_main*
-        self.observer.notify_sensor_changed(self.sensor_id, 'sensor_type', self.sensor_type)
+        
+        # TODO validate new value either here or in sensor controller.
+        if setting_name not in self.settings:
+            raise KeyError
+        
+        self.settings[setting_name] = new_value
+        
+        self.observer.notify_sensor_changed(self.sensor_id, 'settings', self.settings)
         
     def update_connection_state(self, new_value):
         self.connection_state = new_value

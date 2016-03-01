@@ -431,8 +431,12 @@ class SensorController(object):
 
         sensor = self.find_sensor(sensor_id)
         
-        setting_name, value = change
-        sensor.update_setting(setting_name, value)
+        setting_name, new_value = change
+
+        try:
+            sensor.update_setting(setting_name, new_value)
+        except KeyError:
+            self.log_message("Can't change sensor setting {} because it does not exist.", logging.ERROR, manager)
         
     def handle_change_sensor_info(self, manager, sensor_id, change):
 

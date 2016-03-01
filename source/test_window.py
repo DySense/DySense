@@ -157,9 +157,15 @@ class TestWindow(QWidget):
             
             self.display_message("Telling presenter to close all sensors...")
             self.presenter.close_all_sensors(True)
-            self.start_button.setText('Remove Sensors')
+            self.start_button.setText('Change test sensor setting.')
             
         if self.test_step == 11:
+            
+            self.display_message("Telling presenter to change test sensor setting...")
+            self.presenter.change_sensor_setting('output_rate', 2)
+            self.start_button.setText('Remove Sensors')
+            
+        if self.test_step == 12:
             
             self.display_message("Telling presenter to remove all sensors...")
             self.presenter.remove_all_sensors(True);
