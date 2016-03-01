@@ -50,7 +50,7 @@ class GpsNmea(SensorBase):
         if self.required_fix != 'none':
             self.send_text('Waiting for required fix of {}'.format(self.fix_types[required_fix]))
               
-    def process_nmea_message(self, nmea_string):
+    def process_nmea_message(self, nmea_string, utc_override=None):
         
         # time (in seconds) that the most recent nmea message was read in.
         message_read_time = time.time()
@@ -100,6 +100,9 @@ class GpsNmea(SensorBase):
                 if fix != self.last_fix:  
                     self.last_fix = fix
                     self.send_text('Current fix: {}'.format(self.fix_types[fix]))
+                    
+                if utc_override:
+                    utc_time = utc_override
                     
                 self.handle_data((utc_time, message_read_time, latitude, longitude, altitude))
     

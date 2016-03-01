@@ -73,6 +73,9 @@ class SensorBase(object):
         # How many message have been received from client.
         self.num_messages_received = 0
         
+        # How many message 'data' messages have been sent to client.
+        self.num_data_messages_sent = 0
+        
     @property
     def time(self):
         '''Return current UTC time or 0 if haven't received a time yet.'''
@@ -214,6 +217,7 @@ class SensorBase(object):
         '''Send data to client.'''
         # Make sure data is sent as a tuple.
         self.send_message('new_sensor_data', (data,))
+        self.num_data_messages_sent += 1
 
     def send_text(self, text):
         '''Send text message to client (like print)'''

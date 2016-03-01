@@ -2,11 +2,8 @@
 
 import os
 import sys
-import argparse
-import socket
-import serial
-import math
-import time
+from datetime import datetime
+import calendar as cal
 
 from gps_nmea import GpsNmea
 
@@ -56,7 +53,15 @@ class GpsNmeaTest(GpsNmea):
         
         nmea_string = self.test_file.readline().strip()
         
-        success = self.process_nmea_message(nmea_string)
+        # For the very first message use the current system time for UTC time instead of what's
+        # in the file because if the same test file is repeatedly used then directories that use
+        # the starting UTC time will all be the same.
+        if self.num_data_messages_sent == 0:
+            utc_override = cal.timegm(datetime.timetuple(datetime.utcnow()))
+        else:
+            utc_override = None
+        
+        success = self.process_nmea_message(nmea_string, utc_override)
         
         # TODO intelligent wait based off when next message should be read
         
