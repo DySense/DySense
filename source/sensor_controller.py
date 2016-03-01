@@ -7,6 +7,9 @@ import json
 import threading
 import uuid
 import datetime
+import sys
+import logging
+from logging import getLogger
 
 from sensor_connection import SensorConnection
 from sensor_creation import SensorDriverFactory, SensorCloseTimeout
@@ -25,6 +28,8 @@ class ManagerConnection(object):
 class SensorController(object):
     
     def __init__(self, context, metadata):
+        
+        self.setup_logging()
         
         self.context = context
         
@@ -135,8 +140,9 @@ class SensorController(object):
     @position_sources.setter
     def position_sources(self, new_value):
         if len(new_value) == 0:
+            # Keep same sources that we had before.
             new_value = self.position_sources
-            # TODO notify that source was invalid
+
         self._position_sources = []
         for val in new_value:
             self._position_sources.append(PositionDataSource(callback=self.send_entire_controller_info,
@@ -151,8 +157,8 @@ class SensorController(object):
     @orientation_sources.setter
     def orientation_sources(self, new_value):
         if len(new_value) == 0:
+            # Keep same sources that we had before.
             new_value = self.orientation_sources
-            # TODO notify that source was invalid
         self._orientation_sources = []
         for val in new_value:
             self._orientation_sources.append(OrientationDataSource(callback=self.send_entire_controller_info,
@@ -160,6 +166,47 @@ class SensorController(object):
                                                                    sensor_id=val['sensor_id'],
                                                                    sensor_metadata=val['metadata']))
         self.send_entire_controller_info()
+        
+    def setup_logging(self):
+        
+        # Use home directory for root output directory. This is platform independent and works well with an installed package.
+        home_directory = os.path.expanduser('~')
+        output_directory = os.path.join(home_directory, 'dysense_logs/')
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
+        
+        # Create logger to write out to a file.
+        log = logging.getLogger("dysense")
+        handler = logging.FileHandler(os.path.join(output_directory, time.strftime("%Y-%m-%d_%H-%M-%S_dysense_log.log")))
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
+        log.addHandler(handler)
+        
+    def setup_session_logging(self, output_directory):
+
+        # Create logger to write out to a file.
+        log = logging.getLogger("session")
+        handler = logging.FileHandler(os.path.join(output_directory, time.strftime("session_log.log")))
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
+        log.addHandler(handler)
+    
+    def close_session_logging(self):
+        
+        handlers = self.log.handlers[:]
+        for handler in handlers:
+            handler.close()
+            self.log.removeHandler(handler)
+        
+    def log_message(self, msg, level, manager=None):
+        
+        getLogger('dysense').log(level, msg)
+        
+        # If a session is active then the log will have a handler, otherwise this won't do anything.
+        getLogger('session').log(level, msg)
+        
+        if manager is not None:
+            self._send_manager_message(manager.id, 'error_message', (msg, level))
         
     def run(self):
 
@@ -308,18 +355,15 @@ class SensorController(object):
         '''Validate that sensor name is unique and adds to list of sensors.'''
         
         if self.session_active:
-            return # TODO notify why sensor wasn't added
+            self.log_message('Cannot add sensor while session is active.', logging.ERROR, manager)
+            return
         
         if sensor_info['sensor_type'] not in self.sensor_metadata:
-            # TODO return that sensor type doesn't even exist on this version.
+            self.log_message('Cannot add sensor with type {} because it does not exist in metadata.', logging.ERROR, manager)
             return
         
         # Get metadata that was stored with this controller.
         metadata = self.sensor_metadata[sensor_info['sensor_type']]
-        
-        if metadata['version'] != sensor_info['version']:
-            # TODO return the sensor version doesn't match.
-            return
         
         sensor_name = sensor_info['sensor_name']
         sensor_type = sensor_info['sensor_type']
@@ -354,7 +398,8 @@ class SensorController(object):
         
         # TODO need a way of closing down session
         if self.session_active:
-            return # TODO notify why sensor wasn't removed
+            self.log_message('Cannot remove sensor while session is active.', logging.ERROR, manager)
+            return 
         
         if sensor_id == 'all':
             sensors = self.sensors
@@ -381,15 +426,19 @@ class SensorController(object):
         
     def handle_change_sensor_info(self, manager, sensor_id, change):
 
+        if self.session_active:
+            self.log_message('Cannot change sensor info while session is active.', logging.ERROR, manager)
+            return 
+
         sensor = self.find_sensor(sensor_id)
         
         info_name, value = change
         
-        if info_name == 'sensor_type':
-            sensor.update_sensor_type(value)
         if info_name == 'sensor_name':
             sensor.update_sensor_name(value)
-        
+        else:
+            self.log_message("The info {} cannot be changed externally.", logging.ERROR, manager)
+            
     def handle_send_sensor_command(self, manager, sensor_id, command):
 
         if sensor_id == 'all':
@@ -417,10 +466,12 @@ class SensorController(object):
     def handle_change_controller_setting(self, manager, settings_name, settings_value):
 
         if self.session_active:
-            return # TODO notify that session is active
+            self.log_message('Cannot change controller settings while session is active.', logging.ERROR, manager)
+            return
         
         if not settings_name in self.settings:
-            return # TODO notify that name was invalid
+            self.log_message('Cannot change setting {} because that settings does not exist.', logging.ERROR, manager)
+            return
 
         self.settings[settings_name] = settings_value
 
@@ -508,6 +559,8 @@ class SensorController(object):
         
         if not os.path.exists(data_logs_path):
             os.makedirs(data_logs_path)
+            
+        self.setup_session_logging(self.session_path)
 
         for sensor in self.sensors:
             
@@ -518,6 +571,10 @@ class SensorController(object):
             sensor_csv_file_path = os.path.join(data_logs_path, sensor_csv_file_name)
             
             sensor.output_file = CSVLog(sensor_csv_file_path, buffer_size=1)
+            
+    def stop_session(self):
+        
+        self.close_session_logging()
 
     def find_sensor(self, sensor_id):
         

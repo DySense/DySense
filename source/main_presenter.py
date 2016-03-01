@@ -4,6 +4,8 @@ import time
 import zmq
 import threading
 import json
+import os
+import logging
 
 from PyQt4.QtCore import QObject, QTimer
 
@@ -14,6 +16,8 @@ class MainPresenter(QObject):
     def __init__(self, context, manager, metadata, view=None):
         
         super(MainPresenter, self).__init__()
+        
+        self.setup_logging()
         
         self.context = context
         self.manager = manager
@@ -32,9 +36,31 @@ class MainPresenter(QObject):
                                   'new_sensor_text': self.handle_new_sensor_text,
                                   'entire_controller_update': self.handle_entire_controller_update,
                                   'controller_removed': self.handle_controller_removed,
+                                  'error_message': self.handle_error_message,
                                   }
         
         self.manager_socket = self.context.socket(zmq.DEALER)
+        
+    def setup_logging(self):
+        
+        # Use home directory for root output directory. This is platform independent and works well with an installed package.
+        home_directory = os.path.expanduser('~')
+        output_directory = os.path.join(home_directory, 'dysense_logs/')
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
+        
+        # Create logger at lowest level since each handler will define its own level which will further filter.
+        log = logging.getLogger("ui")
+        log.setLevel(logging.DEBUG)
+        
+        # Add handler to record information to a log file.
+        handler = logging.FileHandler(os.path.join(output_directory, time.strftime("%Y-%m-%d_%H-%M-%S_ui_log.log")))
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
+        log.addHandler(handler)
+     
+        # TODO reference version number once that's setup
+        log.info('DySense UI Version {}'.format(1.0))
         
     def connect_endpoint(self, manager_endpoint):
         
@@ -152,6 +178,15 @@ class MainPresenter(QObject):
     
     def handle_controller_removed(self, controller_id):
         self.view.remove_sensor(controller_id)
+        
+    def handle_error_message(self, message, level):
+        
+        if level < logging.ERROR:
+            return # don't care about this level
+        
+        logging.getLogger("ui").log(level, message)
+        
+        self.view.show_error_message(message, level)
     
     def send_sensor_command(self, command):
     

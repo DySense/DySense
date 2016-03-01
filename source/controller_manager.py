@@ -57,6 +57,7 @@ class ControllerManager(object):
                                   'new_sensor_text': self.handle_new_sensor_text,
                                   'new_sensor_data': self.handle_new_sensor_data,
                                   'new_time': self.handle_new_time,
+                                  'error_message': self.handle_error_message,
                                   }
 
     def run(self):
@@ -188,6 +189,10 @@ class ControllerManager(object):
             # Time came from another computer so need to record time.
             sys_time = time.time()
         self._send_message_to_controller('new_time', (utc_time, sys_time), local_controller)
+        
+    def handle_error_message(self, controller, message, level):
+        ''''''
+        self._send_message_to_presenter('error_message', (message, level))
         
     def _send_message_to_presenter(self, message_type, message_body):
 
