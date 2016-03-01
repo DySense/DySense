@@ -49,9 +49,11 @@ class SensorController(object):
         
         self.controller_id = str(uuid.uuid4())
         
-        self.settings = {'base_out_directory': 'None',
-                         'platform_name': 'None',
-                         'platform_id': 'None',
+        self.settings = {'base_out_directory': '',
+                         'operator_name': '',
+                         'platform_name': '',
+                         'platform_id': '',
+                         'field_id': '',
                          'surveyed': True}
 
         # Start ID at 1 since 0 represents all sensors. Note IDs are always stored as strings.. not integers.
@@ -213,8 +215,8 @@ class SensorController(object):
         
         getLogger('dysense').log(level, msg)
         
-        # If a session is active then the log will have a handler, otherwise this won't do anything.
-        getLogger('session').log(level, msg)
+        if self.session_active:
+            getLogger('session').log(level, msg)
         
         if manager is not None:
             self._send_manager_message(manager.id, 'error_message', (msg, level))
@@ -574,6 +576,16 @@ class SensorController(object):
         
         if self.first_received_utc_time is None:
             self.log_message("Can't start session. Haven't received a valid UTC time yet.  This will change in the near future so that the controller has a state that is automatically updated instead of sending an error.", logging.ERROR, manager)
+            return
+        
+        # Need to make sure settings are valid before starting a session.
+        empty_setting_names = []
+        for key, value in self.settings.iteritems():
+            if value is None or (isinstance(value, str) and value.strip() == ''):
+                empty_setting_names.append(key)
+        if len(empty_setting_names) > 0:
+            formatted_setting_names = ''.join(['\n   - ' + name for name in empty_setting_names])
+            self.log_message("Can't start session until the following settings are updated:{}".format(formatted_setting_names), logging.ERROR, manager)
             return
         
         # TODO

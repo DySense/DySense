@@ -31,7 +31,7 @@ class TestWindow(QWidget):
         # For keeping track of number of button presses.
         self.test_step = -1
         
-        self.start_button = QtGui.QPushButton("Set Output Directory")
+        self.start_button = QtGui.QPushButton("Update Controller Settings")
 
         self.message_center_text_edit = QtGui.QTextEdit()
         self.message_center_text_edit.setMinimumSize(QtCore.QSize(1000, 0))
@@ -57,9 +57,14 @@ class TestWindow(QWidget):
         if self.test_step == -1:
             output_directory = r"C:\Users\Kyle\Documents\DySense\dysense_test_output"
             self.display_message("Setting output session to {}".format(output_directory))
-            self.presenter.change_controller_setting("base_out_directory", output_directory)
+            self.presenter.change_controller_setting('base_out_directory', output_directory)
+            self.presenter.change_controller_setting('operator_name', 'Kyle McGahee')
+            self.presenter.change_controller_setting('platform_name', 'HUSKY')
+            self.presenter.change_controller_setting('platform_id', '10901')
+            self.presenter.change_controller_setting('field_id', 'ASH123')
+            self.presenter.change_controller_setting('surveyed', False)
             self.start_button.setText('Add Test Sensor')
-        
+
         if self.test_step == 0:
             self.display_message("Telling presenter to add new sensor...")
             '''
