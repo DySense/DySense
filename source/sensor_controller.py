@@ -100,6 +100,7 @@ class SensorController(object):
                                   'new_sensor_text': self.handle_new_sensor_text,
                                   'new_sensor_status': self.handle_new_sensor_status,
                                   'new_sensor_heartbeat': self.handle_new_sensor_heartbeat,
+                                  'new_sensor_event': self.handle_new_sensor_event,
                                   }
         
         # Time is treated as a double-precision floating point number which should always be true.
@@ -256,17 +257,19 @@ class SensorController(object):
             
             self.process_new_messages(poller, timeout)
 
+            # TODO only do this at a certain rate
             for sensor in self.sensors:
                 # Mark that we've tried to receive message from sensor.
                 sensor.last_message_processing_time = time.time()
                 
-                if sensor.stopped_responding():
-                    # TODO verify it should be 'timed_out'
+                if sensor.stopped_responding() and not sensor.closing:
                     sensor.update_connection_state('timed_out')
                 else:
                     if sensor.need_to_send_heartbeat():
                         self._send_sensor_message(sensor.sensor_id, 'heartbeat', '')
                         sensor.last_sent_heartbeat_time = time.time()
+                    if sensor.num_messages_received > 0 and not sensor.closing:
+                        sensor.update_connection_state('opened')
             
     def close_down(self):
         
@@ -554,20 +557,21 @@ class SensorController(object):
         self._send_manager_message('all', 'new_sensor_text', (sensor.sensor_id, text))
         sensor.text_messages.append(text)
     
-    def handle_new_sensor_status(self, sensor, state, health):
+    def handle_new_sensor_status(self, sensor, state, health, paused):
 
         sensor.update_sensor_state(state)
         sensor.update_sensor_health(health)
+        sensor.update_sensor_paused(paused)
         
     def handle_new_sensor_heartbeat(self, sensor, unused):
         # Don't need to do anything since all sensor messages are treated as heartbeats.
         pass
-        
-    def handle_sensor_closed(self, sensor_id):
-        
-        sensor = self.find_sensor(sensor_id)
+    
+    def handle_new_sensor_event(self, sensor, event_name):
             
-        sensor.update_connection_state('closed')
+        if event_name == 'closing':
+            sensor.closing = True
+            sensor.update_connection_state('closed')
         
     def notify_sensor_changed(self, sensor_id, info_name, value):
         self._send_manager_message('all', 'sensor_changed', (sensor_id, info_name, value))

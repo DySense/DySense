@@ -39,17 +39,12 @@ class GpsNmeaTest(GpsNmea):
     def setup(self):
         
         if not os.path.isfile(self.test_file_path):
-            self.send_text('The test file could not be found:\n\'{}\'\n'.format(self.test_file_path))
-            self.health = 'bad' # TODO have a way to signify error
+            raise Exception('The test file could not be found:\n\'{}\'\n'.format(self.test_file_path))
         else:
             self.test_file = open(self.test_file_path, 'r')
         
     def read_new_data(self):
         '''Read in new message from test file. Only called when not paused.'''
-        
-        if self.test_file is None:
-            self.health = 'bad'
-            return
         
         nmea_string = self.test_file.readline().strip()
         
@@ -64,5 +59,6 @@ class GpsNmeaTest(GpsNmea):
         success = self.process_nmea_message(nmea_string, utc_override)
         
         # TODO intelligent wait based off when next message should be read
+        self.wait_for_next_loop()
         
-        self.health = 'good' if success else 'bad'
+        return 'normal' if success else 'error'

@@ -61,15 +61,17 @@ class TestSensor(SensorBase):
         self.closed = True
         
     def read_new_data(self):
-        '''Generate new data to output. Only called when not paused.'''
+        '''Generate new data to output and return current read state.'''
         
         new_data = (self.time, str(self.counter), random.randint(0, 100), random.random(), time.time())
         
         self.handle_data(new_data)
         
-        self.health = 'good'
-        
         self.counter += 1
+        
+        self.wait_for_next_loop()
+        
+        return 'normal'
         
     def handle_special_command(self, command):
         

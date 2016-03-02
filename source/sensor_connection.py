@@ -4,6 +4,15 @@ import time
 
 class SensorConnection(object):
     
+    # The keys are the possible states the connection can be in.
+    # The values are the 'health' associated with each state.
+    possible_states = {'closed': 'neutral',
+                       'setup': 'neutral',
+                       'opened': 'good',
+                       'timed_out': 'bad',
+                       'error': 'bad',
+                       }
+    
     def __init__(self, version, sensor_id, sensor_type, sensor_name, heartbeat_period, settings, metadata, observer, driver_factory):
         '''Constructor'''
         
@@ -16,10 +25,18 @@ class SensorConnection(object):
         #self.parameters = self.load_parameters(metadata)
 
         self.connection_state = 'closed'
-        self.sensor_state = 'unknown'
-        self.sensor_health = 'N/A'
+        self.connection_health = SensorConnection.possible_states[self.connection_state]
+        
+        self.sensor_state = 'closed'
+        self.sensor_health = 'neutral'
+        self.sensor_paused = True
+        
+        self.overall_health = 'neutral'
         
         self.text_messages = []
+        
+        # Set to true when the sensor reports that it's closing down.
+        self.closing = False
         
         # Either thread or process object that sensor driver runs in.
         self.sensor_driver = None
@@ -63,18 +80,13 @@ class SensorConnection(object):
                 'settings': self.settings,
                 #'parameters': self.parameters,
                 'connection_state': self.connection_state,
+                'connection_health': self.connection_health,
                 'sensor_state': self.sensor_state,
                 'sensor_health': self.sensor_health,
+                'sensor_paused': self.sensor_paused,
+                'overall_health': self.overall_health,
                 'text_messages': self.text_messages,
                 'metadata': self.metadata}
-        
-    def reset(self):
-        
-        self.update_connection_state('closed')
-        self.update_sensor_state('unknown')
-        self.update_sensor_health('N/A')
-        
-        self.text_messages = []
         
     def update_sensor_type(self, new_value):
         self.sensor_type = new_value
@@ -95,8 +107,13 @@ class SensorConnection(object):
         self.observer.notify_sensor_changed(self.sensor_id, 'settings', self.settings)
         
     def update_connection_state(self, new_value):
+        if self.connection_state == new_value:
+            return 
         self.connection_state = new_value
+        self.connection_health = SensorConnection.possible_states[new_value]
         self.observer.notify_sensor_changed(self.sensor_id, 'connection_state', self.connection_state)
+        self.observer.notify_sensor_changed(self.sensor_id, 'connection_health', self.connection_health)
+        self.update_overall_health()
         
     def update_sensor_state(self, new_value):
         self.sensor_state = new_value
@@ -105,18 +122,36 @@ class SensorConnection(object):
     def update_sensor_health(self, new_value):
         self.sensor_health = new_value
         self.observer.notify_sensor_changed(self.sensor_id, 'sensor_health', self.sensor_health)
+        self.update_overall_health()
+        
+    def update_sensor_paused(self, new_value):
+        self.sensor_paused = new_value
+        self.observer.notify_sensor_changed(self.sensor_id, 'sensor_paused', self.sensor_paused)
+        
+    def update_overall_health(self):
+        
+        if self.connection_health == 'bad' or self.sensor_health == 'bad':
+            self.overall_health = 'bad'
+        elif self.connection_health == 'good' and self.sensor_health == 'good':
+            self.overall_health = 'good'
+        else:
+            self.overall_health = 'neutral'
+        self.observer.notify_sensor_changed(self.sensor_id, 'overall_health', self.overall_health)
         
     def setup(self):
         
-        self.sensor_driver = self.driver_factory.create_sensor(self.sensor_type, self.sensor_id, self.settings)
+        try:
+            self.sensor_driver = self.driver_factory.create_sensor(self.sensor_type, self.sensor_id, self.settings)
+        except Exception as e:
+            self.observer.handle_new_sensor_text(self, "{}".format(repr(e)))
         
         if self.sensor_driver:
             self.update_connection_state('setup')
-        
-        # Save when we setup sensor to help for detecting timeout if sensor never responds at all.
-        self.interface_connection_time = time.time()
-        
-        return self.sensor_driver is not None
+            # Save when we setup sensor to help for detecting timeout if sensor never responds at all.
+            self.interface_connection_time = time.time()
+        else:
+            self.update_connection_state('error')
+
     
     def close(self):
         '''Close down process or thread associated with connection.  Need to send close message before calling this.'''

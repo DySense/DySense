@@ -78,7 +78,7 @@ class TestWindow(QWidget):
             '''
             # Add test sensor
             new_sensor_info = {'version': '1.0',
-                               'sensor_type': 'test_sensor_csharp',
+                               'sensor_type': 'test_sensor_python',
                                'sensor_name': 'test_sensor'}
             self.presenter.add_sensor(new_sensor_info)
             
@@ -109,7 +109,7 @@ class TestWindow(QWidget):
                                'sensor_type': 'gps_nmea_test',
                                'sensor_name': 'gps'}
             new_gps_info['settings'] = {'test_file_path': r"C:\Users\Kyle\Documents\DySense\nmea_logs\SXBlueGGA.txt",
-                                           'output_rate': 10,
+                                           'output_rate': 1,
                                            'required_fix': 'none',
                                            'required_precision': 0}
             self.presenter.add_sensor(new_gps_info)
