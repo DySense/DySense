@@ -147,7 +147,7 @@ sensors:
           default_value: 1
           min_value: 0
           max_value: 100000
-      tags: [time, position, orientation]
+      tags: [time, position]
       data:
         - name: utc_time
           type: float
@@ -157,11 +157,14 @@ sensors:
           units: seconds
         - name: latitude
           type: float
+          units: degrees
           tags: [position_x]
         - name: longitude
           type: float
+          units: degrees
           tags: [position_y]
         - name: altitude
           type: float
+          units: meters
           tags: [position_z]
         

@@ -44,8 +44,8 @@ class SensorController(object):
         self.session_path = "None"
         
         self._time_source = TimeDataSource(callback=self.send_entire_controller_info)
-        self._position_sources = [PositionDataSource(callback=self.send_entire_controller_info)]
-        self._orientation_sources = [OrientationDataSource(callback=self.send_entire_controller_info)]
+        self._position_sources = []
+        self._orientation_sources = []
         
         self.controller_id = str(uuid.uuid4())
         
@@ -55,6 +55,10 @@ class SensorController(object):
                          'platform_id': '',
                          'field_id': '',
                          'surveyed': True}
+        
+        # Vehicle position/orientation files. New ones created for each session.
+        self.position_source_log = None
+        self.orientation_source_log = None
 
         # Start ID at 1 since 0 represents all sensors. Note IDs are always stored as strings.. not integers.
         self.next_sensor_id = 1
@@ -144,6 +148,7 @@ class SensorController(object):
         self._time_source = TimeDataSource(callback=self.send_entire_controller_info,
                                            controller_id=new_value['controller_id'],
                                            sensor_id=new_value['sensor_id'],
+                                           sensor_name=new_value['sensor_name'],
                                            sensor_metadata=new_value['metadata'])
         self.send_entire_controller_info()
         
@@ -152,15 +157,12 @@ class SensorController(object):
         return self._position_sources
     @position_sources.setter
     def position_sources(self, new_value):
-        if len(new_value) == 0:
-            # Keep same sources that we had before.
-            new_value = self.position_sources
-
         self._position_sources = []
         for val in new_value:
             self._position_sources.append(PositionDataSource(callback=self.send_entire_controller_info,
                                                              controller_id=val['controller_id'],
                                                              sensor_id=val['sensor_id'],
+                                                             sensor_name=val['sensor_name'],
                                                              sensor_metadata=val['metadata']))
         self.send_entire_controller_info()
         
@@ -169,14 +171,12 @@ class SensorController(object):
         return self._orientation_sources
     @orientation_sources.setter
     def orientation_sources(self, new_value):
-        if len(new_value) == 0:
-            # Keep same sources that we had before.
-            new_value = self.orientation_sources
         self._orientation_sources = []
         for val in new_value:
             self._orientation_sources.append(OrientationDataSource(callback=self.send_entire_controller_info,
                                                                    controller_id=val['controller_id'],
                                                                    sensor_id=val['sensor_id'],
+                                                                   sensor_name=val['sensor_name'],
                                                                    sensor_metadata=val['metadata']))
         self.send_entire_controller_info()
         
@@ -408,6 +408,25 @@ class SensorController(object):
         self.sensors.append(new_sensor)
         
         self.send_entire_sensor_info('all', new_sensor)
+        
+        # TODO - remove this once user can select data sources.  Right now if it can be a datasource then make it one.
+        new_source_info =  {'controller_id': self.controller_id, 
+                            'sensor_id': new_sensor.sensor_id,
+                            'sensor_name': new_sensor.sensor_name, 
+                            'metadata': new_sensor.metadata,  }
+        if 'time' in metadata.get('tags',[]):
+            self.time_source = new_source_info
+        if 'position' in metadata.get('tags',[]):
+            existing_source_info = []
+            for existing_source in self.position_sources:
+                existing_info =  {'controller_id': existing_source.controller_id, 
+                                 'sensor_id': existing_source.sensor_id,
+                                 'sensor_name': existing_source.sensor_name, 
+                                 'metadata': existing_source.sensor_metadata,  }
+                existing_source_info.append(existing_info)
+            self.position_sources = existing_source_info + [new_source_info]
+        if 'orientation' in metadata.get('tags',[]):
+            self.orientation_sources = self.orientation_sources + [new_source_info]
 
     def handle_remove_sensor(self, manager, sensor_id):
         '''Search through sensors and remove one that has matching id.'''
@@ -534,14 +553,30 @@ class SensorController(object):
             self._send_sensor_message('all', 'time', new_time)
             
             # Save off utc time in case we need to use it for timestamping a new session.
-            # Only grab the first one since the test GPS files rely on that.
+            # Only grab the first one since the test GPS relies on that.
             if not self.first_received_utc_time:
                 self.first_received_utc_time = utc_time
             
-        #if (sensor.sensor_id == self.position_source['sensor_id']) and (self.controller_id == self.position_source['controller_id']):
-        #    pass  # TODO call handle_position_source()
-        #if (sensor.sensor_id == self.orientation_source['sensor_id']) and (self.controller_id == self.orientation_source['controller_id']):
-        #    pass  # TODO call handle_orientation_source()
+        for source in self.position_sources:
+            if source.matches(sensor_id, controller_id):
+                utc_time = data[0]
+                x = data[source.position_x_idx]
+                y = data[source.position_y_idx]
+                z = data[source.position_z_idx]
+                position_data = [utc_time, x, y, z]
+                if source.position_zone_idx is not None:
+                    zone = data[source.position_zone_idx]
+                    position_data.append(zone)
+                    
+                if len(self.position_sources) > 1:
+                    position_data.insert(0, source.sensor_name)
+
+                if self.session_active:
+                    self.position_source_log.write(position_data)
+
+        for source in self.orientation_sources:
+            if source.matches(sensor_id, controller_id):
+                pass #self.orientation_source_log.write((source.sensor_name,) + data)
 
     def handle_controller_command(self, manager, command_name):
         
@@ -628,13 +663,23 @@ class SensorController(object):
             
             sensor.output_file = CSVLog(sensor_csv_file_path, buffer_size=1)
             
+        # Create vehicle state logs
+        position_source_path = os.path.join(self.session_path, 'position.csv')
+        self.position_source_log = CSVLog(position_source_path, 1)
+        orientation_source_path = os.path.join(self.session_path, 'orientation.csv')
+        self.orientation_source_log = CSVLog(orientation_source_path, 1)
+            
     def stop_session(self, manager):
         
         # TODO pause all sensors
         
-        
         # Invalidate time-stamp so we don't use it again.
         self.first_received_utc_time = None
+        
+        self.position_source_log.terminate()
+        self.orientation_source_log.terminate()
+        self.position_source_log = None
+        self.orientation_source_log = None
         
         self.close_session_logging()
         self.session_active = False

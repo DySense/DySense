@@ -114,63 +114,78 @@ class TestWindow(QWidget):
                                            'required_precision': 0}
             self.presenter.add_sensor(new_gps_info)
             
+            self.start_button.setText('Start second GPS')
+            
+        if self.test_step == 4:
+            self.display_message("Telling presenter to add second gps...")
+            # Add test GPS source
+            new_gps_info = {'version': '1.0',
+                               'sensor_type': 'gps_nmea_test',
+                               'sensor_name': 'gps'}
+            new_gps_info['settings'] = {'test_file_path': r"C:\Users\Kyle\Documents\DySense\nmea_logs\SXBlueGGA.txt",
+                                           'output_rate': 1,
+                                           'required_fix': 'none',
+                                           'required_precision': 0}
+            self.presenter.add_sensor(new_gps_info)
+            
             self.start_button.setText('Setup GPS')
         
-        if self.test_step == 4:
+        if self.test_step == 5:
             
             self.display_message("Telling presenter to set sensor 2 as time source..")
-            self.presenter.change_controller_data_source('time', sensor_id='2', controller_id=self.presenter.active_controller_id)
+            # This is handled in controller right now
+            #self.presenter.change_controller_data_source('time', sensor_id='2', controller_id=self.presenter.active_controller_id)
             
             self.display_message("Telling presenter to setup GPS...")
             self.presenter.setup_sensor()
             
             self.start_button.setText('Start GPS')
         
-        if self.test_step == 5:
+        if self.test_step == 6:
             self.display_message("Telling presenter to start GPS...")
             self.presenter.resume_sensor()
             
             self.start_button.setText('Start session')
             self.presenter.active_sensor_id = '1'
         
-        if self.test_step == 6:
+        if self.test_step == 7:
             self.display_message("Telling presenter to start session...")
             self.presenter.send_controller_command('start_session', send_to_all_controllers=False)
             
             self.start_button.setText('Change sensor name')
             
-        if self.test_step == 7:
+        if self.test_step == 8:
             self.display_message("Telling presenter to change sensor name...")
             self.presenter.change_sensor_info('sensor_name', 'cant do this')
             
             self.start_button.setText('Pause Test Sensor')
             
-        if self.test_step == 8:
+        if self.test_step == 9:
             
             self.display_message("Telling presenter to pause active sensor...")
             self.presenter.pause_sensor()
             #self.presenter.pause_all_sensors(True)
             self.start_button.setText('Stop Session')
             
-        if self.test_step == 9:
+        if self.test_step == 10:
             
             self.display_message("Telling presenter to stop session...")
             self.presenter.send_controller_command('stop_session', send_to_all_controllers=False)
             self.start_button.setText('Close Sensors')
             
-        if self.test_step == 10:
+        if self.test_step == 11:
             
             self.display_message("Telling presenter to close all sensors...")
             self.presenter.close_all_sensors(True)
             self.start_button.setText('Change test sensor setting.')
             
-        if self.test_step == 11:
+        if self.test_step == 12:
             
             self.display_message("Telling presenter to change test sensor setting...")
             self.presenter.change_sensor_setting('output_rate', 2)
             self.start_button.setText('Remove Sensors')
             
-        if self.test_step == 12:
+        if self.test_step == 13:
             
             self.display_message("Telling presenter to remove all sensors...")
             self.presenter.remove_all_sensors(True);
