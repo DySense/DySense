@@ -65,6 +65,8 @@ class SensorController(object):
         
         self.stop_request = threading.Event()
         
+        self._session_state = 'closed'
+        
         # Last utc time received from timesource.  Set to None when a session is stopped.
         self.first_received_utc_time = None
         
@@ -117,12 +119,21 @@ class SensorController(object):
     def public_info(self):
         return {'id': self.controller_id,
                 'version': self.version,
+                'session_state': self.session_state,
                 'session_active': self.session_active,
                 'session_name': self.session_name,
                 'time_source': self.time_source.public_info,
                 'position_sources': [source.public_info for source in self.position_sources],
                 'orientation_sources': [source.public_info for source in self.orientation_sources],
                 'settings': self.settings}
+        
+    @property
+    def session_state(self):
+        return self._session_state
+    @session_state.setter
+    def session_state(self, new_value):
+        self._session_state = new_value
+        self.send_entire_controller_info()
         
     @property
     def session_active(self):
@@ -270,6 +281,9 @@ class SensorController(object):
                         sensor.last_sent_heartbeat_time = time.time()
                     if sensor.num_messages_received > 0 and not sensor.closing:
                         sensor.update_connection_state('opened')
+            
+            # TODO only do this at a certain rate
+            self.update_session_state()
             
     def close_down(self):
         
@@ -589,7 +603,7 @@ class SensorController(object):
     def handle_controller_command(self, manager, command_name):
         
         if command_name == 'start_session':
-            self.try_start_session(manager) 
+            self.begin_session_startup_procedure(manager)
         elif command_name == 'stop_session':
             self.stop_session(manager)
         else:
@@ -619,11 +633,57 @@ class SensorController(object):
     def notify_sensor_changed(self, sensor_id, info_name, value):
         self._send_manager_message('all', 'sensor_changed', (sensor_id, info_name, value))
         
-    def try_start_session(self, manager):
+    def begin_session_startup_procedure(self, manager):
         
-        if self.first_received_utc_time is None:
-            self.log_message("Can't start session. Haven't received a valid UTC time yet.  This will change in the near future so that the controller has a state that is automatically updated instead of sending an error.", logging.ERROR, manager)
+        if not self.verify_controller_settings(manager):
+            return False
+        
+        # Make sure all sensors are setup and then that data sources are initially started. 
+        for sensor in self.sensors:
+            sensor.setup()
+
+            for source in self.position_sources + self.orientation_sources + [self.time_source]:
+                if source.matches(sensor.sensor_id, self.controller_id):
+                    self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
+        
+        self.session_state = 'waiting_for_time'
+        
+        return True # initial startup successful
+        
+    def update_session_state(self):
+        
+        if self.session_state == 'closed':
             return
+        
+        if self.session_state == 'waiting_for_time':
+            if self.first_received_utc_time is not None:
+                self.session_state = 'waiting_for_position'
+        
+        if self.session_state == 'waiting_for_position':
+            for source in self.position_sources:
+                if False: # TODO not source.receiving:
+                    return
+            # All sources receiving.    
+            self.session_state = 'waiting_for_orientation'
+        
+        if self.session_state == 'waiting_for_orientation':
+            for source in self.orientation_sources:
+                if False: # TODO not source.receiving:
+                    return
+            # All sources receiving.    
+            self.session_state = 'starting'
+        
+        if self.session_state == 'starting':
+            self.start_session(self.first_received_utc_time)
+            self.session_state = 'started'
+            
+        if self.session_state == 'started':
+            pass # TODO monitor data sources and sensors and report events
+        
+        if self.session_state == 'suspended':
+            pass # TODO monitor data sources nad sensors and see if can get back to started state
+
+    def verify_controller_settings(self, manager):
         
         # Need to make sure settings are valid before starting a session.
         empty_setting_names = []
@@ -633,14 +693,9 @@ class SensorController(object):
         if len(empty_setting_names) > 0:
             formatted_setting_names = ''.join(['\n   - ' + name for name in empty_setting_names])
             self.log_message("Can't start session until the following settings are updated:{}".format(formatted_setting_names), logging.ERROR, manager)
-            return
+            return False
         
-        # TODO
-        # First the controller starts all data sources (time, position, orientation).
-        # Waits until receiving all data sources.
-        # Actually starts session this will enable data logging.
-        # Tells all sensors to start.
-        self.start_session(self.first_received_utc_time)
+        return True # all settings valid
         
     def start_session(self, utc_time):
         
@@ -677,6 +732,10 @@ class SensorController(object):
         orientation_source_path = os.path.join(self.session_path, 'orientation.csv')
         self.orientation_source_log = CSVLog(orientation_source_path, 1)
             
+        # Start all other sensors now that session is started.
+        for sensor in self.sensors:
+            self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
+
     def stop_session(self, manager):
         
         # TODO pause all sensors

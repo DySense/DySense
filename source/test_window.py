@@ -93,12 +93,12 @@ class TestWindow(QWidget):
             self.display_message("Telling presenter to setup active sensor...")
             self.presenter.setup_sensor()
             #self.presenter.setup_all_sensors(True)
-            self.start_button.setText('Start Sensor')
+            self.start_button.setText('Skipping Start Sensor')
             
         if self.test_step == 2:
             
-            self.display_message("Telling presenter to start active sensor...")
-            self.presenter.resume_sensor()
+            #self.display_message("Telling presenter to start active sensor...")
+            #self.presenter.resume_sensor()
             #self.presenter.resume_all_sensors(True)
             self.start_button.setText('Add GPS')
             
@@ -114,10 +114,10 @@ class TestWindow(QWidget):
                                            'required_precision': 0}
             self.presenter.add_sensor(new_gps_info)
             
-            self.start_button.setText('Start second GPS')
+            self.start_button.setText('Add second GPS')
             
         if self.test_step == 4:
-            self.display_message("Telling presenter to add second gps...")
+            self.display_message("Telling to add second gps...")
             # Add test GPS source
             new_gps_info = {'version': '1.0',
                                'sensor_type': 'gps_nmea_test',
@@ -139,11 +139,11 @@ class TestWindow(QWidget):
             self.display_message("Telling presenter to setup GPS...")
             self.presenter.setup_sensor()
             
-            self.start_button.setText('Start GPS')
+            self.start_button.setText('Skipping Start GPS')
         
         if self.test_step == 6:
-            self.display_message("Telling presenter to start GPS...")
-            self.presenter.resume_sensor()
+            #self.display_message("Telling presenter to start GPS...")
+            #self.presenter.resume_sensor()
             
             self.start_button.setText('Start session')
             self.presenter.active_sensor_id = '1'
