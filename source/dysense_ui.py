@@ -6,7 +6,8 @@ import sys
 import yaml
 import os
 
-from test_window import TestWindow
+#from test_window import TestWindow #for use with test window
+from dysense_main_window import DysenseMainWindow #for use with new main window
 from main_presenter import MainPresenter
 from controller_manager import ControllerManager
 from sensor_controller import SensorController
@@ -16,18 +17,22 @@ from PyQt4 import QtGui
 if __name__ == '__main__':
         
     app = QtGui.QApplication(sys.argv)
+    app.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
     
     zmq_context = zmq.Context()
 
     # Load metadata before adding any controllers so can verify version.
     with open("../metadata/sensor_metadata.yaml", 'r') as stream:
         sensor_metadata = yaml.load(stream)
-
+        
     # Configure system.
     sensor_controller = SensorController(zmq_context, sensor_metadata)
     controller_manager = ControllerManager(zmq_context)
     main_presenter = MainPresenter(zmq_context, controller_manager, sensor_metadata)
-    main_window = TestWindow(main_presenter)
+    
+#     main_window = TestWindow(main_presenter) #for use with test window
+    main_window = DysenseMainWindow(main_presenter) #for use with new main window
+    
     main_presenter.view = main_window
     
     # Tell presenter how to connect to manager.
@@ -38,10 +43,14 @@ if __name__ == '__main__':
     sensor_controller_thread = threading.Thread(target=sensor_controller.run)
     controller_manager_thread.start()
     sensor_controller_thread.start()
-
+    
+    
     # Must do this after starting up threads so socket has a peer to connect with.
     main_presenter.add_controller(sensor_controller.manager_local_endpoint, 'this_computer')
     main_presenter.receive_messages()
+    
+    # Tell system to call our custom function when an unhandled exception occurs
+    #sys.excepthook = excepthook
     
     main_window.show()
     app.exec_()

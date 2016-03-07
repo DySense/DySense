@@ -25,8 +25,21 @@ class MainPresenter(QObject):
         self.sensor_metadata = metadata['sensors']
         self.view = view
         
-        self.active_controller_id = -1
-        self.active_sensor_id = -1
+        self.active_controller_id = None
+        self.active_sensor_id = None
+        
+
+        # Lookup table of controller information.
+        # key - controller id 
+        # value - dictionary of controller info.
+        self.controllers = {}
+        
+        # Lookup table of sensor information.
+        # key - tuple of (controller id, sensor id)
+        # value - dictionary of sensor info.
+        self.sensors = {}        
+        
+        
         
         self.message_callbacks = { # From Manager
                                   'entire_sensor_update': self.handle_entire_sensor_update,
@@ -40,8 +53,11 @@ class MainPresenter(QObject):
                                   }
         
         self.manager_socket = self.context.socket(zmq.DEALER)
-        
+       
+ 
+   
     def setup_logging(self):
+      
         
         # Use home directory for root output directory. This is platform independent and works well with an installed package.
         home_directory = os.path.expanduser('~')
@@ -61,6 +77,25 @@ class MainPresenter(QObject):
      
         # TODO reference version number once that's setup
         log.info('DySense UI Version {}'.format(1.0))
+        
+    def new_sensor_selected(self, controller_id, sensor_id):
+        
+        #call show_sensor to set the active sensor id and set the correct widget to front
+        self.view.show_sensor(sensor_id)    
+         
+    
+    #called when user changes field in sensor view
+    def sensor_view_field_changed(self, info_name, value, sensor_id):
+    
+        self.change_sensor_info(info_name, str(value))
+        # calling self.change_sensor yields TypeError: PyQt4.QtCore.QString(u'sensor2') is not JSON serializable
+        
+        
+        #if the value changed is sensor name, call function to update the name in the sensor list
+        if info_name == 'sensor_name':
+            self.view.sensor_name_changed(value, sensor_id)           
+        
+    
         
     def connect_endpoint(self, manager_endpoint):
         
@@ -134,10 +169,12 @@ class MainPresenter(QObject):
     def close_all_sensors(self, only_on_active_controller):
         
         self._send_message_to_all_sensors('send_sensor_command', 'close', only_on_active_controller)
+        
     
     def change_sensor_info(self, info_name, value):
         
         self._send_message_to_active_sensor('change_sensor_info', (info_name, value))
+    
     
     def change_sensor_setting(self, setting_name, value):
         
@@ -166,11 +203,30 @@ class MainPresenter(QObject):
 
     def handle_entire_sensor_update(self, controller_id, sensor_info):
         sensor_id = sensor_info['sensor_id']
-        self.view.update_all_sensor_info(controller_id, sensor_id, sensor_info)
-    
-    def handle_sensor_changed(self, controller_id, sensor_id, info_name, value):
+        sensor_name = sensor_info['sensor_name'] 
+        
+        if self.sensors.has_key((controller_id, sensor_id)) == True:
+            self.view.update_all_sensor_info(controller_id, sensor_id, sensor_info)                   
+        
+        #if sensor is not already stored 
+        if self.sensors.has_key((controller_id, sensor_id)) == False:
+            #add sensor info to sensors dict
+            self.sensors[(controller_id, sensor_id)] = sensor_info
+            #creates the new sensor view which then calls view.update_all_sensor_info
+            self.view.create_new_sensor_view(controller_id, sensor_id, sensor_info)
+            self.view.add_sensor_to_list_widget(controller_id, sensor_id, sensor_name)
+                              
+        
+    def handle_sensor_changed(self, controller_id, sensor_id, info_name, value): #this also applies to 'settings' where value = its dictionary
+        #update the dictionary of sensors
+        sensor_info = self.sensors[(controller_id, sensor_id)]
+        sensor_info[info_name] = value
+        
         self.view.update_sensor_info(controller_id, sensor_id, info_name, value)
         
+        if info_name == 'sensor_name':
+            self.view.update_sensor_list_widget(controller_id, sensor_id, value)
+            
     def handle_sensor_removed(self, controller_id, sensor_id):
         self.view.remove_sensor(controller_id, sensor_id)
     
@@ -181,8 +237,17 @@ class MainPresenter(QObject):
         self.view.append_sensor_message(controller_id, sensor_id, text)
         
     def handle_entire_controller_update(self, controller_info):
+        
+        controller_id = controller_info['id']
+        
+        if controller_id not in self.controllers:
+            self.controllers[controller_id] = controller_info
+        
+        if self.active_controller_id == None:
+            self.active_controller_id = controller_id
+            
         self.view.update_all_controller_info(controller_info['id'], controller_info)
-    
+        
     def handle_controller_removed(self, controller_id):
         self.view.remove_sensor(controller_id)
         
