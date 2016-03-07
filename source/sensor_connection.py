@@ -13,7 +13,8 @@ class SensorConnection(object):
                        'error': 'bad',
                        }
     
-    def __init__(self, version, sensor_id, sensor_type, sensor_name, heartbeat_period, settings, metadata, observer, driver_factory):
+    def __init__(self, version, sensor_id, sensor_type, sensor_name, heartbeat_period, settings,
+                 position_offsets, orientation_offsets, instrument_id, metadata, observer, driver_factory):
         '''Constructor'''
         
         self.version = version
@@ -34,6 +35,13 @@ class SensorConnection(object):
         self.overall_health = 'neutral'
         
         self.text_messages = []
+        
+        # Sensor offsets relative to vehicle position.
+        self.position_offsets = position_offsets # Forward left up - meters
+        self.orientation_offsets = orientation_offsets # Roll pitch yaw - degrees
+        
+        # ID of the sensor itself, not the one assigned by the program.
+        self.instrument_id = instrument_id
         
         # Set to true when the sensor reports that it's closing down.
         self.closing = False
@@ -86,6 +94,9 @@ class SensorConnection(object):
                 'sensor_paused': self.sensor_paused,
                 'overall_health': self.overall_health,
                 'text_messages': self.text_messages,
+                'position_offsets': self.position_offsets,
+                'orientation_offsets': self.orientation_offsets,
+                'instrument_id': self.instrument_id,
                 'metadata': self.metadata}
         
     def update_sensor_type(self, new_value):
@@ -138,7 +149,22 @@ class SensorConnection(object):
             self.overall_health = 'neutral'
         self.observer.notify_sensor_changed(self.sensor_id, 'overall_health', self.overall_health)
         
+    def update_position_offsets(self, new_value):
+        self.position_offsets = new_value
+        self.observer.notify_sensor_changed(self.sensor_id, 'position_offsets', self.position_offsets)
+        
+    def update_orientation_offsets(self, new_value):
+        self.orientation_offsets = new_value
+        self.observer.notify_sensor_changed(self.sensor_id, 'orientation_offsets', self.orientation_offsets)
+        
+    def update_instrument_id(self, new_value):
+        self.instrument_id = new_value
+        self.observer.notify_sensor_changed(self.sensor_id, 'instrument_id', self.instrument_id)
+        
     def setup(self):
+        
+        if self.sensor_driver:
+            return # Need to call close() first before making a new sensor driver instance
         
         try:
             self.sensor_driver = self.driver_factory.create_sensor(self.sensor_type, self.sensor_id, self.settings)

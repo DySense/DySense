@@ -383,6 +383,9 @@ class SensorController(object):
         
         sensor_name = sensor_info['sensor_name']
         sensor_type = sensor_info['sensor_type']
+        position_offsets = sensor_info.get('position_offsets', [0, 0, 0])
+        orientation_offsets = sensor_info.get('orientation_offsets', [0, 0, 0])
+        instrument_id = sensor_info.get('instrument_id', 'none')
         try:
             settings = sensor_info['settings']
         except KeyError:
@@ -397,12 +400,13 @@ class SensorController(object):
                         sensor_default_value = None
                     settings[setting_name] = sensor_default_value 
             except KeyError:
-                pass 
+                pass
         
         sensor_name = self._make_sensor_name_unique(sensor_name)
         
         new_sensor = SensorConnection(metadata['version'], str(self.next_sensor_id), sensor_type, sensor_name,
-                                      SENSOR_HEARTBEAT_PERIOD, settings, metadata, self, self.sensor_driver_factory)
+                                      SENSOR_HEARTBEAT_PERIOD, settings, position_offsets, orientation_offsets,
+                                      instrument_id, metadata, self, self.sensor_driver_factory)
         self.next_sensor_id += 1
     
         self.sensors.append(new_sensor)
@@ -474,6 +478,10 @@ class SensorController(object):
         
         if info_name == 'sensor_name':
             sensor.update_sensor_name(value)
+        elif info_name == 'position_offsets':
+            sensor.update_position_offsets(value)
+        elif info_name == 'orientation_offsets':
+            sensor.update_orientation_offsets(value)
         else:
             self.log_message("The info {} cannot be changed externally.", logging.ERROR, manager)
             
