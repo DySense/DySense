@@ -389,7 +389,7 @@ class SensorController(object):
             return
         
         if sensor_info['sensor_type'] not in self.sensor_metadata:
-            self.log_message('Cannot add sensor with type {} because it does not exist in metadata.', logging.ERROR, manager)
+            self.log_message('Cannot add sensor with type {} because it does not exist in metadata.'.format(sensor_info['sensor_type']), logging.ERROR, manager)
             return
         
         # Get metadata that was stored with this controller.
@@ -400,21 +400,20 @@ class SensorController(object):
         position_offsets = sensor_info.get('position_offsets', [0, 0, 0])
         orientation_offsets = sensor_info.get('orientation_offsets', [0, 0, 0])
         instrument_id = sensor_info.get('instrument_id', 'none')
-        try:
-            settings = sensor_info['settings']
-        except KeyError:
-            # Load default settings from metadata
-            settings = {}
+        
+        settings = {}
+        for setting_metadata in metadata['settings']:
+            setting_name = setting_metadata['name']
             try:
-                for setting_metadata in metadata['settings']:
-                    setting_name = setting_metadata['name']
-                    try:
-                        sensor_default_value = setting_metadata['default_value']
-                    except KeyError:
-                        sensor_default_value = None
-                    settings[setting_name] = sensor_default_value 
+                settings_value = sensor_info['settings'][setting_name]
             except KeyError:
-                pass
+                # User didn't provide this setting so try to use the default value.
+                try:
+                    settings_value = setting_metadata['default_value']
+                except KeyError:
+                    settings_value = None
+        
+            settings[setting_name] = settings_value 
         
         sensor_name = self._make_sensor_name_unique(sensor_name)
         
@@ -478,7 +477,7 @@ class SensorController(object):
         try:
             sensor.update_setting(setting_name, new_value)
         except KeyError:
-            self.log_message("Can't change sensor setting {} because it does not exist.", logging.ERROR, manager)
+            self.log_message("Can't change sensor setting {} because it does not exist.".format(setting_name), logging.ERROR, manager)
         
     def handle_change_sensor_info(self, manager, sensor_id, change):
 
@@ -497,7 +496,7 @@ class SensorController(object):
         elif info_name == 'orientation_offsets':
             sensor.update_orientation_offsets(value)
         else:
-            self.log_message("The info {} cannot be changed externally.", logging.ERROR, manager)
+            self.log_message("The info {} cannot be changed externally.".format(info_name), logging.ERROR, manager)
             
     def handle_send_sensor_command(self, manager, sensor_id, command):
 
@@ -530,7 +529,7 @@ class SensorController(object):
             return
         
         if not settings_name in self.settings:
-            self.log_message('Cannot change setting {} because that settings does not exist.', logging.ERROR, manager)
+            self.log_message('Cannot change setting {} because that settings does not exist.'.format(settings_name), logging.ERROR, manager)
             return
 
         self.settings[settings_name] = settings_value

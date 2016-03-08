@@ -53,7 +53,7 @@ class GpsNmea(SensorBase):
     def process_nmea_message(self, nmea_string, utc_override=None):
         
         # time (in seconds) that the most recent nmea message was read in.
-        message_read_time = time.time()
+        message_read_time = self.sys_time
 
         if not check_nmea_checksum(nmea_string):
             return False

@@ -64,7 +64,8 @@ class TestWindow(QWidget):
         #self.presenter.active_controller_id = self.controllers.keys()[0]
         
         if self.test_step == -1:
-            output_directory = r"C:\Users\Kyle\Documents\DySense\dysense_test_output"
+            #output_directory = r"C:\Users\Kyle\Documents\DySense\dysense_test_output"
+            output_directory = r"C:\Users\Poland PheMU\Documents\DySense\dysense_test_output"
             self.display_message("Setting output session to {}".format(output_directory))
             self.presenter.change_controller_setting('base_out_directory', output_directory)
             self.presenter.change_controller_setting('operator_name', 'Kyle McGahee')
@@ -85,10 +86,21 @@ class TestWindow(QWidget):
                                            'depth_period': 0,
                                            'ir_period': -1 }
             '''
+            '''
             # Add test sensor
             new_sensor_info = {'version': '1.0',
+                               'sensor_type': 'irt_ue',
+                               'sensor_name': 'irt_name'}
+            new_sensor_info['settings'] = {'port': "COM3",
+                                           'baud': '115200',
+                                           'sample_rate': '10'}
+            '''
+            new_sensor_info = {'version': '1.0',
                                'sensor_type': 'test_sensor_python',
-                               'sensor_name': 'test_sensor'}
+                               'sensor_name': 'test'}
+            
+
+            new_sensor_info['settings'] = {'output_rate': '10'}
             self.presenter.add_sensor(new_sensor_info)
             
             self.start_button.setText('Setup Sensor')
@@ -117,7 +129,7 @@ class TestWindow(QWidget):
             new_gps_info = {'version': '1.0',
                                'sensor_type': 'gps_nmea_test',
                                'sensor_name': 'gps'}
-            new_gps_info['settings'] = {'test_file_path': r"C:\Users\Kyle\Documents\DySense\nmea_logs\SXBlueGGA.txt",
+            new_gps_info['settings'] = {'test_file_path': r"C:\Users\Poland PheMU\Documents\DySense\nmea_logs\SXBlueGGA.txt",
                                            'output_rate': 1,
                                            'required_fix': 'none',
                                            'required_precision': 0}
@@ -131,7 +143,7 @@ class TestWindow(QWidget):
             new_gps_info = {'version': '1.0',
                                'sensor_type': 'gps_nmea_test',
                                'sensor_name': 'gps'}
-            new_gps_info['settings'] = {'test_file_path': r"C:\Users\Kyle\Documents\DySense\nmea_logs\SXBlueGGA.txt",
+            new_gps_info['settings'] = {'test_file_path': r"C:\Users\Poland PheMU\Documents\DySense\nmea_logs\SXBlueGGA.txt",
                                            'output_rate': 1,
                                            'required_fix': 'none',
                                            'required_precision': 0}
@@ -186,12 +198,12 @@ class TestWindow(QWidget):
             
             self.display_message("Telling presenter to close all sensors...")
             self.presenter.close_all_sensors(True)
-            self.start_button.setText('Change test sensor setting.')
+            self.start_button.setText('Skip Change sensor setting.')
             
         if self.test_step == 12:
             
-            self.display_message("Telling presenter to change test sensor setting...")
-            self.presenter.change_sensor_setting('output_rate', 2)
+            #self.display_message("Telling presenter to change test sensor setting...")
+            #self.presenter.change_sensor_setting('output_rate', 2)
             self.start_button.setText('Remove Sensors')
             
         if self.test_step == 13:

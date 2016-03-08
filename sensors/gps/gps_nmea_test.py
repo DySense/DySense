@@ -24,7 +24,7 @@ class GpsNmeaTest(GpsNmea):
         GpsNmea.__init__(self, self.required_fix, self.required_precision, 
                          sensor_id=sensor_id, context=context, connect_endpoint=connect_endpoint)
         
-        self.min_loop_period = self.output_period
+        self.desired_read_period = self.output_period
         
         self.test_file = None
         
@@ -57,8 +57,5 @@ class GpsNmeaTest(GpsNmea):
             utc_override = None
         
         success = self.process_nmea_message(nmea_string, utc_override)
-        
-        # TODO intelligent wait based off when next message should be read
-        self.wait_for_next_loop()
         
         return 'normal' if success else 'error'

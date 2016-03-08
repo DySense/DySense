@@ -16,16 +16,18 @@ class TestSensor(SensorBase):
     
     def __init__(self, sensor_id, settings, context, connect_endpoint):
         '''
-        Constructor. Save properties for opening serial port later.
+        Constructor.
         
         Args:
+            sensor_id - unique ID assigned by the program.
             settings - dictionary of sensor settings. Must include:
                 output_rate - how fast to output data (Hz)
                 test_float - any number that is a floating point number
                 test_int - should be between 0 and 100. 
                 test_string - any string that's not empty
                 test_bool - either true / false. Just used for testing UI.
-            receive_port - endpoint on local host to receive time/commands from.
+            context - ZMQ context instance.
+            connect_endpoint - endpoint on local host to receive time/commands from.
             
         Raises:
             ValueError - if not all settings are provided or not in correct format.
@@ -43,8 +45,8 @@ class TestSensor(SensorBase):
             raise ValueError("Bad sensor setting.  Exception {}".format(repr(e)))
         
         # Set base class fields.
-        self.min_loop_period = self.output_period
-        self.max_closing_time = self.output_period + 1
+        self.desired_read_period = self.output_period
+        self.max_closing_time = 2
         
         # Counter for each time data has been generated.
         self.counter = 0
@@ -63,13 +65,11 @@ class TestSensor(SensorBase):
     def read_new_data(self):
         '''Generate new data to output and return current read state.'''
         
-        new_data = (self.time, str(self.counter), random.randint(0, 100), random.random(), time.time())
+        new_data = (self.utc_time, str(self.counter), random.randint(0, 100), random.random(), self.sys_time)
         
         self.handle_data(new_data)
         
         self.counter += 1
-        
-        self.wait_for_next_loop()
         
         return 'normal'
         

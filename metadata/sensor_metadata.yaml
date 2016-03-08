@@ -121,6 +121,35 @@ sensors:
           type: string
         - name: file_name
           type: string
+          
+    irt_ue:
+      version: "1.0"
+      settings:    
+        - name: port
+          type: string
+          description: Serial port (e.g. COM2 or /dev/ttyS2)
+          default_value: COM2
+        - name: baud
+          type: int
+          description: How fast that the device is sending data.
+          units: bits/sec
+          default_value: 115200
+          min_value: 1
+          max_value: 10000000
+        - name: sample_rate
+          type: float
+          description: How fast to request data from sensor.
+          units: Hz
+          default_value: 10
+          min_value: 0.0000001
+          max_value: 100000000
+      data:
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: temperature
+          type: float
+          units: celcius
   
     gps_nmea_test:
       version: "1.0"

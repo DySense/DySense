@@ -274,16 +274,10 @@ namespace DySense
             SendMessage("new_sensor_status", new List<string>() { state, this.Health });
         }
 
-        // Send unlabeled data to client
+        // Send sensor data to client
         protected void HandleData(List<object> data)
         {
             SendMessage("new_sensor_data", new List<List<object>>() { data });
-        }
-
-        // Send labeled data to client.
-        protected void HandleData(Dictionary<string, object> data)
-        {
-            SendMessage("new_sensor_data", data);
         }
 
         // Send text message to client (like print)
