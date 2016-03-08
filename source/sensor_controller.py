@@ -641,11 +641,18 @@ class SensorController(object):
         # Make sure all sensors are setup and then that data sources are initially started. 
         for sensor in self.sensors:
             sensor.setup()
-
-            for source in self.position_sources + self.orientation_sources + [self.time_source]:
-                if source.matches(sensor.sensor_id, self.controller_id):
-                    self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
         
+        time_sensor = self.find_sensor(self.time_source.sensor_id)
+        position_sensors = [self.find_sensor(s.sensor_id) for s in self.position_sources]
+        orientation_sensors = [self.find_sensor(s.sensor_id) for s in self.orientation_sources]
+        
+        for sensor in [time_sensor] + position_sensors + orientation_sensors:
+            if sensor.num_messages_received == 0:
+                self.log_message("Can't startup session until all data sources are setup.", logging.ERROR, manager)
+                return False
+            # Sensor is setup so can start it.
+            self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
+            
         self.session_state = 'waiting_for_time'
         
         return True # initial startup successful
@@ -738,6 +745,9 @@ class SensorController(object):
 
     def stop_session(self, manager):
         
+        if not self.session_active:
+            return # already closed
+        
         # TODO pause all sensors
         
         # Invalidate time-stamp so we don't use it again.
@@ -757,7 +767,7 @@ class SensorController(object):
             if sensor.sensor_id == str(sensor_id):
                 return sensor
             
-        raise ValueError("Sensor {} not in list of sensor IDs {}".format(sensor_id, [s.id for s in self.sensors]))
+        raise ValueError("Sensor {} not in list of sensor IDs {}".format(sensor_id, [s.sensor_id for s in self.sensors]))
     
     def _send_manager_message(self, manager_id, message_type, message_body):
         
