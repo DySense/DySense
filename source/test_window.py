@@ -79,13 +79,20 @@ class TestWindow(QWidget):
             self.display_message("Telling presenter to add new sensor...")
             
             new_sensor_info = {'version': '1.0',
+                               'sensor_type': 'greenseeker',
+                               'sensor_name': 'greenseeker'}
+            new_sensor_info['settings'] = {'port': "COM6",
+                                           'baud': '38400',
+                                           'output_period': 100 }
+            '''
+            new_sensor_info = {'version': '1.0',
                                'sensor_type': 'kinectv2_msdk',
                                'sensor_name': 'kinectv2_1'}
             new_sensor_info['settings'] = {'out_directory': r"C:\Users\Poland PheMU\Documents\DySenseDrivers\DySenseKinectV2\test_output",
                                            'color_period': 2,
                                            'depth_period': .2,
                                            'ir_period': 10 }
-            
+            '''
             '''
             # Add test sensor
             new_sensor_info = {'version': '1.0',

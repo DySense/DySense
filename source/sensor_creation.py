@@ -26,6 +26,9 @@ class SensorDriverFactory(object):
         remote_startup_args = [sensor_id, sensor_settings, self.remote_endpoint]
         
         # Use local imports for threads in case they have dependencies that other users don't care about.
+        if sensor_type == 'greenseeker':
+            from sensors.nvdi.greenseeker import GreenSeeker
+            sensor = SensorDriverThread(GreenSeeker, local_startup_args)
         if sensor_type == 'irt_ue':
             from sensors.irt.irt_ue import IRT_UE
             sensor = SensorDriverThread(IRT_UE, local_startup_args)

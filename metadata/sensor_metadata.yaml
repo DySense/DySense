@@ -150,6 +150,39 @@ sensors:
         - name: temperature
           type: float
           units: celcius
+          
+    greenseeker:
+      version: "1.0"
+      settings:    
+        - name: port
+          type: string
+          description: Serial port (e.g. COM2 or /dev/ttyS2)
+          default_value: COM1
+        - name: baud
+          type: int
+          description: How fast that the device is sending data.
+          units: bits/sec
+          default_value: 38400
+          min_value: 1
+          max_value: 10000000
+        - name: output_period
+          type: float
+          description: How fast sensor is configured to send data.
+          units: seconds
+          default_value: .1
+          min_value: 0.0000001
+          max_value: 100000000
+      data:
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: internal_time
+          type: int
+          uints: milliseconds
+        - name: nvdi
+          type: float
+        - name: extra_vi
+          type: float
   
     gps_nmea_test:
       version: "1.0"
