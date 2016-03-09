@@ -17,30 +17,61 @@ namespace DySense
     /// </summary>
     abstract public class SensorBase
     {
+        // The keys are the possible states the driver can be in.
+        // The values are the 'health' associated with each state.
+        static Dictionary<string, string> possibleStates = new Dictionary<string, string>
+        {
+            { "closed", "neutral" },
+            { "waiting_for_time", "neutral" },
+            { "normal", "good" },
+            { "timed_out", "bad" },
+            { "error", "bad" },
+        };
+
         // Unique sensor ID.
         string sensorID;
 
         // Controller endpoint to connect to and get messages from.
         string connectEndpoint;
 
-        // Minimum duration (in seconds) that data collection loop will run if WaitForNextLoop() is used.
-        public double MinLoopPeriod { get; set; }
+        // The expected duration (in seconds) between sequential sensor reads.
+        protected double DesiredReadPeriod { get; set; }
 
         // Maximum number of seconds sensor needs to wrap up before being force closed.
-        public double MaxClosingTime { get; set; }
+        protected double MaxClosingTime { get; set; }
 
-        // How often (in seconds) we should receive a new message from client and how often we should send one back.
+        // How often (in seconds) we should receive a new message from controller and how often we should send one back.
         double heartbeatPeriod = 0.1;
 
         // If set to true then sensor won't start collecting data until it has a valid UTC time.
         bool waitForValidTime = true;
 
-        // Set to true when receive 'close' command from client.
+        // If set to true then if the sensor base will determine if a time out is caused by the sensor actually timing out
+        // or just returning to run the process loop.  This can be set to false if the sensor has multiple sources that come
+        // in at different times and need to be monitored separately.
+        bool DecideTimeout { get; set; }
+
+        // Set to true when receive 'close' command from controller.
         bool receivedCloseRequest = false;
 
-        // Status fields - private to ensure client is notified when one changes.
+        // Current sensor state. Private to keep in ensure controller is notified when changes.
+        // The corresponding health can be requested from the health property.
+        string _state = "closed";
+
+        // How often the main processing in run() should be executed. At least run
+        // at 5Hz to keep things responsive.
+        double mainLoopProcessingPeriod;
+        
+        // How long the readNewData() method is allowed to run without returning.
+        protected double MaxReadNewDataPeriod { get; private set; }
+        
+        // True if sensor shouldn't be saving/sending any data.
         bool _paused = true;
-        string _health = "bad";
+
+        // This is a flag that the readNewData() method can use to track whether or not it needs to
+        // request new data, or it's still waiting on data to come in.  The idea is the function can't
+        // block for too long so it needs a way to track the state of the read between calls.
+        bool stillWaitingForData = false;
 
         // Time references used to improve precision when sensor requests current time.
         double lastReceivedSysTime = 0;
@@ -50,45 +81,56 @@ namespace DySense
         ZContext context;
         ZSocket socket;
 
-        // If we don't receive a new message in this time then consider client dead. (in seconds) 
+        // The time to run next run each loop.  Used to figure out how long to wait after each run.
+        double nextProcessingLoopStartTime = 0;
+        double nextSensorLoopStartTime = 0;
+
+        // System time that data was last received from the sensor.
+        double lastReceivedDataTime = 0;
+
+        // If we don't receive a new message in this time then consider controller dead. (in seconds) 
         double clientTimeoutThresh;
         
-        // How long to wait for client to send first message before timing out. (in seconds)
+        // How long to wait for controller to send first message before timing out. (in seconds)
         double maxTimeToReceiveMessage;
         
-        // Last system time that we tried to process new messages from client.
+        // Last system time that we tried to process new messages from controller.
         double lastMessageProcessingTime;
         
-        // Last system time that we received a new message from client.
+        // Last system time that we received a new message from controller.
         double lastReceivedMessageTime;
         
         // Last time sensor sent out heartbeat message.
         double lastSentHeartbeatTime;
         
-        // Time that interface was connected to client.
+        // Time that interface was connected to controller.
         double interfaceConnectionTime;
     
-        // How many message have been received from client.
+        // How many message have been received from controller.
         int numMessageReceived = 0;
-        
-        // The time that the current run() loop started at. Used for throttling how fast the main loop runs.
-        double runLoopStartTime;
+
+        // How many message 'data' messages have been sent to controller.
+        protected int NumDataMessageSent { get; private set; }
 
         // Associate callback methods with different message types.
         Dictionary<string, Func<object, bool>> messageTable;
 
-        public SensorBase(string sensorID, string connectEndpoint, double minLoopPeriod = 0.25,
-            double maxClosingTime=0, double heartbeatPeriod=0.5, bool waitForValidTime=true)
+        public SensorBase(string sensorID, string connectEndpoint, double desiredReadPeriod = 0.25, double maxClosingTime=0,
+                          double heartbeatPeriod=0.5, bool waitForValidTime=true, bool decideTimeout=true)
         {
             this.sensorID = sensorID;
             this.connectEndpoint = connectEndpoint;
-            this.MinLoopPeriod = minLoopPeriod;
+            this.DesiredReadPeriod = desiredReadPeriod;
             this.MaxClosingTime = maxClosingTime;
             this.heartbeatPeriod = Math.Max(0.1, heartbeatPeriod);
+            this.mainLoopProcessingPeriod = Math.Min(this.heartbeatPeriod, 0.2);
+            this.MaxReadNewDataPeriod = this.mainLoopProcessingPeriod * .9;
             this.waitForValidTime = waitForValidTime;
+            this.DecideTimeout = decideTimeout;
             this.clientTimeoutThresh = this.heartbeatPeriod * 10;
             this.maxTimeToReceiveMessage = this.clientTimeoutThresh * 1.5;
-            
+            this.NumDataMessageSent = 0;
+
             messageTable = new Dictionary<string,Func<object, bool>> 
             { 
                 { "command", HandleCommand }, 
@@ -98,7 +140,7 @@ namespace DySense
         }
 
         // Return current UTC time (from sensor controller).  Uses system time offset since last received message to improve resolution.
-        public double Time
+        public double UtcTime
         {
             get 
             {
@@ -118,29 +160,43 @@ namespace DySense
 
         // Return current system time in seconds.
         public double SysTime { get { return (DateTime.Now.ToUniversalTime() - new DateTime (1970, 1, 1)).TotalSeconds; } }
-    
+
+        // Current driver state.
+        public string State
+        {
+            get { return this._state; }
+            set
+            {
+                if (value == this._state)
+                {
+                    return; // same state so don't keep sending updates.
+                }
+                if (!possibleStates.ContainsKey(value))
+                {
+                    throw new Exception(String.Format("Invalid sensor state {0}", value));
+                }
+                this._state = value;
+                SendStatusUpdate();
+            }
+        }
+
+        // Health corresponding to the current sensor state.
+        public string Health
+        {
+            get { return possibleStates[State]; }
+        }
+
         // True if sensor is in a paused state.
         public bool Paused 
         {
             get  { return this._paused; }
             set 
             {
-                this._paused = value;
-                SendStatusUpdate();
-            }
-        }
-
-        // Either "good" or "bad"
-        public string Health 
-        {
-            get  { return this._health; }
-            set 
-            {
-                bool needToSendUpdate = (value != this._health);
-                this._health = value;
-                if (needToSendUpdate)
+                // Prevent from constantly sending status updates when nothings changing.
+                if (value != this._paused)
                 {
-                    SendStatusUpdate();
+                    this._paused = value;
+                    SendStatusUpdate(); 
                 }
             }
         }
@@ -149,76 +205,100 @@ namespace DySense
         public void Run()
         {
             try 
-	        {	        
+	        {
+                // Setup ZMQ sockets and then give sensor driver a chance to set itself up.
 		        SetupInterface();
                 Setup();
 
                 while (true)
                 {
-                    // Save off time so we can limit how fast loop runs.
-                    runLoopStartTime = SysTime;
-
-                    // Handle any messages received over socket.
-                    ProcessNewMessages();
-
-                    if (ClientTimedOut())
+                    if (NeedToRunProcessingLoop())
                     {
-                        throw new Exception("Controller connection timed out.");
+                        // Save off time so we can limit how fast loop runs.
+                        nextProcessingLoopStartTime = SysTime + mainLoopProcessingPeriod;
+
+                        // Handle any messages received over socket.
+                        ProcessNewMessages();
+
+                        if (ClientTimedOut())
+                        {
+                            throw new Exception("Controller connection timed out.");
+                        }
+
+                        if (receivedCloseRequest)
+                        {
+                            SendText("Closing...");
+                            break; // end main loop
+                        }
+
+                        if (NeedToSendHeartbeat())
+                        {
+                            SendMessage("new_sensor_heartbeat", " ");
+                            this.lastSentHeartbeatTime = SysTime;
+                        }
                     }
 
-                    if (receivedCloseRequest)
+                    if (NeedToRunSensorLoop())
                     {
-                        SendText("Closing...");
-                        break; // end main loop
+                        // Save off time so we can limit how fast the loop runs.
+                        nextSensorLoopStartTime = SysTime + DesiredReadPeriod;
+
+                        if (!stillWaitingForData)
+                        {
+                            RequestNewData();
+                        }
+
+                        string reportedState = ReadNewData();
+
+                        if (reportedState == "timed_out")
+                        {
+                            if (ShouldHaveNewReading() || !DecideTimeout)
+                            {
+                                // Sensor actually did time out so we want to request new data.
+                                stillWaitingForData = false;
+                            }
+                            else
+                            {
+                                // Didn't actually time out.. just returned to process new controller messages.
+                                reportedState = "normal";
+                                stillWaitingForData = true;
+                            }
+                        }
+
+                        // If sensor is ok then override state if we're still waiting for a valid time.
+                        bool reportedBadState = possibleStates[reportedState] == "bad";
+                        bool waitingForTime = waitForValidTime && UtcTime == 0;
+                        if (!reportedBadState && waitingForTime)
+                        {
+                            reportedState = "waiting_for_time";
+                        }
+
+                        this.State = reportedState;
                     }
 
-                    if (NeedToSendHeartbeat())
-                    {
-                        SendMessage("new_sensor_heartbeat", " ");
-                        this.lastSentHeartbeatTime = SysTime; 
-                    }
-
-                    if (!ShouldRecordData())
-                    {
-                        Thread.Sleep(100);
-                        continue;
-                    }
-
-                    // Give the sensor a chance to read in new data.
-                    ReadNewData();
+                    // Figure out how long to wait before one of the loops needs to run again.
+                    double nextTimeToRun = Math.Min(nextProcessingLoopStartTime, nextSensorLoopStartTime);
+                    double timeToWait = nextTimeToRun - SysTime;
+                    Thread.Sleep((int)(Math.Max(0, timeToWait) * 1000));
                 }
 	        }
 	        catch (Exception e)
 	        {
+                State = "error";
 		        SendText(e.ToString());
 	        }
             finally
             {
+                if (Health != "bad")
+                {
+                    // The closed state is only for when things closed down on request... not because an error occurred.
+                    State = "closed";
+                }
                 this.receivedCloseRequest = false;
+                SendEvent("closing");
                 Pause();
                 Close();
                 CloseInterface();
-            }
-        }
-
-        // Return true if the sensor is in a state where it should be trying to record data.
-        protected bool ShouldRecordData()
-        {
-            bool stillNeedTimeReference = waitForValidTime && (Time == 0);
-            return !(stillNeedTimeReference || Paused);
-        }
-
-        // Can optionally be called at the end of ReadNewData() to limit how fast main loop runs.
-        // This uses the MinLoopPeriod attribute to determine how long to wait.  If the amount of
-        // time has already exceed MinLoopPeriod then this method will return right away.
-        protected void WaitForNextLoop()
-        {
-            double loopDuration = SysTime - runLoopStartTime;
-            if (loopDuration < this.MinLoopPeriod)
-            {
-                double timeToWait = this.MinLoopPeriod - loopDuration;
-                Thread.Sleep((int)(Math.Max(0, timeToWait) * 1000));
-                //await Task.Delay((int)(Math.Max(0, timeToWait)*1000));
             }
         }
 
@@ -228,8 +308,11 @@ namespace DySense
         // Return true if sensor is closed.
         protected abstract bool IsClosed();
 
-        // Try to read in new data from sensor.  Only called when not paused.
-        protected abstract void ReadNewData();
+        // Request new data from sensor.
+        protected virtual void RequestNewData() { return; }
+
+        // Try to read in new data from sensor. Return new sensor state.
+        protected abstract string ReadNewData();
 
         // Called before collection loop starts. Driver can override to make connection to sensor.
         protected virtual void Setup() { return; }
@@ -243,7 +326,14 @@ namespace DySense
         // Override to handle sensor specified commands (e.g. trigger)
         protected virtual void HandleSpecialCommand(string command) { return; }
 
-        // Set up client socket and then send status update to controller.
+        // Return true if enough time has elapsed that the sensor should have returned a new reading.
+        private bool ShouldHaveNewReading()
+        {
+            double timeSinceLastData = SysTime - lastReceivedDataTime;
+            return timeSinceLastData >= DesiredReadPeriod;
+        }
+
+        // Set up controller socket and then send status update to controller.
         private void SetupInterface()
         {
             context = new ZContext();
@@ -267,26 +357,44 @@ namespace DySense
             }
         }
 
-        // Notify client of status change (status = health + state)
+        // Notify controller of status change (status = state + health + paused)
         private void SendStatusUpdate()
         {
-            string state = (this.Paused ? "paused" : " started");
-            SendMessage("new_sensor_status", new List<string>() { state, this.Health });
+            SendMessage("new_sensor_status", new List<string>() { State, Health, Paused.ToString() });
         }
 
-        // Send sensor data to client
+        // Send data to controller
         protected void HandleData(List<object> data)
         {
+            lastReceivedDataTime = SysTime;
+            if (!ShouldRecordData())
+            {
+                return;
+            }
             SendMessage("new_sensor_data", new List<List<object>>() { data });
+            NumDataMessageSent += 1;
         }
 
-        // Send text message to client (like print)
+        // Return true if the sensor is in a state where it should be trying to record data.
+        protected bool ShouldRecordData()
+        {
+            bool stillNeedTimeReference = waitForValidTime && (UtcTime == 0);
+            return !(stillNeedTimeReference || Paused);
+        }
+
+        // Send text message to controller (like print)
         protected void SendText(string text)
         {
             SendMessage("new_sensor_text", text);
         }
 
-        // Send message to client in JSON format.
+        // Send event to notify controller something important happened.
+        protected void SendEvent(string eventName)
+        {
+            SendMessage("new_sensor_event", eventName);
+        }
+
+        // Send message to controller in JSON format.
         // Args:
         //    message_type - provide context of message being sent (e.g. 'text')
         //    message_body - list, dictionary or simple type.  All elements must be JSON serializable.
@@ -326,7 +434,7 @@ namespace DySense
             this.lastMessageProcessingTime = SysTime;
         }
 
-        // Deal with a new command (e.g. 'close') received from client.
+        // Deal with a new command (e.g. 'close') received from controller.
         // If the command isn't a generic one then it will be passed to handleSpecialCommand.
         private bool HandleCommand(object body)
         {
@@ -353,8 +461,7 @@ namespace DySense
             return true;
         }
 
-
-        // Process new time reference received from client.
+        // Process new time reference received from controller.
         // Correct for any time that has elapsed since utc time was last updated.
         // Save this time off so we can use it to calculate a more precise timestamp later. 
         // Args:
@@ -378,7 +485,7 @@ namespace DySense
             return true;
         }
 
-        // Return true if it's been too long since we've received a new message from client.
+        // Return true if it's been too long since we've received a new message from controller.
         private bool ClientTimedOut()
         {
             if ((interfaceConnectionTime == 0) || (lastMessageProcessingTime == 0))
@@ -389,7 +496,7 @@ namespace DySense
 
             if (numMessageReceived == 0)
             {
-                // Give client more time to send first message.
+                // Give controller more time to send first message.
                 double timeSinceConnecting = lastMessageProcessingTime - interfaceConnectionTime;
                 return timeSinceConnecting > maxTimeToReceiveMessage;
             }
@@ -398,7 +505,19 @@ namespace DySense
             return timeSinceLastMessage > clientTimeoutThresh;
         }
 
-        // Return true if it's time to send a heartbeat message to client.
+        // Return true if it's time to run interface processing loop.
+        private bool NeedToRunProcessingLoop()
+        {
+            return SysTime >= nextProcessingLoopStartTime;
+        }
+
+        // Return true if it's time to run sensor processing loop.
+        private bool NeedToRunSensorLoop()
+        {
+            return SysTime >= nextSensorLoopStartTime;
+        }
+
+        // Return true if it's time to send a heartbeat message to controller.
         private bool NeedToSendHeartbeat()
         {
             double timeSinceLastHearbeat = SysTime - lastSentHeartbeatTime;
