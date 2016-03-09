@@ -533,6 +533,7 @@ class SensorController(object):
             return
 
         self.settings[settings_name] = settings_value
+        self.send_entire_controller_info()
 
     def handle_setup_sensor(self, manager, sensor_id, message_body):
         

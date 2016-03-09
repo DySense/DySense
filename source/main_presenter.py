@@ -6,7 +6,8 @@ import threading
 import json
 import os
 import logging
-
+import yaml
+from ui_settings import ui_version
 from PyQt4.QtCore import QObject, QTimer
 
 RECEIVE_TIMER_INTERVAL = 0.1 # seconds
@@ -75,8 +76,67 @@ class MainPresenter(QObject):
         handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
         log.addHandler(handler)
      
-        # TODO reference version number once that's setup
-        log.info('DySense UI Version {}'.format(1.0))
+        log.info('DySense UI Version {}'.format(ui_version))
+        
+    def save_config(self, file_path):
+        '''Write current controller/sensors out to specified file path so the user can reload it later.'''
+        # Data is what gets dumped to the file using yaml.
+        data = {}
+       
+        controllers = []
+        for controller_id, controller_info in self.controllers.iteritems():
+            # TODO support multiple controllers
+            useful_info = {}
+            for info_name, info_value in controller_info.iteritems():
+                if info_name in ['version', 'settings', 'time_source', 'position_sources', 'orientation_sources']:
+                    useful_info[info_name] = info_value
+            controllers.append(useful_info)
+        data['controllers'] = controllers
+
+        sensors = []
+        for (sensor_id, controller_id), sensor_info in self.sensors.iteritems():
+            # TODO save sensors in consistent order
+            # TODO save sensors underneath controllers?
+            useful_info = {}
+            for info_name, info_value in sensor_info.iteritems():
+                if info_name in ['sensor_type', 'sensor_name', 'settings', 'position_offsets', 'orientation_offsets', 'instrument_id']:
+                    useful_info[info_name] = info_value
+            sensors.append(useful_info)
+        data['sensors'] = sensors
+    
+        with open(file_path, 'w') as outfile:
+            outfile.write(yaml.dump(data, default_flow_style=False))
+        
+    def load_config(self, file_path):
+        '''Load controller/sensors out of specified yaml file path.'''
+        
+        if not os.path.exists(file_path):
+            self.handle_error_message("Config file '{}' does not exist.".format(file_path), logging.ERROR)
+            return
+        
+        with open(file_path, 'r') as stream:
+            data = yaml.load(stream)
+        
+        # TODO support multiple controllers
+        if len(self.controllers) == 0:
+            self.handle_error_message("Need at least one controller before loading config", logging.ERROR)
+            return
+        
+        # Request that all data stored in saved controller info gets set to the active controller (which right now is the only allowed controller)
+        for saved_controller_info in data.get('controllers', []):
+            for info_name, info_value in saved_controller_info.iteritems():
+                if info_name == 'settings':
+                    for setting_name, setting_value in info_value.iteritems():
+                        self.change_controller_setting(setting_name, setting_value)
+                else:
+                    pass
+                    # TODO Change controller info, currently this isn't support and you must change data source separately,
+                    # need to refactor sensor controller. 
+                    #self.change_controller_info(info_name, info_value) 
+                    
+        # Request that all saved sensors get added to the active controller (which right now is the only allowed controller)
+        for saved_sensor_info in data.get('sensors', []):
+            self.add_sensor(saved_sensor_info)
         
     def new_sensor_selected(self, controller_id, sensor_id):
         
@@ -112,8 +172,7 @@ class MainPresenter(QObject):
     def change_controller_data_source(self, data_source_name, sensor_id, controller_id):
         
         # We need to provide the metadata since the controller might not know anything about the sensor.
-        # TODO - need to change this to just self.sensors once Ethan merges in changes
-        source_metadata = self.view.sensors[(controller_id, sensor_id)]['metadata']
+        source_metadata = self.sensors[(controller_id, sensor_id)]['metadata']
         
         new_source = {"controller_id": controller_id, "sensor_id": sensor_id, 'metadata': source_metadata}
 

@@ -17,13 +17,11 @@ class SensorViewWidget(QWidget,Ui_Form):
         QWidget.__init__(self)
         self.setupUi(self) #call the auto-generated setupUi function in the designer file
         
-        #TODO probably shouldn't load this here, will now to get logic figured out
-        with open("../metadata/sensor_metadata.yaml", 'r') as stream:
-            self.sensor_metadata = yaml.load(stream)
-        
         self.presenter = presenter
         self.controller_id = controller_id
-        self.sensor_info = sensor_info              
+        self.sensor_info = sensor_info
+        self.sensor_metadata = sensor_info['metadata']
+        self.sensor_id = sensor_info['sensor_id']
         
         #dictionaries for relating the sensor info names to their corresponding line edits/labels        
         self.name_to_object =  {
@@ -74,11 +72,10 @@ class SensorViewWidget(QWidget,Ui_Form):
         #get type dependent settings from metadata
         #default_settings = self.sensor_info['settings']
         sensor_type = sensor_info['sensor_type']
-        self.sensor_info ['settings'] = self.sensor_metadata['sensors'][sensor_type]['settings']
         self.setup_settings(self.sensor_info['settings'])
         
         #set the special commands from metadata
-        special_commands_list =  self.sensor_metadata['sensors'][sensor_type].get('special_commands', None)
+        special_commands_list = self.sensor_metadata.get('special_commands', None)
         self.setup_special_commands(special_commands_list)
         
         
@@ -137,12 +134,11 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.setting_line_edit_references = {}
         
         # create dicts of the settings name labels, line edits, and units labels
-        for n in range(0, len(settings)):            
-            setting = settings[n]
+        for n, setting_metadata in enumerate(self.sensor_metadata['settings']):    
             
-            name = setting.get('name', 'No name in metadata')
-            default_value = setting.get('default_value', 'no default')
-            units = setting.get('units', '')
+            name = setting_metadata.get('name', 'No name in metadata')
+            default_value = setting_metadata.get('default_value', 'no default')
+            units = setting_metadata.get('units', '')
             
             self.name_label = QtGui.QLabel()
             self.units_label = QtGui.QLabel()
@@ -157,12 +153,12 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.settings_group_box_layout.addWidget(self.units_label, n, 2)
             
             self.name_label.setText(name.replace('_', ' ').title())   
-            self.line_edit.setText(str(default_value))
+            self.line_edit.setText(str(settings[name]))
             self.units_label.setText(units.replace('_', ' ').title())
             
             # Connect the line edit signal
             self.line_edit.editingFinished.connect(self.setting_changed_by_user)
- 
+
         print self.setting_line_edit_references
         
     def setup_special_commands(self, special_commands):

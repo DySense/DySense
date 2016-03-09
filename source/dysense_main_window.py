@@ -3,6 +3,7 @@ import time
 import yaml
 import sys
 import logging
+import os
 # Use default python types instead of QVariant
 import sip
 sip.setapi('QVariant', 2)
@@ -21,6 +22,8 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         QMainWindow.__init__(self)
         
+        self.qt_settings = QtCore.QSettings("DySense", "DySenseUI")
+        
         self.presenter = presenter        
                 
         # Set up the user interface from Designer.
@@ -36,6 +39,8 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.logo_label.setPixmap(main_logo)
         
         #set version number
+        # TODO the version from metadata should be the 'controller' version once
+        # we support multiple of those and the GUI version should come from ui_settings.py
         version = self.sensor_metadata.get('version', 'No Version Number')
         self.version_line_edit.setText(version)
         
@@ -92,7 +97,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.platform_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.platform_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.field_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
-        self.surveyed_check_box.stateChanged.connect(self.controller_setting_changed_by_user)
+        self.surveyed_check_box.clicked.connect(self.controller_setting_changed_by_user)
         
         
         
@@ -119,20 +124,38 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.resume_sensors_button.clicked.connect(self.resume_sensors_button_clicked)
         self.end_session_button.clicked.connect(self.end_session_button_clicked)
         self.close_sensors_button.clicked.connect(self.close_sensors_button_clicked)
-        
-        
-             
-        #TODO: Add save config functionality
-        #self.save_config_button.clicked.connect(self.save_config_button_clicked)
-        
+
         #Config buttons
         self.select_config_tool_button.clicked.connect(self.select_config_tool_button_clicked)
         self.load_config_button.clicked.connect(self.load_config_button_clicked)
+        self.save_config_button.clicked.connect(self.save_config_button_clicked)
         
         self.add_sensor_button.clicked.connect(self.add_sensor_button_clicked)
         
         self.sensor_list_widget.itemClicked.connect(self.list_item_clicked)
+        
+        # Populate last saved config file so user doesn't always have to select it.
+        self.config_line_edit.setText(self.last_loaded_config_file_path)
                 
+    @property
+    def last_saved_config_file_path(self):
+        file_path = self.qt_settings.value("last_saved_config_file_path")
+        if file_path is None:
+            file_path = os.path.join(os.path.expanduser('~'), 'dysense_config.yaml')
+        return str(file_path)
+        
+    @last_saved_config_file_path.setter
+    def last_saved_config_file_path(self, new_value):
+        self.qt_settings.setValue("last_saved_config_file_path", new_value)
+      
+    @property
+    def last_loaded_config_file_path(self):
+        file_path = self.qt_settings.value("last_loaded_config_file_path")
+        return str(file_path)
+        
+    @last_loaded_config_file_path.setter
+    def last_loaded_config_file_path(self, new_value):
+        self.qt_settings.setValue("last_loaded_config_file_path", new_value)
       
     #TODO: Add the main actions functionality after getting Kyle's updates   
     def setup_sensors_button_clicked(self):
@@ -235,25 +258,34 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.main_message_center_text_edit.clear()
     
     def select_config_tool_button_clicked(self):
-        #hard coded for testing
-        self.config_line_edit.setText('C:/Users/ejwel_000/Workspaces/DySense/DySense/source/test_config.yaml')
         
-        #correct way
-        #self.config_line_edit.setText(QFileDialog.getOpenFileName())
+        config_file_path = QtGui.QFileDialog.getOpenFileName(self, 'Load Config', self.last_loaded_config_file_path,
+                                                             selectedFilter='*.yaml')
+
+        if not config_file_path:
+            return # User didn't select a config file.
+
+        self.last_loaded_config_file_path = config_file_path
+
+        self.config_line_edit.setText(config_file_path)
         
     def load_config_button_clicked(self):
-        path = self.config_line_edit.text()
-        
-        stream = file(path, 'r')
-        
-        sensor_info = yaml.load(stream)
-        
-        self.add_sensor_button_clicked(sensor_info)
-         
-#       TODO  
-#     def save_config_button_clicked(self):
-#         #use data from current configuration and write it to a YAML file
 
+        config_file_path = self.config_line_edit.text()
+        
+        self.presenter.load_config(config_file_path)
+ 
+    def save_config_button_clicked(self):
+
+        config_file_path = QtGui.QFileDialog.getSaveFileName(self, 'Save Config', self.last_saved_config_file_path,
+                                                      selectedFilter='*.yaml')
+
+        if not config_file_path:
+            return # User doesn't want to save the file.
+        
+        self.last_saved_config_file_path = config_file_path
+        
+        self.presenter.save_config(config_file_path)
              
     def display_message(self, message):
         self.main_message_center_text_edit.append(message)
@@ -278,7 +310,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                     value = settings[key]  
                     
                     if info_name == 'surveyed':
-                        if value == True:
+                        if str(value).lower() == 'true':
                             self.surveyed_check_box.setChecked(True)
                         else:
                             self.surveyed_check_box.setChecked(False)
@@ -304,7 +336,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                 
                 if setting_name == 'surveyed':
                     state = self.surveyed_check_box.isChecked()
-                    new_value = str(state)
+                    new_value = str(state).lower()
                
         self.presenter.change_controller_setting(setting_name, new_value)        
                     

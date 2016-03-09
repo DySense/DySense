@@ -11,7 +11,7 @@ from dysense_main_window import DysenseMainWindow #for use with new main window
 from main_presenter import MainPresenter
 from controller_manager import ControllerManager
 from sensor_controller import SensorController
-
+from except_hook import excepthook
 from PyQt4 import QtGui
 
 if __name__ == '__main__':
@@ -45,13 +45,12 @@ if __name__ == '__main__':
     controller_manager_thread.start()
     sensor_controller_thread.start()
     
-    
     # Must do this after starting up threads so socket has a peer to connect with.
     main_presenter.add_controller(sensor_controller.manager_local_endpoint, 'this_computer')
     main_presenter.receive_messages()
     
     # Tell system to call our custom function when an unhandled exception occurs
-    #sys.excepthook = excepthook
+    sys.excepthook = excepthook
     
     main_window.show()
     app.exec_()
