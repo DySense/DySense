@@ -2,6 +2,7 @@
 import time
 import yaml
 import sys
+import logging
 # Use default python types instead of QVariant
 import sip
 sip.setapi('QVariant', 2)
@@ -20,16 +21,23 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         QMainWindow.__init__(self)
         
-        self.presenter = presenter
-        
-        
+        self.presenter = presenter        
+                
         # Set up the user interface from Designer.
         self.setupUi(self)
+        
+        #load sensor metadata
+        with open("../metadata/sensor_metadata.yaml", 'r') as stream:
+            self.sensor_metadata = yaml.load(stream)
         
         #set logo
         main_logo = QtGui.QPixmap('../resources/dysense_logo.png')
         main_logo = main_logo.scaled(90,80)      
         self.logo_label.setPixmap(main_logo)
+        
+        #set version number
+        version = self.sensor_metadata.get('version', 'No Version Number')
+        self.version_line_edit.setText(version)
         
         
                 #example to create yaml file
@@ -39,6 +47,32 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
 #         stream = file('test_config.yaml', 'w')
 #         yaml.dump(new_sensor_info, stream)
             
+            
+            
+            
+        #dictionaries for relating the controller info names to their corresponding line edits/labels        
+        self.name_to_object =  {
+                                'session_name': self.session_line_edit,
+                                }
+        
+        self.object_to_name =  {
+                                self.session_line_edit: 'session_name',                                                                       
+                               }   
+            
+        self.settings_name_to_object = {
+                                        'base_out_directory': self.output_directory_line_edit,
+                                        'operator_name': self.operator_name_line_edit,
+                                        'platform_name': self.platform_name_line_edit,
+                                        'platform_id': self.platform_id_line_edit,
+                                        'field_id': self.field_id_line_edit,
+                                        'surveyed': self.surveyed_check_box                                     
+                                        }   
+            
+#         self.controller_setting_line_edit_references = {
+#                                                         ''
+#                                               
+#                                                         }    
+#                   
         
         #Lookup table of sensor views in the stacked widget
         #key - sensor id
@@ -51,7 +85,17 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         #key - tuple of (controller id, sensor id)
         #value - row position of list item
         self.sensor_list = {}
-
+        
+        # Connect controller setting line edits
+        self.output_directory_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.operator_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.platform_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.platform_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.field_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.surveyed_check_box.stateChanged.connect(self.controller_setting_changed_by_user)
+        
+        
+        
         #Set fields not to be edited by user as read only
         self.main_message_center_text_edit.setReadOnly(True)
         self.main_status_line_edit.setReadOnly(True)
@@ -92,27 +136,27 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
       
     #TODO: Add the main actions functionality after getting Kyle's updates   
     def setup_sensors_button_clicked(self):
-        self.presenter.setup_all_sensors(True)
+        self.presenter.setup_all_sensors(only_on_active_controller=True)
         pass
     def start_sensors_button_clicked(self):
-        pass #may need to add method in presenter
+        self.presenter.send_controller_command('start_session', send_to_all_controllers=False) 
     
     def pause_sensors_button_clicked(self):
-        #self.presenter.pause_all_sensors(True)
+        self.presenter.pause_all_sensors(only_on_active_controller=True)
         pass
     
     def resume_sensors_button_clicked(self):
-        #self.presenter.resume_all_sensors(True)
+        self.presenter.resume_all_sensors(only_on_active_controller=True)
         pass             
                                
     def end_session_button_clicked(self):
-        pass #method will be added to presenter by Kyle
+        self.presenter.send_controller_command('stop_session', send_to_all_controllers=False)
     
     def close_sensors_button_clicked(self):
-        #self.presenter.close_all_sensors(True)
-        print self.sensor_list
-        print self.sensor_list_widget.count()
-
+        #self.presenter.close_all_sensors(only_on_active_controller=True)
+        print self.sensor_metadata['sensors']
+        print self.sensor_metadata['sensors']['test_sensor_python']['data'][0]
+        print self.sensor_metadata['sensors']['test_sensor_python']['settings'][0]['name']
 
 
     def create_new_sensor_view(self, controller_id, sensor_id, sensor_info):
@@ -185,7 +229,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def menu_button_clicked(self):
         #set menu page to the front of the stacked widget, menu page will always be index 0
         self.stacked_widget.setCurrentIndex(0)
-        print 'menu btn clicked'
+        print self.controller_info
         
     def clear_main_message_center_button_clicked(self):
         self.main_message_center_text_edit.clear()
@@ -215,9 +259,58 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.main_message_center_text_edit.append(message)
         
     def update_all_controller_info(self, controller_id, controller_info):
+        self.controller_info = controller_info # TESTING
         self.presenter.controllers[controller_id] = controller_info
         self.display_message("Controller: ({}) received with info\n{}".format(controller_id, controller_info))
         
+        for key in controller_info:
+            info_name = key
+            value = controller_info[key]
+            
+            if self.name_to_object.has_key(info_name):
+                obj = self.name_to_object[info_name]
+                obj.setText(value)
+            
+            if info_name == 'settings':
+                settings = value                
+                for key in settings:
+                    info_name = key
+                    value = settings[key]  
+                    
+                    if info_name == 'surveyed':
+                        if value == True:
+                            self.surveyed_check_box.setChecked(True)
+                        else:
+                            self.surveyed_check_box.setChecked(False)
+                        continue              
+                    
+                    if self.settings_name_to_object.has_key(key):
+                        obj = self.settings_name_to_object[key]
+                        obj.setText(str(value))
+                    
+                    
+                            
+                
+            
+    def controller_setting_changed_by_user(self):
+        obj_ref = self.sender()  
+        
+        #the new value will be the text in the line edits, except when it is the surveyed checkbox. 
+        new_value = str(self.sender().text())        
+        
+        for key in self.settings_name_to_object:
+            if self.settings_name_to_object[key] == obj_ref:  
+                setting_name = key
+                
+                if setting_name == 'surveyed':
+                    state = self.surveyed_check_box.isChecked()
+                    new_value = str(state)
+               
+        self.presenter.change_controller_setting(setting_name, new_value)        
+                    
+        
+        
+                
     def remove_controller(self, controller_id):
         self.display_message("Controller: ({}) removed".format(controller_id))
         
@@ -249,4 +342,24 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     
     def append_sensor_message(self, controller_id, sensor_id, text):
         self.display_message("Sensor ({}:{}) new text {}".format(controller_id, sensor_id, text))   
+        
+    def show_error_message(self, message, level):
+        
+        popup = QtGui.QMessageBox()
+        
+        if level == logging.CRITICAL:
+            level_text = "Critical Error"
+            icon = QStyle.SP_MessageBoxCritical
+        elif level == logging.ERROR:
+            level_text = "Error"
+            icon = QStyle.SP_MessageBoxWarning
+        else:
+            return # not a level we need to show
+            
+        popup.setText(message)
+        popup.setWindowTitle('{}!'.format(level_text))
+        popup.setWindowIcon(popup.style().standardIcon(icon))
+        
+        popup.exec_()
+
         

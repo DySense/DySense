@@ -547,6 +547,13 @@
                   </widget>
                  </item>
                  <item>
+                  <widget class="QPushButton" name="save_config_button">
+                   <property name="text">
+                    <string>Save Config</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <layout class="QHBoxLayout" name="horizontalLayout_3">
                    <item>
                     <widget class="QLabel" name="sensor_type_label">

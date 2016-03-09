@@ -17,6 +17,7 @@ from PyQt4 import QtGui
 if __name__ == '__main__':
         
     app = QtGui.QApplication(sys.argv)
+    app.setStyle('plastique')
     app.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
     
     zmq_context = zmq.Context()
@@ -30,14 +31,14 @@ if __name__ == '__main__':
     controller_manager = ControllerManager(zmq_context)
     main_presenter = MainPresenter(zmq_context, controller_manager, sensor_metadata)
     
-#     main_window = TestWindow(main_presenter) #for use with test window
+    # main_window = TestWindow(main_presenter) #for use with test window
     main_window = DysenseMainWindow(main_presenter) #for use with new main window
     
     main_presenter.view = main_window
     
     # Tell presenter how to connect to manager.
     main_presenter.connect_endpoint(controller_manager.presenter_local_endpoint)
- 
+    
     # Start up component threads.
     controller_manager_thread = threading.Thread(target=controller_manager.run)
     sensor_controller_thread = threading.Thread(target=sensor_controller.run)

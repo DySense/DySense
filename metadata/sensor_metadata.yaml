@@ -168,7 +168,7 @@ sensors:
         - name: required_fix
           type: string
           description: GPS fix ID that must be maintained. 'None' to disable check.
-          default_value: None
+          default_value: none
         - name: required_precision
           type: float
           description: The max standard deviation of latitude/longitude error for usable data.

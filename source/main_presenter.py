@@ -180,7 +180,7 @@ class MainPresenter(QObject):
         
         self._send_message_to_active_sensor('change_sensor_setting', (setting_name, value))
 
-    def change_controller_setting(self, setting_name, value):
+    def change_controller_setting(self, setting_name, value):        
         
         self._send_message_to_active_controller('change_controller_setting', (setting_name, value))
         
@@ -205,17 +205,18 @@ class MainPresenter(QObject):
         sensor_id = sensor_info['sensor_id']
         sensor_name = sensor_info['sensor_name'] 
         
-        if self.sensors.has_key((controller_id, sensor_id)) == True:
-            self.view.update_all_sensor_info(controller_id, sensor_id, sensor_info)                   
-        
         #if sensor is not already stored 
-        if self.sensors.has_key((controller_id, sensor_id)) == False:
+        if (controller_id, sensor_id) not in self.sensors:
             #add sensor info to sensors dict
             self.sensors[(controller_id, sensor_id)] = sensor_info
             #creates the new sensor view which then calls view.update_all_sensor_info
             self.view.create_new_sensor_view(controller_id, sensor_id, sensor_info)
             self.view.add_sensor_to_list_widget(controller_id, sensor_id, sensor_name)
-                              
+                                      
+        else:
+            self.view.update_all_sensor_info(controller_id, sensor_id, sensor_info)                   
+        
+        
         
     def handle_sensor_changed(self, controller_id, sensor_id, info_name, value): #this also applies to 'settings' where value = its dictionary
         #update the dictionary of sensors
