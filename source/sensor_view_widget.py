@@ -29,17 +29,26 @@ class SensorViewWidget(QWidget,Ui_Form):
                                'sensor_name': self.sensor_name_line_edit,                                      
                                'sensor_state': self.sensor_state_value_label,
                                
-                               #<info name of serial number>: self.sensor_id_line_edit #need to associate with the serial number
-                                
-                                                    
+                               'instrument_id': self.sensor_id_line_edit,
+                               'position_offsets': [self.forward_position_line_edit,
+                                                    self.left_position_line_edit,
+                                                    self.up_position_line_edit],
+                               'orientation_offsets': [self.roll_orientation_line_edit,
+                                                       self.pitch_orientation_line_edit,
+                                                       self.yaw_orientation_line_edit],          
                                }
         
         self.object_to_name =  {
-                               #self.sensor_id_line_edit: '<info name of serial number>', #may need to be added. 
+                               self.sensor_id_line_edit: 'instrument_id', 
                                self.sensor_type_line_edit: 'sensor_type',
                                self.sensor_name_line_edit: 'sensor_name',                                      
                                self.sensor_state_value_label: 'sensor_state',
-                                                                                    
+                               self.forward_position_line_edit: 'position_offsets',
+                               self.left_position_line_edit: 'position_offsets',
+                               self.up_position_line_edit: 'position_offsets',
+                               self.roll_orientation_line_edit: 'orientation_offsets',
+                               self.pitch_orientation_line_edit: 'orientation_offsets',
+                               self.yaw_orientation_line_edit: 'orientation_offsets',
                                }
              
         
@@ -96,6 +105,13 @@ class SensorViewWidget(QWidget,Ui_Form):
         #Connect User Changes        
         #self.sensor_name_line_edit.textEdited.connect(self.sensor_name_changed)
         self.sensor_name_line_edit.editingFinished.connect(self.sensor_name_changed)
+        self.sensor_id_line_edit.editingFinished.connect(self.instrument_id_changed)
+        self.forward_position_line_edit.editingFinished.connect(self.position_offset_changed)
+        self.left_position_line_edit.editingFinished.connect(self.position_offset_changed)
+        self.up_position_line_edit.editingFinished.connect(self.position_offset_changed)
+        self.roll_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
+        self.pitch_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
+        self.yaw_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
                       
         #Connect main command buttons
         self.connect_sensor_button.clicked.connect(self.connect_sensor_button_clicked)
@@ -206,9 +222,13 @@ class SensorViewWidget(QWidget,Ui_Form):
     #Update Viewer
     def update_sensor_view(self, info_name, value):       
           
-        if self.name_to_object.has_key(info_name):
-            obj = self.name_to_object[info_name]
-            obj.setText(value)
+        # Update all screen objects that correspond to the specified sensor info name. 
+        matching_obj = self.name_to_object.get(info_name, [])
+        if not isinstance(matching_obj, list):
+            matching_obj.setText(str(value))
+        else:
+            for i, obj in enumerate(matching_obj):
+                obj.setText(str(value[i]))
         
         #get values from settings dict    
         if info_name == 'settings':
@@ -229,16 +249,30 @@ class SensorViewWidget(QWidget,Ui_Form):
                 self.paused_label.setText('Paused')
             elif value == False:
                 self.paused_label.setText('Running')
-            
-    
     
     def sensor_name_changed(self):    
         
         new_name = str(self.sensor_name_line_edit.text())
         self.presenter.change_sensor_info('sensor_name', new_name)
+        
+    def instrument_id_changed(self):    
+        
+        new_value = str(self.sensor_id_line_edit.text())
+        self.presenter.change_sensor_info('instrument_id', new_value)
          
-         
-         
+    def position_offset_changed(self):    
+        
+        forward = str(self.forward_position_line_edit.text())
+        left = str(self.left_position_line_edit.text())
+        up = str(self.up_position_line_edit.text())
+        self.presenter.change_sensor_info('position_offsets', [forward, left, up])     
+     
+    def orientation_offset_changed(self):    
+        
+        roll = str(self.roll_orientation_line_edit.text())
+        pitch = str(self.pitch_orientation_line_edit.text())
+        yaw = str(self.yaw_orientation_line_edit.text())
+        self.presenter.change_sensor_info('orientation_offsets', [roll, pitch, yaw])        
     
     def sensor_health_update(self, health):
         if health == 'N/A' or 'neutral':

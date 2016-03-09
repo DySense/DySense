@@ -491,6 +491,8 @@ class SensorController(object):
         
         if info_name == 'sensor_name':
             sensor.update_sensor_name(value)
+        elif info_name == 'instrument_id':
+            sensor.update_instrument_id(value)
         elif info_name == 'position_offsets':
             sensor.update_position_offsets(value)
         elif info_name == 'orientation_offsets':
