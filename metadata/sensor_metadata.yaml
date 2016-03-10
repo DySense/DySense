@@ -282,4 +282,25 @@ sensors:
           type: float
           units: meters
           tags: [position_z]
+          
+    canon_edsdk:
+      version: "1.0"
+      settings:
+        - name: out_directory
+          type: string
+          description: Where to save images.
+          default_value: " "
+        - name: trigger_period
+          type: float
+          description: How often to take a new image.
+          units: seconds
+          default_value: 1
+          min_value: 0.001
+          max_value: 100000000
+      data:
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: image_name
+          type: string
         

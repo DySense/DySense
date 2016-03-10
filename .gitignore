@@ -48,8 +48,14 @@ Thumbs.db
 [Oo]bj/
 [Bb]uild/
 [Dd]ist/
-EevaOutput/
 .settings/
+sensors/camera/canon_edsdk/Dll/
+sensors/camera/canon_edsdk/icc/
+sensors/camera/canon_edsdk/DPP*
+sensors/camera/canon_edsdk/EDSDK.dll
+sensors/camera/canon_edsdk/EdsImage.dll
+sensors/camera/canon_edsdk/Mlib.dll
+sensors/camera/canon_edsdk/Ucs32P.dll
 
 *egg-info*
 *.project
@@ -77,4 +83,5 @@ EevaOutput/
 *.html
 *.spec
 *.pyc
+
 
