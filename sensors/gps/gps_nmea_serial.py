@@ -1,17 +1,11 @@
 #!/usr/bin/env python
 
-"""
-Sensor Name:    GreenSeeker
-Manufacturer:   Trimble
-Sensor Type:    NVDI
-"""
-
 import serial
 
 from sensor_base.sensor_base import SensorBase
 
-class GreenSeeker(SensorBase):
-    '''Receive data from GreenSeeker sensor.'''
+class GpsNmeaSerial(SensorBase):
+    '''Receive and process data from GPS using NMEA format.'''
     
     def __init__(self, sensor_id, settings, context, connect_endpoint):
         '''
@@ -22,7 +16,7 @@ class GreenSeeker(SensorBase):
             settings - dictionary of sensor settings. Must include:
                 port - serial port name (e.g. 'COM20')
                 baud - serial port rate in bits per second.
-                output_period - how fast greenseeker is setup to output data (seconds)
+                message_rate - how fast GPS is setup to output messages (Hz)
             context - ZMQ context instance.
             connect_endpoint - endpoint on local host to receive time/commands from.
             
@@ -34,12 +28,12 @@ class GreenSeeker(SensorBase):
         try:
             self.port = str(settings['port'])
             self.baud = int(settings['baud'])
-            self.output_period = float(settings['output_period'])
+            self.message_period = 1.0 / float(settings['message_rate'])
         except (KeyError, ValueError, ZeroDivisionError) as e:
             raise ValueError("Bad sensor setting.  Exception {}".format(e))
         
         # Set base class fields.
-        self.desired_read_period = self.output_period
+        self.desired_read_period = self.message_period
         self.max_closing_time = 3 # seconds
         
         # Serial port connection.
@@ -60,7 +54,7 @@ class GreenSeeker(SensorBase):
         
     def setup(self):
         '''Setup serial port.'''
-        read_timeout = min(self.output_period, self.max_read_new_data_period)
+        read_timeout = min(self.message_period, self.max_read_new_data_period)
         self.connection = serial.Serial(port=self.port,
                                         baudrate=self.baud,
                                         timeout=read_timeout)
@@ -69,28 +63,12 @@ class GreenSeeker(SensorBase):
         '''Read in new data from sensor.'''
         
         # Block until we get data or the timeout occurs.
-        new_message = self.connection.readline()            
+        nmea_string = self.connection.readline().strip()           
         
-        if len(new_message) == 0: 
+        if len(nmea_string) == 0:
             return 'timed_out'
-                
-        # Split the message into the individual fields to make sure they're all there.                 
-        parsed_data = [x.strip() for x in new_message.split(',')]
+    
+        success = self.process_nmea_message(nmea_string)
         
-        if len(parsed_data) != 5:
-            if self.last_received_data_time == 0:
-                return 'normal' # ignore very first message if it is incomplete
-            else:
-                return 'error' # otherwise it's an issue
-
-        try:
-            internal_timestamp = int(parsed_data[0])
-            nvdi = float(parsed_data[3])
-            extra_vi = float(parsed_data[4])
-        except ValueError:
-            return 'normal' # sometimes greenseeker sends data labels as text. Don't want to do anything with those.
-
-        self.handle_data((self.utc_time, internal_timestamp, nvdi, extra_vi))
-
-        return 'normal'
+        return 'normal' if success else 'error'
         

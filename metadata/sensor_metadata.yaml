@@ -184,6 +184,59 @@ sensors:
         - name: extra_vi
           type: float
   
+    gps_nmea_serial:
+      version: "1.0"
+      settings:
+        - name: port
+          type: string
+          description: Serial port (e.g. COM2 or /dev/ttyS2)
+          default_value: COM1
+        - name: baud
+          type: int
+          description: How fast that the device is sending data.
+          units: bits/sec
+          default_value: 38400
+          min_value: 1
+          max_value: 10000000
+        - name: message_rate
+          type: float
+          description: How fast GPS is setup to output messages
+          units: Hz
+          default_value: 10
+          min_value: 0.0000001
+          max_value: 100000000
+        - name: required_fix
+          type: string
+          description: GPS fix ID that must be maintained. 'none' to disable check.
+          default_value: none
+        - name: required_precision
+          type: float
+          description: The max standard deviation of latitude/longitude error for usable data.
+          units: TODO
+          default_value: 1
+          min_value: 0
+          max_value: 100000
+      tags: [time, position]
+      data:
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: sys_time
+          type: float
+          units: seconds
+        - name: latitude
+          type: float
+          units: degrees
+          tags: [position_x]
+        - name: longitude
+          type: float
+          units: degrees
+          tags: [position_y]
+        - name: altitude
+          type: float
+          units: meters
+          tags: [position_z]
+  
     gps_nmea_test:
       version: "1.0"
       settings:

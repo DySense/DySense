@@ -40,6 +40,9 @@ class SensorDriverFactory(object):
             sensor = SensorDriverProcess('../sensors/test/test_sensor_csharp/DySenseTestSensorCS.exe', remote_startup_args, language='csharp')
         if sensor_type == 'kinectv2_msdk':
             sensor = SensorDriverProcess('../sensors/kinect/kinectv2_msdk/DySenseKinectV2.exe', remote_startup_args, language='csharp')
+        if sensor_type == 'gps_nmea_serial':
+            from sensors.gps.gps_nmea_serial import GpsNmeaSerial
+            sensor = SensorDriverThread(GpsNmeaSerial, local_startup_args)
         if sensor_type == 'gps_nmea_test':
             from sensors.gps.gps_nmea_test import GpsNmeaTest
             sensor = SensorDriverThread(GpsNmeaTest, local_startup_args)
