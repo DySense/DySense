@@ -370,16 +370,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
          
     def update_sensor_info(self, controller_id, sensor_id, info_name, value):
         
-        
-            
         sensor_info = self.presenter.sensors[(controller_id,sensor_id)]
         sensor_view = sensor_info['widget']                
         sensor_view.update_sensor_view(info_name, value)
-        
-        # append single message
-        if info_name == 'text_messages':
-            
-            sensor_view.display_message(str(value).strip('[]').replace(',', ',\n'), True)
         
         self.display_message("Sensor ({}:{}) had \'{}\' changed to {}".format(controller_id, sensor_id, info_name, value))
         
@@ -408,7 +401,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.display_message("Sensor ({}:{}) new data {}".format(controller_id, sensor_id, data))
     
     def append_sensor_message(self, controller_id, sensor_id, text):
-        self.display_message("Sensor ({}:{}) new text {}".format(controller_id, sensor_id, text))   
+        sensor_info = self.presenter.sensors[(controller_id,sensor_id)]
+        sensor_view = sensor_info['widget']     
+        sensor_view.display_message(str(text).strip('[]').replace(',', ',\n'), True)  
         
     def show_error_message(self, message, level):
         
