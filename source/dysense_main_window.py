@@ -106,12 +106,6 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.main_status_line_edit.setReadOnly(True)
         self.version_line_edit.setReadOnly(True)
         self.session_line_edit.setReadOnly(True)
-        
-        
-        #Add sensor types to drop down box. For now, get them from a list of types - ask Kyle about this. Probably should have the types read in from metadata
-        self.sensor_types = ['test_sensor_python', 'test_sensor_csharp', 'kinectv2_msdk', 'gps_nmea_test']
-        self.sensor_type_combo_box.addItems(self.sensor_types)
-            
                 
         #Connect main command buttons
         self.menu_button.clicked.connect(self.menu_button_clicked)
@@ -156,6 +150,10 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     @last_loaded_config_file_path.setter
     def last_loaded_config_file_path(self, new_value):
         self.qt_settings.setValue("last_loaded_config_file_path", new_value)
+      
+    def set_possible_sensor_types(self, possible_sensor_types):
+        self.sensor_type_combo_box.clear()
+        self.sensor_type_combo_box.addItems(possible_sensor_types)
       
     #TODO: Add the main actions functionality after getting Kyle's updates   
     def setup_sensors_button_clicked(self):

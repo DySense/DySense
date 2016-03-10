@@ -234,7 +234,7 @@ class SensorController(object):
             self._send_manager_message(manager.id, 'error_message', (msg, level))
         
     def run(self):
-
+        # TODO - report unhandled exceptions http://stackoverflow.com/questions/22581496/error-in-pyqt-qthread-not-printed
         try:
             self.setup()
             self.run_message_loop()
@@ -383,7 +383,7 @@ class SensorController(object):
         
     def handle_add_sensor(self, manager, sensor_info):
         '''Validate that sensor name is unique and adds to list of sensors.'''
-        
+
         if self.session_active:
             self.log_message('Cannot add sensor while session is active.', logging.ERROR, manager)
             return

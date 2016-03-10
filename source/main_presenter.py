@@ -24,7 +24,8 @@ class MainPresenter(QObject):
         self.manager = manager
         self.version = metadata['version']
         self.sensor_metadata = metadata['sensors']
-        self.view = view
+        if view:
+            self.setup_view(view)
         
         self.active_controller_id = None
         self.active_sensor_id = None
@@ -55,7 +56,11 @@ class MainPresenter(QObject):
         
         self.manager_socket = self.context.socket(zmq.DEALER)
        
- 
+    def setup_view(self, view):
+        
+        self.view = view
+        
+        self.view.set_possible_sensor_types(sorted(self.sensor_metadata.keys()))
    
     def setup_logging(self):
       

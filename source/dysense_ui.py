@@ -20,6 +20,9 @@ if __name__ == '__main__':
     app.setStyle('plastique')
     app.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
     
+    # Tell system to call our custom function when an unhandled exception occurs
+    sys.excepthook = excepthook
+    
     zmq_context = zmq.Context()
 
     # Load metadata before adding any controllers so can verify version.
@@ -34,7 +37,7 @@ if __name__ == '__main__':
     # main_window = TestWindow(main_presenter) #for use with test window
     main_window = DysenseMainWindow(main_presenter) #for use with new main window
     
-    main_presenter.view = main_window
+    main_presenter.setup_view(main_window)
     
     # Tell presenter how to connect to manager.
     main_presenter.connect_endpoint(controller_manager.presenter_local_endpoint)
@@ -48,9 +51,6 @@ if __name__ == '__main__':
     # Must do this after starting up threads so socket has a peer to connect with.
     main_presenter.add_controller(sensor_controller.manager_local_endpoint, 'this_computer')
     main_presenter.receive_messages()
-    
-    # Tell system to call our custom function when an unhandled exception occurs
-    sys.excepthook = excepthook
     
     main_window.show()
     app.exec_()
