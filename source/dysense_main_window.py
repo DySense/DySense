@@ -305,32 +305,26 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.presenter.controllers[controller_id] = controller_info
         self.display_message("Controller: ({}) received with info\n{}".format(controller_id, controller_info))
         
-        for key in controller_info:
-            info_name = key
-            value = controller_info[key]
+        for info_name, value in controller_info.iteritems():
             
-            if self.name_to_object.has_key(info_name):
+            if info_name in self.name_to_object:
                 obj = self.name_to_object[info_name]
                 obj.setText(value)
             
             if info_name == 'settings':
                 settings = value 
-                for info_name, value in settings.iteritems():               
+                for settings_name, settings_value in settings.iteritems():               
                                     
-                    if info_name == 'surveyed':
-                        if str(value).lower() == 'true':
+                    if settings_name == 'surveyed':
+                        if str(settings_value).lower() == 'true':
                             self.surveyed_check_box.setChecked(True)
                         else:
                             self.surveyed_check_box.setChecked(False)
                         continue              
                     
-                    if self.settings_name_to_object.has_key(key):
-                        obj = self.settings_name_to_object[key]
-                        obj.setText(str(value))
-                    
-                    
-                            
-                
+                    if settings_name in self.settings_name_to_object:
+                        obj = self.settings_name_to_object[settings_name]
+                        obj.setText(str(settings_value))
             
     def controller_setting_changed_by_user(self):
         obj_ref = self.sender()  
