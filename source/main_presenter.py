@@ -64,7 +64,6 @@ class MainPresenter(QObject):
    
     def setup_logging(self):
       
-        
         # Use home directory for root output directory. This is platform independent and works well with an installed package.
         home_directory = os.path.expanduser('~')
         output_directory = os.path.join(home_directory, 'dysense_logs/')
@@ -147,7 +146,6 @@ class MainPresenter(QObject):
         
         #call show_sensor to set the active sensor id and set the correct widget to front
         self.view.show_sensor(sensor_id)    
-         
     
     #called when user changes field in sensor view
     def sensor_view_field_changed(self, info_name, value, sensor_id):
@@ -159,8 +157,6 @@ class MainPresenter(QObject):
         #if the value changed is sensor name, call function to update the name in the sensor list
         if info_name == 'sensor_name':
             self.view.sensor_name_changed(value, sensor_id)           
-        
-    
         
     def connect_endpoint(self, manager_endpoint):
         
@@ -280,8 +276,6 @@ class MainPresenter(QObject):
         else:
             self.view.update_all_sensor_info(controller_id, sensor_id, sensor_info)                   
         
-        
-        
     def handle_sensor_changed(self, controller_id, sensor_id, info_name, value): #this also applies to 'settings' where value = its dictionary
         #update the dictionary of sensors
         sensor_info = self.sensors[(controller_id, sensor_id)]
@@ -291,10 +285,14 @@ class MainPresenter(QObject):
         
         if info_name == 'sensor_name':
             self.view.update_sensor_list_widget(controller_id, sensor_id, value)           
-      
-            
             
     def handle_sensor_removed(self, controller_id, sensor_id):
+        
+        try:
+            del self.sensors[(controller_id, sensor_id)]
+        except KeyError:
+            pass
+        
         self.view.remove_sensor(controller_id, sensor_id)
     
     def handle_new_sensor_data(self, controller_id, sensor_id, data):
