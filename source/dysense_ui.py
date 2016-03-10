@@ -20,9 +20,17 @@ if __name__ == '__main__':
     app.setStyle('plastique')
     app.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
     
+
     # Tell system to call our custom function when an unhandled exception occurs
-    sys.excepthook = excepthook
-    
+    sys.excepthook = excepthook    
+
+    if os.name == 'nt':
+        # If running on windows then need to unassociate process from python so that
+        # the OS will show the correct icon in the taskbar.
+        import ctypes
+        myappid = u'dysense.ui.1'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)        
+
     zmq_context = zmq.Context()
 
     # Load metadata before adding any controllers so can verify version.

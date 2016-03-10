@@ -12,16 +12,21 @@ import yaml
 
 class SensorViewWidget(QWidget,Ui_Form):
            
-    def __init__(self, controller_id, sensor_info, presenter):
+    def __init__(self, controller_id, sensor_info, presenter, view):
         #super().__init__()
         QWidget.__init__(self)
         self.setupUi(self) #call the auto-generated setupUi function in the designer file
         
         self.presenter = presenter
+        self.view = view
         self.controller_id = controller_id
         self.sensor_info = sensor_info
+
         self.sensor_metadata = sensor_info['metadata']
         self.sensor_id = sensor_info['sensor_id']
+
+        self.sensor_id = sensor_info['sensor_id']              
+
         
         #dictionaries for relating the sensor info names to their corresponding line edits/labels        
         self.name_to_object =  {
@@ -66,15 +71,7 @@ class SensorViewWidget(QWidget,Ui_Form):
 #         
        
         
-        self.set_gps_info_button.clicked.connect(self.set_gps_info)
-                                                       
-        
-        
-        
-        
-        
-        
-        
+
         
         
         
@@ -100,6 +97,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         
         #Set fields not to be edited by user as read only
         self.sensor_message_center_text_edit.setReadOnly(True)
+        self.sensor_type_line_edit.setReadOnly(True)
            
         
         #Connect User Changes        
@@ -114,31 +112,14 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.yaw_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
                       
         #Connect main command buttons
-        self.connect_sensor_button.clicked.connect(self.connect_sensor_button_clicked)
+        self.setup_sensor_button.clicked.connect(self.setup_sensor_button_clicked)
         self.pause_sensor_button.clicked.connect(self.pause_sensor_button_clicked)
         self.remove_sensor_button.clicked.connect(self.remove_sensor_button_clicked)
         
         #Connect clear button
         self.clear_sensor_message_center_button.clicked.connect(self.clear_sensor_message_center_button_clicked)
     
-    # FOR TESTING
-    def set_gps_info(self):
-        
-        if self.sensor_info['sensor_type'] != 'gps_nmea_test':
-            return
-         
-        for key in self.setting_line_edit_references:
-            if self.setting_line_edit_references[key] == 'test_file_path':
-                key.setText(r"..\nmea_logs\SXBlueGGA.txt")
-            
-            elif self.setting_line_edit_references[key] == 'output_rate':
-                key.setText('1')    
-            
-            elif self.setting_line_edit_references[key] == 'required_precision':
-                key.setText('0')
-                
-            elif self.setting_line_edit_references[key] == 'required_fix':
-                key.setText('none')
+
     def setup_settings(self, settings):
        
         self.settings_group_box_layout = QtGui.QGridLayout()
@@ -175,7 +156,7 @@ class SensorViewWidget(QWidget,Ui_Form):
             # Connect the line edit signal
             self.line_edit.editingFinished.connect(self.setting_changed_by_user)
 
-        print self.setting_line_edit_references
+
         
     def setup_special_commands(self, special_commands):
         
@@ -213,9 +194,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         new_value = str(self.sender().text())
         
         obj_ref = self.sender()  
-        setting_name = self.setting_line_edit_references[obj_ref]
-        print setting_name
-        print new_value
+        setting_name = self.setting_line_edit_references[obj_ref]        
         
         self.presenter.change_sensor_setting(setting_name, new_value)
             
@@ -254,6 +233,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         
         new_name = str(self.sensor_name_line_edit.text())
         self.presenter.change_sensor_info('sensor_name', new_name)
+
         
     def instrument_id_changed(self):    
         
@@ -273,11 +253,24 @@ class SensorViewWidget(QWidget,Ui_Form):
         pitch = str(self.pitch_orientation_line_edit.text())
         yaw = str(self.yaw_orientation_line_edit.text())
         self.presenter.change_sensor_info('orientation_offsets', [roll, pitch, yaw])        
+
+    
+    # clears and sets text messages for entire sensor update, appends messages for single message update    
+    def display_message(self, message, append):
+        
+        if append == True:
+            self.sensor_message_center_text_edit.append(message)
+        else:
+            self.sensor_message_center_text_edit.setText(message)
+         
+
     
     def sensor_health_update(self, health):
+        # call method to update change list widget item color for corresponding health
+        self.view.update_list_widget_color(self.controller_id, self.sensor_id, health)
         if health == 'N/A' or 'neutral':
             self.sensor_health_icon_label.setPixmap(self.neutral_icon)    
-    
+            
         elif health == 'good':
             self.sensor_health_icon_label.setPixmap(self.good_icon)
             
@@ -290,22 +283,16 @@ class SensorViewWidget(QWidget,Ui_Form):
     
     
     #Main Commands
-    def connect_sensor_button_clicked(self):
-        print 'connect sensor button clicked'
+    def setup_sensor_button_clicked(self):
+        self.presenter.setup_sensor()      
+        
+    def start_sensor_button_clicked(self):
+        self.presenter.resume_sensor()  
         
     def pause_sensor_button_clicked(self):
-        print 'pause sensor button clicked'
-        
+        self.presenter.pause_sensor()        
+            
     def remove_sensor_button_clicked(self):    
         self.presenter.remove_sensor(self.sensor_id)    
-        print 'remove sensor button clicked'
-        
-        
-#     def extra_command1_button_clicked(self):
-#         self.sensor_message_center_text_edit.setText(str(self.sensor_info['metadata']))
-#         
-#         print 'extra command 1 clicked'
-#         
-#     def extra_command2_button_clicked(self):
-#         print'extra command 2 clicked'
+
             

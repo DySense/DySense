@@ -193,7 +193,7 @@ class MainPresenter(QObject):
         
     def remove_sensor(self, sensor_id):
         
-        self._send_message_to_active_controller('remove_sensor', sensor_id)
+        self._send_message_to_active_controller('remove_sensor', sensor_id)        
         
     def remove_all_sensors(self, only_on_active_controller):
         
@@ -290,7 +290,9 @@ class MainPresenter(QObject):
         self.view.update_sensor_info(controller_id, sensor_id, info_name, value)
         
         if info_name == 'sensor_name':
-            self.view.update_sensor_list_widget(controller_id, sensor_id, value)
+            self.view.update_sensor_list_widget(controller_id, sensor_id, value)           
+      
+            
             
     def handle_sensor_removed(self, controller_id, sensor_id):
         self.view.remove_sensor(controller_id, sensor_id)

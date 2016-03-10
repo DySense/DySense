@@ -113,7 +113,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         #Connect sensor control buttons
         self.setup_sensors_button.clicked.connect(self.setup_sensors_button_clicked)
-        self.start_sensors_button.clicked.connect(self.start_sensors_button_clicked)
+        self.start_session_button.clicked.connect(self.start_session_button_clicked)
         self.pause_sensors_button.clicked.connect(self.pause_sensors_button_clicked)
         self.resume_sensors_button.clicked.connect(self.resume_sensors_button_clicked)
         self.end_session_button.clicked.connect(self.end_session_button_clicked)
@@ -158,31 +158,40 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     #TODO: Add the main actions functionality after getting Kyle's updates   
     def setup_sensors_button_clicked(self):
         self.presenter.setup_all_sensors(only_on_active_controller=True)
-        pass
-    def start_sensors_button_clicked(self):
+        
+    def start_session_button_clicked(self):
         self.presenter.send_controller_command('start_session', send_to_all_controllers=False) 
     
     def pause_sensors_button_clicked(self):
         self.presenter.pause_all_sensors(only_on_active_controller=True)
-        pass
-    
+            
     def resume_sensors_button_clicked(self):
-        self.presenter.resume_all_sensors(only_on_active_controller=True)
-        pass             
+        self.presenter.resume_all_sensors(only_on_active_controller=True)                     
                                
     def end_session_button_clicked(self):
         self.presenter.send_controller_command('stop_session', send_to_all_controllers=False)
     
     def close_sensors_button_clicked(self):
-        #self.presenter.close_all_sensors(only_on_active_controller=True)
-        print self.sensor_metadata['sensors']
-        print self.sensor_metadata['sensors']['test_sensor_python']['data'][0]
-        print self.sensor_metadata['sensors']['test_sensor_python']['settings'][0]['name']
-
-
+        self.presenter.close_all_sensors(only_on_active_controller=True)
+    
+    def update_list_widget_color(self, controller_id, sensor_id, health):
+        if (controller_id, sensor_id) in self.sensor_list:
+            row = self.sensor_list[(controller_id, sensor_id)]
+            item = self.sensor_list_widget.item(row)
+            
+            
+            if health == 'N/A' or 'neutral':                         
+                item.setBackgroundColor(QColor(255,255,255)) #white
+                                        
+            elif health == 'good':
+                item.setBackgroundColor(QColor(12,245,0)) # light green
+                  
+            elif health == 'bad':
+                item.setBackgroundColor(QColor(250,145,145)) # light red
+    
     def create_new_sensor_view(self, controller_id, sensor_id, sensor_info):
         
-        new_sensor_view = SensorViewWidget(controller_id, sensor_info, self.presenter)
+        new_sensor_view = SensorViewWidget(controller_id, sensor_info, self.presenter, self)
         
         #Add the sensor view widget to the stack
         self.stacked_widget.addWidget(new_sensor_view)
@@ -250,7 +259,11 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def menu_button_clicked(self):
         #set menu page to the front of the stacked widget, menu page will always be index 0
         self.stacked_widget.setCurrentIndex(0)
-        print self.controller_info
+        
+        # deselect list widget items so health color shows   
+        for i in range(self.sensor_list_widget.count()):
+            item = self.sensor_list_widget.item(i)
+            self.sensor_list_widget.setItemSelected(item, False)
         
     def clear_main_message_center_button_clicked(self):
         self.main_message_center_text_edit.clear()
@@ -302,11 +315,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                 obj.setText(value)
             
             if info_name == 'settings':
-                settings = value                
-                for key in settings:
-                    info_name = key
-                    value = settings[key]  
-                    
+                settings = value 
+                for info_name, value in settings.iteritems():               
+                                    
                     if info_name == 'surveyed':
                         if str(value).lower() == 'true':
                             self.surveyed_check_box.setChecked(True)
@@ -344,14 +355,15 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def remove_controller(self, controller_id):
         self.display_message("Controller: ({}) removed".format(controller_id))
         
-    def update_all_sensor_info(self, controller_id, sensor_id, sensor_info):
-        
-        sensor_view = sensor_info['widget']
-        
+    def update_all_sensor_info(self, controller_id, sensor_id, sensor_info):        
+        # TODO handle messages that should be appended vs clearing message center and set.
+        # clear sensor message center and set new text messages when all sensor info is updated
+        #  messages = sensor_info.get('text_messages', '')        
+#         sensor_view = sensor_info['widget']
+#         sensor_view.display_message(str(messages).strip('[]').replace(',', ',\n'), False)
+                
         #loop through key and value pairs and call update_sensor_info for each one
-        for key in sensor_info:
-            #print key, ' == ', sensor_info[key]
-            
+        for key in sensor_info:        
             self.update_sensor_info(controller_id, sensor_id, key, sensor_info[key])   
               
         self.display_message("Sensor: ({}:{}) received with info\n{}".format(controller_id, sensor_info['sensor_name'],
@@ -359,12 +371,38 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
          
     def update_sensor_info(self, controller_id, sensor_id, info_name, value):
         
+        
+            
         sensor_info = self.presenter.sensors[(controller_id,sensor_id)]
         sensor_view = sensor_info['widget']                
         sensor_view.update_sensor_view(info_name, value)
+        
+        # append single message
+        if info_name == 'text_messages':
+            
+            sensor_view.display_message(str(value).strip('[]').replace(',', ',\n'), True)
+        
         self.display_message("Sensor ({}:{}) had \'{}\' changed to {}".format(controller_id, sensor_id, info_name, value))
         
     def remove_sensor(self, controller_id, sensor_id):
+        #TODO create pop up window asking if they are sure they want to remove the sensor
+        
+        # switch to the controller view page 
+        self.stacked_widget.setCurrentIndex(0)
+        
+        # remove sensor item from list widget
+        removed_row = self.sensor_list_widget.currentRow()
+        self.sensor_list_widget.takeItem(removed_row)
+        
+        # shift affected rows down by one to stay in sync with list widget
+        for key in self.sensor_list:
+            if self.sensor_list[key] > removed_row:
+                self.sensor_list[key] -= 1
+                
+        # remove sensor from appropriate dictionaries
+        del self.sensor_view_stack[sensor_id]
+        del self.sensor_list[(controller_id, sensor_id)]
+
         self.display_message("Sensor ({}:{}) removed".format(controller_id, sensor_id))
     
     def show_new_sensor_data(self, controller_id, sensor_id, data):

@@ -15,35 +15,6 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_7">
-     <item>
-      <spacer name="horizontalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QPushButton" name="set_gps_info_button">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>Testing - Set GPS Info</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QGroupBox" name="sensor_status_group_box">
@@ -55,7 +26,7 @@
          <widget class="QLabel" name="sensor_health_label">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>12</pointsize>
            </font>
           </property>
           <property name="text">
@@ -92,7 +63,7 @@
           </property>
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>12</pointsize>
            </font>
           </property>
           <property name="text">
@@ -104,7 +75,7 @@
          <widget class="QLabel" name="sensor_state_value_label">
           <property name="font">
            <font>
-            <pointsize>14</pointsize>
+            <pointsize>12</pointsize>
            </font>
           </property>
           <property name="text">
@@ -116,7 +87,7 @@
          <widget class="QLabel" name="paused_label">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>12</pointsize>
            </font>
           </property>
           <property name="text">
@@ -379,7 +350,7 @@
        </property>
        <property name="font">
         <font>
-         <pointsize>10</pointsize>
+         <pointsize>12</pointsize>
         </font>
        </property>
       </widget>
@@ -413,7 +384,7 @@
    <item>
     <widget class="QGroupBox" name="commands_group_box">
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
@@ -421,7 +392,7 @@
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>60</height>
+       <height>75</height>
       </size>
      </property>
      <property name="font">
@@ -437,7 +408,7 @@
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout_6">
       <item>
-       <widget class="QPushButton" name="connect_sensor_button">
+       <widget class="QPushButton" name="setup_sensor_button">
         <property name="minimumSize">
          <size>
           <width>0</width>
@@ -445,7 +416,14 @@
          </size>
         </property>
         <property name="text">
-         <string>Connect</string>
+         <string>Setup</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="start_sensor_button">
+        <property name="text">
+         <string>Start</string>
         </property>
        </widget>
       </item>
@@ -464,6 +442,12 @@
       </item>
       <item>
        <widget class="QPushButton" name="remove_sensor_button">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>30</height>
+         </size>
+        </property>
         <property name="text">
          <string>Remove</string>
         </property>
@@ -475,7 +459,7 @@
    <item>
     <widget class="QGroupBox" name="special_commands_group_box">
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
@@ -483,7 +467,7 @@
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>60</height>
+       <height>75</height>
       </size>
      </property>
      <property name="font">
@@ -506,7 +490,6 @@
   <zorder>horizontalLayoutWidget</zorder>
   <zorder>horizontalLayoutWidget_2</zorder>
   <zorder>verticalSpacer</zorder>
-  <zorder>horizontalLayoutWidget_3</zorder>
  </widget>
  <resources/>
  <connections/>
