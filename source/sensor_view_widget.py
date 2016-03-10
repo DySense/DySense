@@ -220,8 +220,8 @@ class SensorViewWidget(QWidget,Ui_Form):
                     obj = self.settings_name_to_object[key]
                     obj.setText(str(settings[key]))
                    
-        if info_name == 'sensor_health':
-            self.sensor_health_update(value)                        
+        if info_name == 'overall_health':
+            self.overall_sensor_health_update(value)                        
             
         if info_name == 'sensor_paused':
             if value == True:
@@ -265,10 +265,10 @@ class SensorViewWidget(QWidget,Ui_Form):
          
 
     
-    def sensor_health_update(self, health):
+    def overall_sensor_health_update(self, health):
         # call method to update change list widget item color for corresponding health
         self.view.update_list_widget_color(self.controller_id, self.sensor_id, health)
-        if health == 'N/A' or 'neutral':
+        if health in ['N/A', 'neutral']:
             self.sensor_health_icon_label.setPixmap(self.neutral_icon)    
             
         elif health == 'good':

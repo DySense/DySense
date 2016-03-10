@@ -179,8 +179,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             row = self.sensor_list[(controller_id, sensor_id)]
             item = self.sensor_list_widget.item(row)
             
-            
-            if health == 'N/A' or 'neutral':                         
+            if health in ['N/A', 'neutral']:                      
                 item.setBackgroundColor(QColor(255,255,255)) #white
                                         
             elif health == 'good':
