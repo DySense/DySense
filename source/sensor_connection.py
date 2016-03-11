@@ -161,10 +161,27 @@ class SensorConnection(object):
         self.instrument_id = new_value
         self.observer.notify_sensor_changed(self.sensor_id, 'instrument_id', self.instrument_id)
         
+    def reset(self):
+        '''Reset all fields that may have changed last time sensor was setup/running.'''
+        
+        self.update_connection_state('closed')
+        self.update_sensor_state('closed')
+        self.update_sensor_health('neutral')
+        self.update_sensor_paused(True)
+        self.text_messages = []
+        self.closing = False
+        self.last_message_processing_time = 0
+        self.last_received_message_time = 0
+        self.last_sent_heartbeat_time = 0
+        self.interface_connection_time = 0
+        self.num_messages_received = 0
+        
     def setup(self):
         
         if self.sensor_driver:
             return # Need to call close() first before making a new sensor driver instance
+        
+        self.reset();
         
         try:
             self.sensor_driver = self.driver_factory.create_sensor(self.sensor_type, self.sensor_id, self.settings)
