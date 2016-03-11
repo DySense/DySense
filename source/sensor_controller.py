@@ -45,7 +45,7 @@ class SensorController(object):
         
         self.text_messages = []
         
-        self._time_source = TimeDataSource(callback=self.send_entire_controller_info)
+        self._time_source = None
         self._position_sources = []
         self._orientation_sources = []
         
@@ -124,7 +124,7 @@ class SensorController(object):
                 'session_state': self.session_state,
                 'session_active': self.session_active,
                 'session_name': self.session_name,
-                'time_source': self.time_source.public_info,
+                'time_source': None if not self.time_source else self.time_source.public_info,
                 'position_sources': [source.public_info for source in self.position_sources],
                 'orientation_sources': [source.public_info for source in self.orientation_sources],
                 'settings': self.settings,
@@ -159,11 +159,14 @@ class SensorController(object):
         return self._time_source
     @time_source.setter
     def time_source(self, new_value):
-        self._time_source = TimeDataSource(callback=self.send_entire_controller_info,
-                                           controller_id=new_value['controller_id'],
-                                           sensor_id=new_value['sensor_id'],
-                                           sensor_name=new_value['sensor_name'],
-                                           sensor_metadata=new_value['metadata'])
+        if new_value is None:
+            self._time_source = None
+        else:
+            self._time_source = TimeDataSource(callback=self.send_entire_controller_info,
+                                               controller_id=new_value['controller_id'],
+                                               sensor_id=new_value['sensor_id'],
+                                               sensor_name=new_value['sensor_name'],
+                                               sensor_metadata=new_value['metadata'])
         self.send_entire_controller_info()
         
     @property
@@ -474,7 +477,14 @@ class SensorController(object):
             
             self.log_message("Removed {}".format(sensor.sensor_name))
             
-            # TODO If this sensor was a data source then we can't reference it anymore. 
+            if self.time_source and self.time_source.matches(sensor.sensor_id, self.controller_id):
+                self.time_source = None
+            for source in self.position_sources[:]:
+                if source.matches(sensor.sensor_id, self.controller_id):
+                    self.position_sources.remove(source)
+            for source in self.orientation_sources[:]:
+                if source.matches(sensor.sensor_id, self.controller_id):
+                    self.orientation_sources.remove(source)
 
     def handle_request_sensor(self, manager, sensor_id):
         
@@ -581,7 +591,7 @@ class SensorController(object):
 
     def try_process_data_source_data(self, sensor_id, controller_id, data):
         
-        if self.time_source.matches(sensor_id, controller_id):
+        if self.time_source and self.time_source.matches(sensor_id, controller_id):
             sys_time = data[self.time_source.sys_time_idx]
             if sys_time <= 0:
                 # Time came from another controller so timestamp when we received it to account for future latency.
@@ -656,10 +666,14 @@ class SensorController(object):
         if not self.verify_controller_settings(manager):
             return False
         
+        if self.time_source is None:
+            self.log_message("Can't start session without a selected time source.", logging.ERROR, manager)
+            return
+        
         # Make sure all sensors are setup and then that data sources are initially started. 
         for sensor in self.sensors:
             sensor.setup()
-        
+
         time_sensor = self.find_sensor(self.time_source.sensor_id)
         position_sensors = [self.find_sensor(s.sensor_id) for s in self.position_sources]
         orientation_sensors = [self.find_sensor(s.sensor_id) for s in self.orientation_sources]
