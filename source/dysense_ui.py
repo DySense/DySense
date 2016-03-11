@@ -60,19 +60,21 @@ if __name__ == '__main__':
     main_presenter.add_controller(sensor_controller.manager_local_endpoint, 'this_computer')
     main_presenter.receive_messages()
     
-    main_window.show()
-    app.exec_()
+    try:
+        main_window.show()
+        app.exec_()
     
-    # TODO intercept window closing event and if there are any non-closed sensors
-    # on the local controller then popup a yes-no dialog window telling user that if
-    # they quit then resources might not be released. 
+        # TODO intercept window closing event and if there are any non-closed sensors
+        # on the local controller then popup a yes-no dialog window telling user that if
+        # they quit then resources might not be released. 
+        
+        # TODO show a 'closing dialog' until these next lines complete in case they hang.
     
-    # TODO show a 'closing dialog' until these next lines complete in case they hang.
-    
-    # Close down system from bottom to top since data will be flowing that way.
-    sensor_controller.stop_request.set()
-    sensor_controller_thread.join()
-    controller_manager.stop_request.set()
-    controller_manager_thread.join()
-    main_presenter.close()
+    finally:
+        # Close down system from bottom to top since data will be flowing that way.
+        sensor_controller.stop_request.set()
+        sensor_controller_thread.join()
+        controller_manager.stop_request.set()
+        controller_manager_thread.join()
+        main_presenter.close()
     

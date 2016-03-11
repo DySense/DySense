@@ -30,4 +30,5 @@ def excepthook(excection_type, excection_value, traceback_object):
     popup.setWindowTitle('Error')
     popup.setWindowIcon(popup.style().standardIcon(QStyle.SP_MessageBoxCritical))
     popup.exec_()
-    sys.exit(1)
+    # TODO figure out why this hangs sometimes
+    #sys.exit(1)

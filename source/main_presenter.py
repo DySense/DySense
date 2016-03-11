@@ -269,14 +269,14 @@ class MainPresenter(QObject):
         sensor_id = sensor_info['sensor_id']
         sensor_name = sensor_info['sensor_name'] 
         
-        #if sensor is not already stored 
-        if (controller_id, sensor_id) not in self.sensors:
-            #add sensor info to sensors dict
-            self.sensors[(controller_id, sensor_id)] = sensor_info
+        is_new_sensor = (controller_id, sensor_id) not in self.sensors
+        
+        self.sensors[(controller_id, sensor_id)] = sensor_info
+
+        if is_new_sensor:
             #creates the new sensor view which then calls view.update_all_sensor_info
-            self.view.create_new_sensor_view(controller_id, sensor_id, sensor_info)
             self.view.add_sensor_to_list_widget(controller_id, sensor_id, sensor_name)
-                                      
+            self.view.create_new_sensor_view(controller_id, sensor_id, sensor_info)
         else:
             self.view.update_all_sensor_info(controller_id, sensor_id, sensor_info)                   
         
@@ -285,10 +285,7 @@ class MainPresenter(QObject):
         sensor_info = self.sensors[(controller_id, sensor_id)]
         sensor_info[info_name] = value
         
-        self.view.update_sensor_info(controller_id, sensor_id, info_name, value)
-        
-        if info_name == 'sensor_name':
-            self.view.update_sensor_list_widget(controller_id, sensor_id, value)           
+        self.view.update_sensor_info(controller_id, sensor_id, info_name, value)         
             
     def handle_sensor_removed(self, controller_id, sensor_id):
         
@@ -309,11 +306,15 @@ class MainPresenter(QObject):
         
         controller_id = controller_info['id']
         
-        if controller_id not in self.controllers:
-            self.controllers[controller_id] = controller_info
+        is_new_controller = controller_id not in self.controllers
+        
+        self.controllers[controller_id] = controller_info
         
         if self.active_controller_id == None:
             self.active_controller_id = controller_id
+        
+        if is_new_controller:
+            pass # TODO create new controller viewer once we support multiple controllers
             
         self.view.update_all_controller_info(controller_info['id'], controller_info)
         

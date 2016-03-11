@@ -228,6 +228,7 @@ class SensorBase(object):
                 self.state = 'closed'
             self.received_close_request = False
             self.send_event('closing')
+            self.paused = True
             self.pause()
             self.close()
             self.close_interface()

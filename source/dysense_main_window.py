@@ -52,7 +52,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
 #         stream = file('test_config.yaml', 'w')
 #         yaml.dump(new_sensor_info, stream)
             
-            
+        
+        # Associate sensor (controller_id, sensor_id) to its widget.
+        self.sensor_to_widget = {}
             
             
         #dictionaries for relating the controller info names to their corresponding line edits/labels        
@@ -201,8 +203,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         stack_index = self.stacked_widget.indexOf(new_sensor_view)
         
         #add widget instance and index to the sensor_info
-        sensor_info['widget'] = new_sensor_view
-        sensor_info['widget_index'] = stack_index
+        self.sensor_to_widget[(controller_id, sensor_id)] = new_sensor_view
                 
         self.update_all_sensor_info(controller_id, sensor_id, sensor_info)
             
@@ -225,11 +226,16 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         self.sensor_list_widget.addItem(sensor_name)
         
-    def update_sensor_list_widget(self, controller_id, sensor_id, new_name):
+    def update_sensor_list_widget(self, controller_id, sensor_id):
+        
+        sensor = self.presenter.sensors[(controller_id, sensor_id)]
+        sensor_name = sensor['sensor_name']
+        if sensor['sensor_paused']:
+            sensor_name += ' (paused)'
+        
         row = self.sensor_list[(controller_id, sensor_id)]
         item = self.sensor_list_widget.item(row)
-        item.setText(new_name)
-        
+        item.setText(sensor_name)
         
     def list_item_clicked(self, item):
                 
@@ -362,10 +368,12 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             self.update_sensor_info(controller_id, sensor_id, key, sensor_info[key])   
          
     def update_sensor_info(self, controller_id, sensor_id, info_name, value):
-        
-        sensor_info = self.presenter.sensors[(controller_id,sensor_id)]
-        sensor_view = sensor_info['widget']                
+
+        sensor_view = self.sensor_to_widget[(controller_id, sensor_id)]             
         sensor_view.update_sensor_view(info_name, value)
+
+        if info_name == 'sensor_name' or info_name == 'sensor_paused':
+            self.update_sensor_list_widget(controller_id, sensor_id)  
         
     def remove_sensor(self, controller_id, sensor_id):
         #TODO create pop up window asking if they are sure they want to remove the sensor
@@ -390,8 +398,8 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         pass # TODO
     
     def append_sensor_message(self, controller_id, sensor_id, text):
-        sensor_info = self.presenter.sensors[(controller_id,sensor_id)]
-        sensor_view = sensor_info['widget']     
+
+        sensor_view = self.sensor_to_widget[(controller_id, sensor_id)]  
         sensor_view.display_message(str(text).strip('[]').replace(',', ',\n'), True)  
         
     def show_error_message(self, message, level):
