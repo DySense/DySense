@@ -9,6 +9,7 @@ import uuid
 import datetime
 import sys
 import logging
+import csv
 from logging import getLogger
 
 from sensor_connection import SensorConnection
@@ -71,6 +72,12 @@ class SensorController(object):
         
         # Last utc time received from timesource.  Set to None when a session is stopped.
         self.first_received_utc_time = None
+        
+        # Similar to first received utc time, but doesn't get invalided after session is stopped.
+        self.session_start_utc = 0.0
+        
+        # Last received utc time.
+        self.last_utc_time = 0.0
         
         # Used for creating new sensor drivers. Can't instantiate it until we know what endpoints we're bound to.
         self.sensor_driver_factory = None
@@ -602,10 +609,13 @@ class SensorController(object):
             new_time = (utc_time, sys_time)
             self._send_sensor_message('all', 'time', new_time)
             
+            self.last_utc_time = utc_time
+            
             # Save off utc time in case we need to use it for timestamping a new session.
             # Only grab the first one since the test GPS relies on that.
             if not self.first_received_utc_time:
                 self.first_received_utc_time = utc_time
+                self.session_start_utc = utc_time
             
         for source in self.position_sources:
             if source.matches(sensor_id, controller_id):
@@ -800,7 +810,38 @@ class SensorController(object):
         self.session_active = False
         self.session_state = 'closed'
         
+        self.write_out_session_file()
+        self.write_out_offsets_file()
+        
         self.log_message("Session closed.")
+
+    def write_out_session_file(self):
+        
+        file_path = os.path.join(self.session_path, 'session_info.csv')
+        with open(file_path, 'wb') as outfile:
+            writer = csv.writer(outfile)
+            
+            writer.writerow(['start_utc', self.session_start_utc])
+            formatted_start_time = datetime.datetime.fromtimestamp(self.session_start_utc).strftime("%Y/%m/%d %H:%M:%S")
+            writer.writerow(['start_utc_human', formatted_start_time])
+            
+            writer.writerow(['end_utc', self.last_utc_time])
+            formatted_end_time = datetime.datetime.fromtimestamp(self.last_utc_time).strftime("%Y/%m/%d %H:%M:%S")
+            writer.writerow(['end_utc_human', formatted_end_time])
+            
+            for key, value in sorted(self.settings.items()):
+                if key not in ['base_out_directory']: 
+                    writer.writerow([key, value])
+                    
+    def write_out_offsets_file(self):
+        
+        file_path = os.path.join(self.session_path, 'sensor_offsets.csv')
+        with open(file_path, 'wb') as outfile:
+            writer = csv.writer(outfile)
+            
+            writer.writerow(['#sensor_name', 'sensor_id', 'x', 'y', 'z', 'roll', 'pitch', 'yaw'])
+            for sensor in self.sensors:
+                writer.writerow([sensor.sensor_name, sensor.instrument_id] + sensor.position_offsets + sensor.orientation_offsets)
 
     def find_sensor(self, sensor_id):
         
