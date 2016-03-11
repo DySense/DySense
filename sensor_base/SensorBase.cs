@@ -360,7 +360,7 @@ namespace DySense
         // Notify controller of status change (status = state + health + paused)
         private void SendStatusUpdate()
         {
-            SendMessage("new_sensor_status", new List<string>() { State, Health, Paused.ToString() });
+            SendMessage("new_sensor_status", new List<object>() { State, Health, Paused });
         }
 
         // Send data to controller

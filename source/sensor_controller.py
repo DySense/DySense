@@ -860,7 +860,7 @@ class SensorController(object):
                 outdata = []
                 for key, value in sorted(sensor.public_info.items()):
                     if key in ['sensor_type', 'sensor_name', 'settings', 'parameters', 'text_messages',
-                                    'position_offsets', 'orientation_offsets', 'instrument_id', 'metadata']:
+                                'position_offsets', 'orientation_offsets', 'instrument_id', 'metadata']:
                         outdata.append([key, value])
                 outfile.write(yaml.dump(outdata, default_flow_style=False))
 

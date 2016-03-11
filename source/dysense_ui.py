@@ -20,7 +20,6 @@ if __name__ == '__main__':
     app.setStyle('plastique')
     app.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
     
-
     # Tell system to call our custom function when an unhandled exception occurs
     sys.excepthook = excepthook    
 

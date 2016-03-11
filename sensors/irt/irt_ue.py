@@ -47,6 +47,9 @@ class IRT_UE(SensorBase):
         # Serial port connection.
         self.connection = None
         
+        # Time the data was requested
+        self.time_of_request = 0
+        
         # How many bytes to read each time sensor sends data.
         self.bytes_to_read = 2
         
