@@ -303,4 +303,26 @@ sensors:
           units: seconds
         - name: image_name
           type: string
+          
+    lidar_lite:
+      version: "1.0"
+      settings:    
+        - name: port
+          type: string
+          description: Serial port (e.g. COM2 or /dev/ttyS2)
+          default_value: COM1
+        - name: baud
+          type: int
+          description: How fast that the device is sending data.
+          units: bits/sec
+          default_value: 9600
+          min_value: 1
+          max_value: 10000000
+      data:
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: distance
+          type: int
+          uints: centimeters
         

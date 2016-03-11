@@ -23,7 +23,7 @@ class SensorBase(object):
                        }
 
     def __init__(self, sensor_id, context, connect_endpoint, desired_read_period=0.25, max_closing_time=0.1, 
-                 heartbeat_period=0.5, wait_for_valid_time=True):
+                 heartbeat_period=0.5, wait_for_valid_time=True, throttle_sensor_read=True):
         '''
         Base constructor.
         
@@ -41,6 +41,7 @@ class SensorBase(object):
         self.max_closing_time = max(0.1, max_closing_time)
         self.heartbeat_period = max(0.1, heartbeat_period)
         self.wait_for_valid_time = wait_for_valid_time
+        self.throttle_sensor_read = throttle_sensor_read
         
         # Set to true when receive 'close' command from controller.
         self.received_close_request = False
@@ -185,7 +186,7 @@ class SensorBase(object):
                         self.send_message('new_sensor_heartbeat', ' ')
                         self.last_sent_heartbeat_time = self.sys_time
                     
-                if self.need_to_run_sensor_loop():
+                if self.need_to_run_sensor_loop() or not self.throttle_sensor_read:
                     
                     # Save off time so we can limit how fast the loop runs.
                     self.next_sensor_loop_start_time = self.sys_time + self.desired_read_period
@@ -213,9 +214,10 @@ class SensorBase(object):
                     self.state = reported_state
                     
                 # Figure out how long to wait before one of the loops needs to run again.
-                next_time_to_run = min(self.next_processing_loop_start_time, self.next_sensor_loop_start_time)
-                time_to_wait = next_time_to_run - self.sys_time
-                time.sleep(max(0, time_to_wait))
+                if self.throttle_sensor_read:
+                    next_time_to_run = min(self.next_processing_loop_start_time, self.next_sensor_loop_start_time)
+                    time_to_wait = next_time_to_run - self.sys_time
+                    time.sleep(max(0, time_to_wait))
                 
         except Exception as e:
             self.state = 'error'

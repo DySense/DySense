@@ -48,6 +48,9 @@ class SensorDriverFactory(object):
         if sensor_type == 'gps_nmea_test':
             from sensors.gps.gps_nmea_test import GpsNmeaTest
             sensor = SensorDriverThread(GpsNmeaTest, local_startup_args)
+        if sensor_type == 'lidar_lite':
+            from sensors.distance.lidar_lite import LidarLite
+            sensor = SensorDriverThread(LidarLite, local_startup_args)
         
         sensor.run()
         
