@@ -475,6 +475,7 @@ class SensorController(object):
         setting_name, new_value = change
 
         try:
+            new_value = str(new_value).strip()
             sensor.update_setting(setting_name, new_value)
         except KeyError:
             self.log_message("Can't change sensor setting {} because it does not exist.".format(setting_name), logging.ERROR, manager)
@@ -490,7 +491,8 @@ class SensorController(object):
         info_name, value = change
         
         if info_name == 'sensor_name':
-            sensor.update_sensor_name(value)
+            new_name = self._make_sensor_name_unique(value.strip())
+            sensor.update_sensor_name(new_name)
         elif info_name == 'instrument_id':
             sensor.update_instrument_id(value)
         elif info_name == 'position_offsets':

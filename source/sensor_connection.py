@@ -195,7 +195,6 @@ class SensorConnection(object):
         else:
             self.update_connection_state('error')
 
-    
     def close(self):
         '''Close down process or thread associated with connection.  Need to send close message before calling this.'''
         if self.sensor_driver:
