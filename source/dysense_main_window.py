@@ -14,7 +14,7 @@ from PyQt4.QtCore import QMetaObject, QObject, QEvent, Qt, Q_ARG
 from PyQt4.QtGui import *
 from dysense_main_window_designer import Ui_MainWindow
 from sensor_view_widget import SensorViewWidget
-
+from utility import pretty
 
 class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     
@@ -312,6 +312,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                 
             if info_name == 'session_active':
                 self.session_line_edit.setText(str('Active' if value else 'Not Started'))
+                
+            if info_name == 'session_state':
+                self.main_status_line_edit.setText(pretty(value))
             
             if info_name == 'settings':
                 settings = value 

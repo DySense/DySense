@@ -784,6 +784,7 @@ class SensorController(object):
         
         self.close_session_logging()
         self.session_active = False
+        self.session_state = 'closed'
         
         self.log_message("Session closed.")
 
