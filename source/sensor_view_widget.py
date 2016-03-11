@@ -21,12 +21,11 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.view = view
         self.controller_id = controller_id
         self.sensor_info = sensor_info
-
         self.sensor_metadata = sensor_info['metadata']
         self.sensor_id = sensor_info['sensor_id']
-
-        self.sensor_id = sensor_info['sensor_id']              
-
+        
+        # Last state reported by driver.
+        self.last_connection_state = 'unknown'
         
         #dictionaries for relating the sensor info names to their corresponding line edits/labels        
         self.name_to_object =  {
@@ -228,6 +227,12 @@ class SensorViewWidget(QWidget,Ui_Form):
                 self.paused_label.setText('Paused')
             elif value == False:
                 self.paused_label.setText('Running')
+            
+        if info_name == 'connection_state':
+            current_connection_state = value
+            if current_connection_state == 'setup' and self.last_connection_state != 'setup':
+                self.sensor_message_center_text_edit.clear()
+            self.last_connection_state = current_connection_state
     
     def sensor_name_changed(self):    
         
@@ -268,6 +273,7 @@ class SensorViewWidget(QWidget,Ui_Form):
     def overall_sensor_health_update(self, health):
         # call method to update change list widget item color for corresponding health
         self.view.update_list_widget_color(self.controller_id, self.sensor_id, health)
+        
         if health in ['N/A', 'neutral']:
             self.sensor_health_icon_label.setPixmap(self.neutral_icon)    
             
