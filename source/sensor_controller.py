@@ -10,6 +10,7 @@ import datetime
 import sys
 import logging
 import csv
+import yaml
 from logging import getLogger
 
 from sensor_connection import SensorConnection
@@ -771,7 +772,7 @@ class SensorController(object):
         for sensor in self.sensors:
             
             sensor_csv_file_name = "{}_{}_{}.csv".format(sensor.sensor_name,
-                                                         sensor.sensor_id,
+                                                         sensor.instrument_id,
                                                          formatted_time)
             
             sensor_csv_file_path = os.path.join(data_logs_path, sensor_csv_file_name)
@@ -810,12 +811,14 @@ class SensorController(object):
         self.session_active = False
         self.session_state = 'closed'
         
-        self.write_out_session_file()
-        self.write_out_offsets_file()
+        self.write_session_file()
+        self.write_offsets_file()
+        self.write_sensor_info_files()
+        self.write_version_file()
         
         self.log_message("Session closed.")
 
-    def write_out_session_file(self):
+    def write_session_file(self):
         
         file_path = os.path.join(self.session_path, 'session_info.csv')
         with open(file_path, 'wb') as outfile:
@@ -833,7 +836,7 @@ class SensorController(object):
                 if key not in ['base_out_directory']: 
                     writer.writerow([key, value])
                     
-    def write_out_offsets_file(self):
+    def write_offsets_file(self):
         
         file_path = os.path.join(self.session_path, 'sensor_offsets.csv')
         with open(file_path, 'wb') as outfile:
@@ -842,6 +845,30 @@ class SensorController(object):
             writer.writerow(['#sensor_name', 'sensor_id', 'x', 'y', 'z', 'roll', 'pitch', 'yaw'])
             for sensor in self.sensors:
                 writer.writerow([sensor.sensor_name, sensor.instrument_id] + sensor.position_offsets + sensor.orientation_offsets)
+
+    def write_sensor_info_files(self):
+        
+        info_directory = os.path.join(self.session_path, 'sensor_info/')
+        
+        os.makedirs(info_directory)
+        
+        for sensor in self.sensors:
+            
+            file_path = os.path.join(info_directory, '{}_{}.yaml'.format(sensor.sensor_name, sensor.instrument_id))
+            
+            with open(file_path, 'w') as outfile:
+                outdata = []
+                for key, value in sorted(sensor.public_info.items()):
+                    if key in ['sensor_type', 'sensor_name', 'settings', 'parameters', 'text_messages',
+                                    'position_offsets', 'orientation_offsets', 'instrument_id', 'metadata']:
+                        outdata.append([key, value])
+                outfile.write(yaml.dump(outdata, default_flow_style=False))
+
+    def write_version_file(self):
+        
+        file_path = os.path.join(self.session_path, 'version.txt')
+        with open(file_path, 'w') as outfile:
+            outfile.write(self.version)
 
     def find_sensor(self, sensor_id):
         
