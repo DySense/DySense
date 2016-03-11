@@ -58,6 +58,7 @@ class ControllerManager(object):
                                   'new_sensor_data': self.handle_new_sensor_data,
                                   'new_time': self.handle_new_time,
                                   'error_message': self.handle_error_message,
+                                  'new_controller_text': self.handle_new_controller_text,
                                   }
 
     def run(self):
@@ -193,6 +194,10 @@ class ControllerManager(object):
     def handle_error_message(self, controller, message, level):
         ''''''
         self._send_message_to_presenter('error_message', (message, level))
+        
+    def handle_new_controller_text(self, controller, text):
+        
+        self._send_message_to_presenter('new_controller_text', (controller.id, text))
         
     def _send_message_to_presenter(self, message_type, message_body):
 

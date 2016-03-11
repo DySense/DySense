@@ -52,6 +52,7 @@ class MainPresenter(QObject):
                                   'entire_controller_update': self.handle_entire_controller_update,
                                   'controller_removed': self.handle_controller_removed,
                                   'error_message': self.handle_error_message,
+                                  'new_controller_text': self.handle_new_controller_text,
                                   }
         
         self.manager_socket = self.context.socket(zmq.DEALER)
@@ -117,6 +118,9 @@ class MainPresenter(QObject):
         if not os.path.exists(file_path):
             self.handle_error_message("Config file '{}' does not exist.".format(file_path), logging.ERROR)
             return
+        
+        # TODO remove other controllers (and their sensors?) once that's all supported
+        self.remove_all_sensors(only_on_active_controller=True)
         
         with open(file_path, 'r') as stream:
             data = yaml.load(stream)
@@ -324,6 +328,9 @@ class MainPresenter(QObject):
         logging.getLogger("ui").log(level, message)
         
         self.view.show_error_message(message, level)
+    
+    def handle_new_controller_text(self, controller, text):
+        self.view.display_message(text)
     
     def send_sensor_command(self, command):
     

@@ -57,11 +57,11 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             
         #dictionaries for relating the controller info names to their corresponding line edits/labels        
         self.name_to_object =  {
-                                'session_name': self.session_line_edit,
+                                #'session_name': self.session_line_edit,
                                 }
         
         self.object_to_name =  {
-                                self.session_line_edit: 'session_name',                                                                       
+                                #self.session_line_edit: 'session_name',                                                                       
                                }   
             
         self.settings_name_to_object = {
@@ -303,13 +303,15 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def update_all_controller_info(self, controller_id, controller_info):
         self.controller_info = controller_info # TESTING
         self.presenter.controllers[controller_id] = controller_info
-        self.display_message("Controller: ({}) received with info\n{}".format(controller_id, controller_info))
-        
+
         for info_name, value in controller_info.iteritems():
             
             if info_name in self.name_to_object:
                 obj = self.name_to_object[info_name]
                 obj.setText(value)
+                
+            if info_name == 'session_active':
+                self.session_line_edit.setText(str('Active' if value else 'Not Started'))
             
             if info_name == 'settings':
                 settings = value 
@@ -341,12 +343,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                     new_value = str(state).lower()
                
         self.presenter.change_controller_setting(setting_name, new_value)        
-                    
-        
-        
                 
     def remove_controller(self, controller_id):
-        self.display_message("Controller: ({}) removed".format(controller_id))
+        pass # TODO
         
     def update_all_sensor_info(self, controller_id, sensor_id, sensor_info):        
         # TODO handle messages that should be appended vs clearing message center and set.
@@ -358,17 +357,12 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         #loop through key and value pairs and call update_sensor_info for each one
         for key in sensor_info:        
             self.update_sensor_info(controller_id, sensor_id, key, sensor_info[key])   
-              
-        self.display_message("Sensor: ({}:{}) received with info\n{}".format(controller_id, sensor_info['sensor_name'],
-                                                                            str(sensor_info).replace(',', ',\n')))
          
     def update_sensor_info(self, controller_id, sensor_id, info_name, value):
         
         sensor_info = self.presenter.sensors[(controller_id,sensor_id)]
         sensor_view = sensor_info['widget']                
         sensor_view.update_sensor_view(info_name, value)
-        
-        self.display_message("Sensor ({}:{}) had \'{}\' changed to {}".format(controller_id, sensor_id, info_name, value))
         
     def remove_sensor(self, controller_id, sensor_id):
         #TODO create pop up window asking if they are sure they want to remove the sensor
@@ -377,22 +371,20 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.stacked_widget.setCurrentIndex(0)
         
         # remove sensor item from list widget
-        removed_row = self.sensor_list_widget.currentRow()
-        self.sensor_list_widget.takeItem(removed_row)
+        row_to_delete = self.sensor_list[(controller_id, sensor_id)]
+        self.sensor_list_widget.takeItem(row_to_delete)
         
         # shift affected rows down by one to stay in sync with list widget
         for key in self.sensor_list:
-            if self.sensor_list[key] > removed_row:
+            if self.sensor_list[key] > row_to_delete:
                 self.sensor_list[key] -= 1
                 
         # remove sensor from appropriate dictionaries
         del self.sensor_view_stack[sensor_id]
         del self.sensor_list[(controller_id, sensor_id)]
-
-        self.display_message("Sensor ({}:{}) removed".format(controller_id, sensor_id))
     
     def show_new_sensor_data(self, controller_id, sensor_id, data):
-        self.display_message("Sensor ({}:{}) new data {}".format(controller_id, sensor_id, data))
+        pass # TODO
     
     def append_sensor_message(self, controller_id, sensor_id, text):
         sensor_info = self.presenter.sensors[(controller_id,sensor_id)]

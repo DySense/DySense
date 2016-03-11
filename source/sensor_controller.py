@@ -43,6 +43,8 @@ class SensorController(object):
         self._session_name = 'N/A'
         self.session_path = "None"
         
+        self.text_messages = []
+        
         self._time_source = TimeDataSource(callback=self.send_entire_controller_info)
         self._position_sources = []
         self._orientation_sources = []
@@ -125,7 +127,8 @@ class SensorController(object):
                 'time_source': self.time_source.public_info,
                 'position_sources': [source.public_info for source in self.position_sources],
                 'orientation_sources': [source.public_info for source in self.orientation_sources],
-                'settings': self.settings}
+                'settings': self.settings,
+                'text_messages': self.text_messages}
         
     @property
     def session_state(self):
@@ -223,15 +226,18 @@ class SensorController(object):
             handler.close()
             session_log.removeHandler(handler)
         
-    def log_message(self, msg, level, manager=None):
+    def log_message(self, msg, level=logging.INFO, manager=None):
         
         getLogger('dysense').log(level, msg)
         
         if self.session_active:
             getLogger('session').log(level, msg)
         
-        if manager is not None:
+        if manager is not None and level >= logging.ERROR:
             self._send_manager_message(manager.id, 'error_message', (msg, level))
+            
+        self.text_messages.append(msg)
+        self._send_manager_message('all', 'new_controller_text', msg)
         
     def run(self):
         # TODO - report unhandled exceptions http://stackoverflow.com/questions/22581496/error-in-pyqt-qthread-not-printed
@@ -286,6 +292,8 @@ class SensorController(object):
             self.update_session_state()
             
     def close_down(self):
+        
+        self.log_message("Controller closing down.")
         
         for sensor in self.sensors:
             self.close_down_sensor(sensor)
@@ -426,6 +434,8 @@ class SensorController(object):
         
         self.send_entire_sensor_info('all', new_sensor)
         
+        self.log_message("Added new {} sensor.".format(sensor_type))
+        
         # TODO - remove this once user can select data sources.  Right now if it can be a datasource then make it one.
         new_source_info =  {'controller_id': self.controller_id, 
                             'sensor_id': new_sensor.sensor_id,
@@ -461,6 +471,10 @@ class SensorController(object):
             self.close_down_sensor(sensor)
             self.sensors.remove(sensor)
             self._send_manager_message('all', 'sensor_removed', sensor.sensor_id)
+            
+            self.log_message("Removed {}".format(sensor.sensor_name))
+            
+            # TODO If this sensor was a data source then we can't reference it anymore. 
 
     def handle_request_sensor(self, manager, sensor_id):
         
@@ -657,6 +671,7 @@ class SensorController(object):
             # Sensor is setup so can start it.
             self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
             
+        self.log_message("Initial startup successful.")
         self.session_state = 'waiting_for_time'
         
         return True # initial startup successful
@@ -719,6 +734,8 @@ class SensorController(object):
         self.session_path = os.path.join(self.settings['base_out_directory'], self.session_name)
         
         self.session_active = True
+        
+        self.log_message("Session started.")
 
         data_logs_path = os.path.join(self.session_path, 'data_logs/')
         
@@ -744,15 +761,18 @@ class SensorController(object):
         self.orientation_source_log = CSVLog(orientation_source_path, 1)
             
         # Start all other sensors now that session is started.
+        self.log_message("Starting all sensors.")
         for sensor in self.sensors:
             self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
 
     def stop_session(self, manager):
         
         if not self.session_active:
+            self.log_message("Session already closed.")
             return # already closed
         
-        # TODO pause all sensors
+        for sensor in self.sensors:
+            self._send_sensor_message(sensor.sensor_id, 'command', 'pause')
         
         # Invalidate time-stamp so we don't use it again.
         self.first_received_utc_time = None
@@ -764,6 +784,8 @@ class SensorController(object):
         
         self.close_session_logging()
         self.session_active = False
+        
+        self.log_message("Session closed.")
 
     def find_sensor(self, sensor_id):
         
