@@ -28,7 +28,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.last_connection_state = 'unknown'
         
         #dictionaries for relating the sensor info names to their corresponding line edits/labels        
-        self.name_to_object =  {
+        self.info_name_to_object =  {
                                'sensor_type': self.sensor_type_line_edit,
                                'sensor_name': self.sensor_name_line_edit,                                      
 
@@ -41,20 +41,11 @@ class SensorViewWidget(QWidget,Ui_Form):
                                                        self.yaw_orientation_line_edit],          
                                }
         
-        self.object_to_name =  {
-                               self.sensor_id_line_edit: 'instrument_id', 
-                               self.sensor_type_line_edit: 'sensor_type',
-                               self.sensor_name_line_edit: 'sensor_name',                                      
-                               self.forward_position_line_edit: 'position_offsets',
-                               self.left_position_line_edit: 'position_offsets',
-                               self.up_position_line_edit: 'position_offsets',
-                               self.roll_orientation_line_edit: 'orientation_offsets',
-                               self.pitch_orientation_line_edit: 'orientation_offsets',
-                               self.yaw_orientation_line_edit: 'orientation_offsets',
-                               }
-             
+        # Populated when generating settings from metadata.
+        self.setting_name_to_object = {}
+        self.object_to_setting_name = {}
         
-        self.settings_name_to_object = {}
+        
                                         #'output_rate': self.capture_rate_line_edit                                                                           
                                         
         
@@ -123,11 +114,6 @@ class SensorViewWidget(QWidget,Ui_Form):
        
         self.settings_group_box_layout = QtGui.QGridLayout()
         self.settings_group_box.setLayout(self.settings_group_box_layout)
-           
-        # setting dictionary
-        # key = line edit references
-        # value = setting name
-        self.setting_line_edit_references = {}
         
         # create dicts of the settings name labels, line edits, and units labels
         for n, setting_metadata in enumerate(self.sensor_metadata['settings']):    
@@ -142,7 +128,8 @@ class SensorViewWidget(QWidget,Ui_Form):
             
             # Store the line edit references and corresponding name
             obj_ref = self.line_edit
-            self.setting_line_edit_references[obj_ref] = name
+            self.object_to_setting_name[obj_ref] = name
+            self.setting_name_to_object[name] = obj_ref
             
             self.settings_group_box_layout.addWidget(self.name_label, n, 0)
             self.settings_group_box_layout.addWidget(self.line_edit, n, 1)
@@ -193,7 +180,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         new_value = str(self.sender().text())
         
         obj_ref = self.sender()  
-        setting_name = self.setting_line_edit_references[obj_ref]        
+        setting_name = self.object_to_setting_name[obj_ref]        
         
         self.presenter.change_sensor_setting(setting_name, new_value)
             
@@ -201,23 +188,19 @@ class SensorViewWidget(QWidget,Ui_Form):
     def update_sensor_view(self, info_name, value):       
           
         # Update all screen objects that correspond to the specified sensor info name. 
-        matching_obj = self.name_to_object.get(info_name, [])
+        matching_obj = self.info_name_to_object.get(info_name, [])
         if not isinstance(matching_obj, list):
             matching_obj.setText(str(value))
         else:
             for i, obj in enumerate(matching_obj):
                 obj.setText(str(value[i]))
         
-        #get values from settings dict    
         if info_name == 'settings':
             settings = value
-            #TODO correct how settings are updated - should be able to get rid of this now
-            for key in settings:
-                if isinstance(key,dict):
-                    continue
-                if self.settings_name_to_object.has_key(key):
-                    obj = self.settings_name_to_object[key]
-                    obj.setText(str(settings[key]))
+            for setting_name, setting_value in settings.iteritems():
+                if setting_name in self.setting_name_to_object:
+                    obj = self.setting_name_to_object[setting_name]
+                    obj.setText(str(setting_value))
                    
         if info_name == 'overall_health':
             self.overall_sensor_health_update(value)                        
