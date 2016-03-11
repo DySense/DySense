@@ -18,8 +18,16 @@
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QGroupBox" name="sensor_status_group_box">
+       <property name="font">
+        <font>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
        <property name="title">
-        <string/>
+        <string>Current Status</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
        <layout class="QGridLayout" name="gridLayout_3">
         <item row="0" column="0">
@@ -100,8 +108,16 @@
      </item>
      <item>
       <widget class="QGroupBox" name="sensor_info_group_box">
+       <property name="font">
+        <font>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
        <property name="title">
-        <string/>
+        <string>Common Settings</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="1" column="1">
@@ -184,8 +200,16 @@
      </item>
      <item>
       <widget class="QGroupBox" name="settings_group_box">
+       <property name="font">
+        <font>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
        <property name="title">
         <string>Settings</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -367,6 +391,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QLabel" name="sensor_connection_state_label">
+       <property name="text">
+        <string>connection_state</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -441,6 +472,19 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="close_sensor_button">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Close</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="remove_sensor_button">
         <property name="minimumSize">
          <size>
@@ -487,8 +531,6 @@
   <zorder>special_commands_group_box</zorder>
   <zorder>verticalSpacer_2</zorder>
   <zorder>commands_group_box</zorder>
-  <zorder>horizontalLayoutWidget</zorder>
-  <zorder>horizontalLayoutWidget_2</zorder>
   <zorder>verticalSpacer</zorder>
  </widget>
  <resources/>

@@ -6,7 +6,7 @@ from PyQt4.QtGui import *
 from sensor_view_widget_designer import Ui_Form
 from PyQt4 import QtGui
 import yaml
-
+from utility import pretty
 
 
 
@@ -31,8 +31,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.name_to_object =  {
                                'sensor_type': self.sensor_type_line_edit,
                                'sensor_name': self.sensor_name_line_edit,                                      
-                               'sensor_state': self.sensor_state_value_label,
-                               
+
                                'instrument_id': self.sensor_id_line_edit,
                                'position_offsets': [self.forward_position_line_edit,
                                                     self.left_position_line_edit,
@@ -46,7 +45,6 @@ class SensorViewWidget(QWidget,Ui_Form):
                                self.sensor_id_line_edit: 'instrument_id', 
                                self.sensor_type_line_edit: 'sensor_type',
                                self.sensor_name_line_edit: 'sensor_name',                                      
-                               self.sensor_state_value_label: 'sensor_state',
                                self.forward_position_line_edit: 'position_offsets',
                                self.left_position_line_edit: 'position_offsets',
                                self.up_position_line_edit: 'position_offsets',
@@ -112,7 +110,9 @@ class SensorViewWidget(QWidget,Ui_Form):
                       
         #Connect main command buttons
         self.setup_sensor_button.clicked.connect(self.setup_sensor_button_clicked)
+        self.start_sensor_button.clicked.connect(self.start_sensor_button_clicked)
         self.pause_sensor_button.clicked.connect(self.pause_sensor_button_clicked)
+        self.close_sensor_button.clicked.connect(self.close_sensor_button_clicked)
         self.remove_sensor_button.clicked.connect(self.remove_sensor_button_clicked)
         
         #Connect clear button
@@ -148,9 +148,9 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.settings_group_box_layout.addWidget(self.line_edit, n, 1)
             self.settings_group_box_layout.addWidget(self.units_label, n, 2)
             
-            self.name_label.setText(name.replace('_', ' ').title())   
+            self.name_label.setText(pretty(name))   
             self.line_edit.setText(str(settings[name]))
-            self.units_label.setText(units.replace('_', ' ').title())
+            self.units_label.setText(pretty(units))
             
             # Connect the line edit signal
             self.line_edit.editingFinished.connect(self.setting_changed_by_user)
@@ -173,7 +173,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.special_commands_group_box.setLayout(special_commands_layout)
         for command in special_commands:
             
-            b = QtGui.QPushButton(command.replace('_', ' ').title())
+            b = QtGui.QPushButton(pretty(command))
             special_commands_layout.addWidget(b)
             
             # store the button object reference 
@@ -227,12 +227,18 @@ class SensorViewWidget(QWidget,Ui_Form):
                 self.paused_label.setText('Paused')
             elif value == False:
                 self.paused_label.setText('Running')
+                
+        if info_name == 'sensor_state':
+            self.sensor_state_value_label.setText(pretty(value))
             
         if info_name == 'connection_state':
             current_connection_state = value
             if current_connection_state == 'setup' and self.last_connection_state != 'setup':
                 self.sensor_message_center_text_edit.clear()
             self.last_connection_state = current_connection_state
+            
+        if info_name == 'connection_state':
+            self.sensor_connection_state_label.setText(value)
     
     def sensor_name_changed(self):    
         
@@ -293,10 +299,13 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.presenter.setup_sensor()      
         
     def start_sensor_button_clicked(self):
-        self.presenter.resume_sensor()  
+        self.presenter.resume_sensor()
         
     def pause_sensor_button_clicked(self):
-        self.presenter.pause_sensor()        
+        self.presenter.pause_sensor() 
+        
+    def close_sensor_button_clicked(self):
+        self.presenter.close_sensor()         
             
     def remove_sensor_button_clicked(self):    
         self.presenter.remove_sensor(self.sensor_id)    
