@@ -94,14 +94,15 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.sensor_list = {}
         
         # Connect controller setting line edits
-        self.output_directory_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.output_directory_line_edit.textChanged.connect(self.controller_setting_changed_by_user)
         self.operator_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.platform_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.platform_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.field_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.surveyed_check_box.clicked.connect(self.controller_setting_changed_by_user)
         
-        
+        # Connect output directory file dialog button
+        self.output_directory_tool_button.clicked.connect(self.output_directory_tool_button_clicked)
         
         #Set fields not to be edited by user as read only
         self.main_message_center_text_edit.setReadOnly(True)
@@ -157,7 +158,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.sensor_type_combo_box.clear()
         self.sensor_type_combo_box.addItems(possible_sensor_types)
       
-    #TODO: Add the main actions functionality after getting Kyle's updates   
+      
     def setup_sensors_button_clicked(self):
         self.presenter.setup_all_sensors(only_on_active_controller=True)
         
@@ -174,6 +175,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.presenter.send_controller_command('stop_session', send_to_all_controllers=False)
     
     def close_sensors_button_clicked(self):
+        
         self.presenter.close_all_sensors(only_on_active_controller=True)
     
     def update_list_widget_color(self, controller_id, sensor_id, health):
@@ -273,6 +275,12 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def clear_main_message_center_button_clicked(self):
         self.main_message_center_text_edit.clear()
     
+    
+    def output_directory_tool_button_clicked(self):
+        output_directory = QFileDialog.getExistingDirectory(self, "Select Directory")
+        self.output_directory_line_edit.setText(output_directory)
+        
+        
     def select_config_tool_button_clicked(self):
         
         config_file_path = QtGui.QFileDialog.getOpenFileName(self, 'Load Config', self.last_loaded_config_file_path,
@@ -352,7 +360,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                     new_value = str(state).lower()
                
         self.presenter.change_controller_setting(setting_name, new_value)        
-                
+   
     def remove_controller(self, controller_id):
         pass # TODO
         

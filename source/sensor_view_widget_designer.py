@@ -290,6 +290,21 @@ class Ui_Form(object):
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
+        Form.setTabOrder(self.sensor_name_line_edit, self.sensor_type_line_edit)
+        Form.setTabOrder(self.sensor_type_line_edit, self.sensor_id_line_edit)
+        Form.setTabOrder(self.sensor_id_line_edit, self.forward_position_line_edit)
+        Form.setTabOrder(self.forward_position_line_edit, self.left_position_line_edit)
+        Form.setTabOrder(self.left_position_line_edit, self.up_position_line_edit)
+        Form.setTabOrder(self.up_position_line_edit, self.roll_orientation_line_edit)
+        Form.setTabOrder(self.roll_orientation_line_edit, self.pitch_orientation_line_edit)
+        Form.setTabOrder(self.pitch_orientation_line_edit, self.yaw_orientation_line_edit)
+        Form.setTabOrder(self.yaw_orientation_line_edit, self.sensor_message_center_text_edit)
+        Form.setTabOrder(self.sensor_message_center_text_edit, self.clear_sensor_message_center_button)
+        Form.setTabOrder(self.clear_sensor_message_center_button, self.setup_sensor_button)
+        Form.setTabOrder(self.setup_sensor_button, self.start_sensor_button)
+        Form.setTabOrder(self.start_sensor_button, self.pause_sensor_button)
+        Form.setTabOrder(self.pause_sensor_button, self.close_sensor_button)
+        Form.setTabOrder(self.close_sensor_button, self.remove_sensor_button)
 
     def retranslateUi(self, Form):
         Form.setWindowTitle(_translate("Form", "Form", None))

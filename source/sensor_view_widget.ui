@@ -533,6 +533,24 @@
   <zorder>commands_group_box</zorder>
   <zorder>verticalSpacer</zorder>
  </widget>
+ <tabstops>
+  <tabstop>sensor_name_line_edit</tabstop>
+  <tabstop>sensor_type_line_edit</tabstop>
+  <tabstop>sensor_id_line_edit</tabstop>
+  <tabstop>forward_position_line_edit</tabstop>
+  <tabstop>left_position_line_edit</tabstop>
+  <tabstop>up_position_line_edit</tabstop>
+  <tabstop>roll_orientation_line_edit</tabstop>
+  <tabstop>pitch_orientation_line_edit</tabstop>
+  <tabstop>yaw_orientation_line_edit</tabstop>
+  <tabstop>sensor_message_center_text_edit</tabstop>
+  <tabstop>clear_sensor_message_center_button</tabstop>
+  <tabstop>setup_sensor_button</tabstop>
+  <tabstop>start_sensor_button</tabstop>
+  <tabstop>pause_sensor_button</tabstop>
+  <tabstop>close_sensor_button</tabstop>
+  <tabstop>remove_sensor_button</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
