@@ -95,10 +95,10 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         # Connect controller setting line edits
         self.output_directory_line_edit.textChanged.connect(self.controller_setting_changed_by_user)
-        self.operator_name_line_edit.textEdited.connect(self.controller_setting_changed_by_user)
-        self.platform_name_line_edit.textEdited.connect(self.controller_setting_changed_by_user)
-        self.platform_id_line_edit.textEdited.connect(self.controller_setting_changed_by_user)
-        self.field_id_line_edit.textEdited.connect(self.controller_setting_changed_by_user)
+        self.operator_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.platform_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.platform_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.field_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.surveyed_check_box.clicked.connect(self.controller_setting_changed_by_user)
         
         # Connect output directory file dialog button
@@ -347,6 +347,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             
     def controller_setting_changed_by_user(self):
         obj_ref = self.sender()  
+        
+        if isinstance(obj_ref, QLineEdit) and not obj_ref.isModified():
+            return
         
         #the new value will be the text in the line edits, except when it is the surveyed checkbox. 
         new_value = str(self.sender().text())        

@@ -88,16 +88,16 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.sensor_type_line_edit.setReadOnly(True)
            
         
-        #Connect User Changes        
-        #self.sensor_name_line_edit.textEdited.connect(self.sensor_name_changed)
-        self.sensor_name_line_edit.textEdited.connect(self.sensor_name_changed)
-        self.sensor_id_line_edit.textEdited.connect(self.instrument_id_changed)
-        self.forward_position_line_edit.textEdited.connect(self.position_offset_changed)
-        self.left_position_line_edit.textEdited.connect(self.position_offset_changed)
-        self.up_position_line_edit.textEdited.connect(self.position_offset_changed)
-        self.roll_orientation_line_edit.textEdited.connect(self.orientation_offset_changed)
-        self.pitch_orientation_line_edit.textEdited.connect(self.orientation_offset_changed)
-        self.yaw_orientation_line_edit.textEdited.connect(self.orientation_offset_changed)
+        # Connect User Changes        
+        # self.sensor_name_line_edit.textEdited.connect(self.sensor_name_changed)
+        self.sensor_name_line_edit.editingFinished.connect(self.sensor_name_changed)
+        self.sensor_id_line_edit.editingFinished.connect(self.instrument_id_changed)
+        self.forward_position_line_edit.editingFinished.connect(self.position_offset_changed)
+        self.left_position_line_edit.editingFinished.connect(self.position_offset_changed)
+        self.up_position_line_edit.editingFinished.connect(self.position_offset_changed)
+        self.roll_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
+        self.pitch_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
+        self.yaw_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
                       
         #Connect main command buttons
         self.setup_sensor_button.clicked.connect(self.setup_sensor_button_clicked)
@@ -140,7 +140,7 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.units_label.setText(pretty(units))
             
             # Connect the line edit signal
-            self.line_edit.textEdited.connect(self.setting_changed_by_user)
+            self.line_edit.editingFinished.connect(self.setting_changed_by_user)
 
         
     def setup_special_commands(self, special_commands):
@@ -176,6 +176,9 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.presenter.send_sensor_command(command)       
         
     def setting_changed_by_user(self):
+        
+        if not self.sender().isModified():
+            return
         
         new_value = str(self.sender().text())
         
@@ -223,30 +226,33 @@ class SensorViewWidget(QWidget,Ui_Form):
         if info_name == 'connection_state':
             self.sensor_connection_state_label.setText(value)
     
-    def sensor_name_changed(self):    
+    def sensor_name_changed(self):
         
-        new_name = str(self.sensor_name_line_edit.text())
-        self.presenter.change_sensor_info('sensor_name', new_name)
-
+        if self.sender().isModified():
+            new_name = str(self.sensor_name_line_edit.text())
+            self.presenter.change_sensor_info('sensor_name', new_name)
         
     def instrument_id_changed(self):    
         
-        new_value = str(self.sensor_id_line_edit.text())
-        self.presenter.change_sensor_info('instrument_id', new_value)
-         
+        if self.sender().isModified():
+            new_value = str(self.sensor_id_line_edit.text())
+            self.presenter.change_sensor_info('instrument_id', new_value)
+             
     def position_offset_changed(self):    
         
-        forward = str(self.forward_position_line_edit.text())
-        left = str(self.left_position_line_edit.text())
-        up = str(self.up_position_line_edit.text())
-        self.presenter.change_sensor_info('position_offsets', [forward, left, up])     
+        if self.sender().isModified():
+            forward = str(self.forward_position_line_edit.text())
+            left = str(self.left_position_line_edit.text())
+            up = str(self.up_position_line_edit.text())
+            self.presenter.change_sensor_info('position_offsets', [forward, left, up])     
      
     def orientation_offset_changed(self):    
         
-        roll = str(self.roll_orientation_line_edit.text())
-        pitch = str(self.pitch_orientation_line_edit.text())
-        yaw = str(self.yaw_orientation_line_edit.text())
-        self.presenter.change_sensor_info('orientation_offsets', [roll, pitch, yaw])        
+        if self.sender().isModified():
+            roll = str(self.roll_orientation_line_edit.text())
+            pitch = str(self.pitch_orientation_line_edit.text())
+            yaw = str(self.yaw_orientation_line_edit.text())
+            self.presenter.change_sensor_info('orientation_offsets', [roll, pitch, yaw])        
 
     
     # clears and sets text messages for entire sensor update, appends messages for single message update    

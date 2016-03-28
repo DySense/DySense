@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import time
+from source.utility import validate_setting, validate_type
 
 class SensorConnection(object):
     
@@ -108,10 +109,10 @@ class SensorConnection(object):
         self.observer.notify_sensor_changed(self.sensor_id, 'sensor_name', self.sensor_name)
         
     def update_setting(self, setting_name, new_value):
+
+        setting_metadata = [s for s in self.metadata['settings'] if s['name'] == setting_name][0]
         
-        # TODO validate new value either here or in sensor controller.
-        if setting_name not in self.settings:
-            raise KeyError
+        new_value = validate_setting(new_value, setting_metadata)
         
         self.settings[setting_name] = new_value
         
@@ -150,10 +151,20 @@ class SensorConnection(object):
         self.observer.notify_sensor_changed(self.sensor_id, 'overall_health', self.overall_health)
         
     def update_position_offsets(self, new_value):
-        self.position_offsets = new_value
+        
+        validated_offsets = []
+        for offset in new_value:
+            validated_offsets.append(validate_type(offset, 'float'))
+        
+        self.position_offsets = validated_offsets
         self.observer.notify_sensor_changed(self.sensor_id, 'position_offsets', self.position_offsets)
         
     def update_orientation_offsets(self, new_value):
+        
+        validated_offsets = []
+        for offset in new_value:
+            validated_offsets.append(validate_type(offset, 'float'))
+        
         self.orientation_offsets = new_value
         self.observer.notify_sensor_changed(self.sensor_id, 'orientation_offsets', self.orientation_offsets)
         

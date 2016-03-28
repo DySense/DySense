@@ -439,11 +439,16 @@ class SensorController(object):
         new_sensor = SensorConnection(metadata['version'], str(self.next_sensor_id), sensor_type, sensor_name,
                                       SENSOR_HEARTBEAT_PERIOD, settings, position_offsets, orientation_offsets,
                                       instrument_id, metadata, self, self.sensor_driver_factory)
+        
         self.next_sensor_id += 1
     
         self.sensors.append(new_sensor)
         
         self.send_entire_sensor_info('all', new_sensor)
+        
+        # Validate all settings once sensor has been sent to all managers.
+        for setting_name, setting_value in new_sensor.settings.items():
+            new_sensor.update_setting(setting_name, setting_value)
         
         self.log_message("Added new {} sensor.".format(sensor_type))
         
@@ -522,6 +527,9 @@ class SensorController(object):
         try:
             new_value = str(new_value).strip()
             sensor.update_setting(setting_name, new_value)
+        except ValueError as e:
+            self.log_message(str(e), logging.ERROR, manager)
+            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
         except KeyError:
             self.log_message("Can't change sensor setting {} because it does not exist.".format(setting_name), logging.ERROR, manager)
             self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
@@ -551,9 +559,17 @@ class SensorController(object):
         elif info_name == 'instrument_id':
             sensor.update_instrument_id(value)
         elif info_name == 'position_offsets':
-            sensor.update_position_offsets(value)
+            try:
+                sensor.update_position_offsets(value)
+            except ValueError:
+                self.log_message('Invalid position offset.', logging.ERROR, manager)
+                self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
         elif info_name == 'orientation_offsets':
-            sensor.update_orientation_offsets(value)
+            try:
+                sensor.update_orientation_offsets(value)
+            except ValueError:
+                self.log_message('Invalid orientation offset.', logging.ERROR, manager)
+                self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
         else:
             self.log_message("The info {} cannot be changed externally.".format(info_name), logging.ERROR, manager)
             self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
