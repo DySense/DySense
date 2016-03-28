@@ -90,14 +90,14 @@ class SensorViewWidget(QWidget,Ui_Form):
         
         #Connect User Changes        
         #self.sensor_name_line_edit.textEdited.connect(self.sensor_name_changed)
-        self.sensor_name_line_edit.editingFinished.connect(self.sensor_name_changed)
-        self.sensor_id_line_edit.editingFinished.connect(self.instrument_id_changed)
-        self.forward_position_line_edit.editingFinished.connect(self.position_offset_changed)
-        self.left_position_line_edit.editingFinished.connect(self.position_offset_changed)
-        self.up_position_line_edit.editingFinished.connect(self.position_offset_changed)
-        self.roll_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
-        self.pitch_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
-        self.yaw_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
+        self.sensor_name_line_edit.textEdited.connect(self.sensor_name_changed)
+        self.sensor_id_line_edit.textEdited.connect(self.instrument_id_changed)
+        self.forward_position_line_edit.textEdited.connect(self.position_offset_changed)
+        self.left_position_line_edit.textEdited.connect(self.position_offset_changed)
+        self.up_position_line_edit.textEdited.connect(self.position_offset_changed)
+        self.roll_orientation_line_edit.textEdited.connect(self.orientation_offset_changed)
+        self.pitch_orientation_line_edit.textEdited.connect(self.orientation_offset_changed)
+        self.yaw_orientation_line_edit.textEdited.connect(self.orientation_offset_changed)
                       
         #Connect main command buttons
         self.setup_sensor_button.clicked.connect(self.setup_sensor_button_clicked)
@@ -140,8 +140,7 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.units_label.setText(pretty(units))
             
             # Connect the line edit signal
-            self.line_edit.editingFinished.connect(self.setting_changed_by_user)
-
+            self.line_edit.textEdited.connect(self.setting_changed_by_user)
 
         
     def setup_special_commands(self, special_commands):
@@ -177,6 +176,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.presenter.send_sensor_command(command)       
         
     def setting_changed_by_user(self):
+        
         new_value = str(self.sender().text())
         
         obj_ref = self.sender()  

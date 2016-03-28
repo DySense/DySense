@@ -504,6 +504,19 @@ class SensorController(object):
 
         sensor = self.find_sensor(sensor_id)
         
+        # Make sure value is allowed to be changed.
+        value_can_change = True
+        if self.session_active:
+            self.log_message('Cannot change setting while session is active.', logging.ERROR, manager)
+            value_can_change = False
+        elif not sensor.is_closed():
+            self.log_message('Cannot change setting until sensor is closed.', logging.ERROR, manager)
+            value_can_change = False
+        
+        if not value_can_change:
+            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+            return 
+        
         setting_name, new_value = change
 
         try:
@@ -511,19 +524,29 @@ class SensorController(object):
             sensor.update_setting(setting_name, new_value)
         except KeyError:
             self.log_message("Can't change sensor setting {} because it does not exist.".format(setting_name), logging.ERROR, manager)
+            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
         
     def handle_change_sensor_info(self, manager, sensor_id, change):
 
-        if self.session_active:
-            self.log_message('Cannot change sensor info while session is active.', logging.ERROR, manager)
-            return 
-
         sensor = self.find_sensor(sensor_id)
+        
+        # Make sure value is allowed to be changed.
+        value_can_change = True
+        if self.session_active:
+            self.log_message('Cannot change info while session is active.', logging.ERROR, manager)
+            value_can_change = False
+        elif not sensor.is_closed():
+            self.log_message('Cannot change info until sensor is closed.', logging.ERROR, manager)
+            value_can_change = False
+        
+        if not value_can_change:
+            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+            return 
         
         info_name, value = change
         
         if info_name == 'sensor_name':
-            new_name = self._make_sensor_name_unique(value.strip())
+            new_name = self._make_sensor_name_unique(value.strip(), sensor_id)
             sensor.update_sensor_name(new_name)
         elif info_name == 'instrument_id':
             sensor.update_instrument_id(value)
@@ -533,6 +556,7 @@ class SensorController(object):
             sensor.update_orientation_offsets(value)
         else:
             self.log_message("The info {} cannot be changed externally.".format(info_name), logging.ERROR, manager)
+            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
             
     def handle_send_sensor_command(self, manager, sensor_id, command):
 
@@ -549,6 +573,12 @@ class SensorController(object):
     
     def handle_change_data_source(self, manager, data_source_name, data_source_info):
 
+        # Make sure data source is allowed to be changed.
+        if self.session_active:
+            self.log_message('Cannot change source while session is active.', logging.ERROR, manager)
+            self.send_entire_controller_info() # so user can be notified didn't change.
+            return 
+
         data_source_info['receiving'] = False
 
         if data_source_name == 'time':
@@ -560,13 +590,18 @@ class SensorController(object):
 
     def handle_change_controller_setting(self, manager, settings_name, settings_value):
 
+        # Make sure value is allowed to be changed.
+        value_can_change = True
         if self.session_active:
             self.log_message('Cannot change controller settings while session is active.', logging.ERROR, manager)
-            return
-        
-        if not settings_name in self.settings:
+            value_can_change = False
+        elif not settings_name in self.settings:
             self.log_message('Cannot change setting {} because that settings does not exist.'.format(settings_name), logging.ERROR, manager)
-            return
+            value_can_change = False
+        
+        if not value_can_change:
+            self.send_entire_controller_info() # so user can be notified setting didn't change.
+            return 
 
         self.settings[settings_name] = settings_value
         self.send_entire_controller_info()
@@ -903,9 +938,9 @@ class SensorController(object):
             except KeyError:
                 pass  # haven't received message from sensor yet so don't know how to address it.
 
-    def _make_sensor_name_unique(self, sensor_name):
+    def _make_sensor_name_unique(self, sensor_name, sensor_id='none'):
         
-        existing_sensor_names = [s.sensor_name for s in self.sensors]
+        existing_sensor_names = [s.sensor_name for s in self.sensors if s.sensor_id != sensor_id]
         original_sensor_name = sensor_name
         
         while sensor_name in existing_sensor_names:

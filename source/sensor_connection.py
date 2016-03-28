@@ -202,6 +202,10 @@ class SensorConnection(object):
             self.sensor_driver = None
             
         self.update_connection_state('closed')
+        
+    def is_closed(self):
+        '''Return true if sensor driver isn't closed.'''
+        return self.sensor_driver is None
 
     def stopped_responding(self):
         '''Return true if it's been too long since we've received a new message from sensor.'''
