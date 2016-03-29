@@ -121,10 +121,15 @@ class SensorViewWidget(QWidget,Ui_Form):
             name = setting_metadata.get('name', 'No name in metadata')
             default_value = setting_metadata.get('default_value', 'no default')
             units = setting_metadata.get('units', '')
-            
+            description = setting_metadata.get('description', '')
             self.name_label = QtGui.QLabel()
             self.units_label = QtGui.QLabel()
             self.line_edit = QtGui.QLineEdit()
+            
+            # Set tooltips
+            self.name_label.setToolTip(description)
+            self.units_label.setToolTip(description)
+            self.line_edit.setToolTip(description)
             
             # Store the line edit references and corresponding name
             obj_ref = self.line_edit

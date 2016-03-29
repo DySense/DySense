@@ -61,16 +61,6 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="main_status_line_edit">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="0">
          <widget class="QLabel" name="session_label">
           <property name="font">
@@ -82,16 +72,6 @@
           </property>
           <property name="text">
            <string>Session:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="session_line_edit">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
           </property>
          </widget>
         </item>
@@ -110,12 +90,74 @@
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QLineEdit" name="version_line_edit">
+         <widget class="QLabel" name="version_value_label">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>120</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>17</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="session_value_label">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>120</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>17</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="main_status_value_label">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>120</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>17</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string/>
           </property>
          </widget>
         </item>
@@ -255,20 +297,6 @@
                  <set>Qt::AlignCenter</set>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_4">
-                 <item row="3" column="0">
-                  <widget class="QLabel" name="label_4">
-                   <property name="text">
-                    <string>Platform ID</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
-                  <widget class="QLabel" name="label_5">
-                   <property name="text">
-                    <string>Field ID</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="0" column="0">
                   <widget class="QLabel" name="label">
                    <property name="text">
@@ -276,31 +304,29 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
-                  <widget class="QLineEdit" name="platform_id_line_edit"/>
-                 </item>
                  <item row="2" column="0">
-                  <widget class="QLabel" name="label_3">
+                  <widget class="QLabel" name="platform_name_label">
                    <property name="text">
                     <string>Platform Name</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="label_2">
+                 <item row="3" column="1">
+                  <widget class="QLineEdit" name="platform_id_line_edit"/>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="platform_id_label">
                    <property name="text">
-                    <string>Operator Name</string>
+                    <string>Platform ID</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
-                  <widget class="QLineEdit" name="platform_name_line_edit"/>
-                 </item>
-                 <item row="4" column="1">
-                  <widget class="QLineEdit" name="field_id_line_edit"/>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QLineEdit" name="output_directory_line_edit"/>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="field_id_label">
+                   <property name="text">
+                    <string>Field ID</string>
+                   </property>
+                  </widget>
                  </item>
                  <item row="5" column="1">
                   <widget class="QCheckBox" name="surveyed_check_box">
@@ -309,15 +335,35 @@
                    </property>
                   </widget>
                  </item>
+                 <item row="4" column="1">
+                  <widget class="QLineEdit" name="field_id_line_edit"/>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLineEdit" name="platform_name_line_edit"/>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="operator_name_label">
+                   <property name="text">
+                    <string>Operator Name</string>
+                   </property>
+                  </widget>
+                 </item>
                  <item row="1" column="1">
                   <widget class="QLineEdit" name="operator_name_line_edit"/>
                  </item>
-                 <item row="0" column="2">
-                  <widget class="QToolButton" name="output_directory_tool_button">
-                   <property name="text">
-                    <string>...</string>
-                   </property>
-                  </widget>
+                 <item row="0" column="1">
+                  <layout class="QHBoxLayout" name="horizontalLayout_4">
+                   <item>
+                    <widget class="QLineEdit" name="output_directory_line_edit"/>
+                   </item>
+                   <item>
+                    <widget class="QToolButton" name="output_directory_tool_button">
+                     <property name="text">
+                      <string>...</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
                  </item>
                 </layout>
                </widget>
@@ -681,16 +727,11 @@
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <tabstops>
-  <tabstop>version_line_edit</tabstop>
-  <tabstop>session_line_edit</tabstop>
-  <tabstop>main_status_line_edit</tabstop>
-  <tabstop>output_directory_line_edit</tabstop>
   <tabstop>operator_name_line_edit</tabstop>
   <tabstop>platform_name_line_edit</tabstop>
   <tabstop>platform_id_line_edit</tabstop>
   <tabstop>field_id_line_edit</tabstop>
   <tabstop>surveyed_check_box</tabstop>
-  <tabstop>output_directory_tool_button</tabstop>
   <tabstop>setup_sensors_button</tabstop>
   <tabstop>start_session_button</tabstop>
   <tabstop>pause_sensors_button</tabstop>

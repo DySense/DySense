@@ -42,7 +42,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         # TODO the version from metadata should be the 'controller' version once
         # we support multiple of those and the GUI version should come from ui_settings.py
         version = self.sensor_metadata.get('version', 'No Version Number')
-        self.version_line_edit.setText(version)
+        self.version_value_label.setText(version)
         
         
                 #example to create yaml file
@@ -106,9 +106,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         #Set fields not to be edited by user as read only
         self.main_message_center_text_edit.setReadOnly(True)
-        self.main_status_line_edit.setReadOnly(True)
-        self.version_line_edit.setReadOnly(True)
-        self.session_line_edit.setReadOnly(True)
+        
                 
         #Connect main command buttons
         self.menu_button.clicked.connect(self.menu_button_clicked)
@@ -325,10 +323,10 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                 obj.setText(value)
                 
             if info_name == 'session_active':
-                self.session_line_edit.setText(str('Active' if value else 'Not Started'))
+                self.session_value_label.setText(str('Active' if value else 'Not Started'))
                 
             if info_name == 'session_state':
-                self.main_status_line_edit.setText(pretty(value))
+                self.main_status_value_label.setText(pretty(value))
             
             if info_name == 'settings':
                 settings = value 
