@@ -160,14 +160,14 @@ def parse_nmea_sentence(nmea_sentence):
     
     # Check for a valid nmea sentence
     if not (is_gps_sentence or is_trimble_sentence):
-        return False
+        raise ValueError
     
     fields = [field.strip(',') for field in nmea_sentence.split(',')]
 
     # The regex probably checks for this, but I can't understand it well enough
     # so I'm putting this here to be safe.
     if len(fields) < 2:
-        return False
+        raise ValueError
     
     # Remove checksum from last field since it's already been checked.
     fields[-1] = (fields[-1].split('*')[0]).strip()
@@ -180,7 +180,7 @@ def parse_nmea_sentence(nmea_sentence):
         sentence_type = fields[1]
 
     if not sentence_type in parse_maps:
-        return False
+        raise ValueError
 
     parse_map = parse_maps[sentence_type]
 
@@ -188,4 +188,4 @@ def parse_nmea_sentence(nmea_sentence):
     for entry in parse_map:
         parsed_sentence[entry[0]] = entry[1](fields[entry[2]])
 
-    return {sentence_type: parsed_sentence}
+    return sentence_type.upper(), parsed_sentence

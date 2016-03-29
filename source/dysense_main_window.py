@@ -94,7 +94,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.sensor_list = {}
         
         # Connect controller setting line edits
-        self.output_directory_line_edit.textChanged.connect(self.controller_setting_changed_by_user)
+        self.output_directory_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.operator_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.platform_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.platform_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
@@ -277,7 +277,8 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def output_directory_tool_button_clicked(self):
         output_directory = QFileDialog.getExistingDirectory(self, "Select Directory")
         self.output_directory_line_edit.setText(output_directory)
-        
+        self.output_directory_line_edit.setModified(True)
+        self.output_directory_line_edit.editingFinished.emit()
         
     def select_config_tool_button_clicked(self):
         

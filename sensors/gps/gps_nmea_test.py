@@ -15,13 +15,13 @@ class GpsNmeaTest(GpsNmea):
             self.test_file_path = str(settings['test_file_path'])
             self.output_rate = str(settings['output_rate'])
             self.required_fix = str(settings['required_fix'])
-            self.required_precision = float(settings['required_precision'])
+            self.required_latlon_error = float(settings['required_error'])
             self.output_rate = float(settings['output_rate'])
             self.output_period = 1.0 / self.output_rate
         except (KeyError, ValueError, ZeroDivisionError) as e:
             raise ValueError("Bad sensor setting.  Exception {}".format(repr(e)))
         
-        GpsNmea.__init__(self, self.required_fix, self.required_precision, 
+        GpsNmea.__init__(self, self.required_fix, self.required_latlon_error, 
                          sensor_id=sensor_id, context=context, connect_endpoint=connect_endpoint)
         
         self.desired_read_period = self.output_period
@@ -56,6 +56,6 @@ class GpsNmeaTest(GpsNmea):
         else:
             utc_override = None
         
-        success = self.process_nmea_message(nmea_string, utc_override)
+        success = self.process_nmea_message(nmea_string, self.sys_time, utc_override)
         
         return 'normal' if success else 'error'

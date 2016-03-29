@@ -2,9 +2,9 @@
 
 import serial
 
-from sensor_base.sensor_base import SensorBase
+from gps_nmea import GpsNmea
 
-class GpsNmeaSerial(SensorBase):
+class GpsNmeaSerial(GpsNmea):
     '''Receive and process data from GPS using NMEA format.'''
     
     def __init__(self, sensor_id, settings, context, connect_endpoint):
@@ -23,14 +23,17 @@ class GpsNmeaSerial(SensorBase):
         Raises:
             ValueError - if not all settings are provided or not in correct format.
         '''
-        SensorBase.__init__(self, sensor_id, context, connect_endpoint)
-
         try:
             self.port = str(settings['port'])
             self.baud = int(settings['baud'])
             self.message_period = 1.0 / float(settings['message_rate'])
+            self.required_fix = str(settings['required_fix'])
+            self.required_latlon_error = float(settings['required_error'])
         except (KeyError, ValueError, ZeroDivisionError) as e:
             raise ValueError("Bad sensor setting.  Exception {}".format(e))
+        
+        GpsNmea.__init__(self, self.required_fix, self.required_latlon_error, 
+                         sensor_id=sensor_id, context=context, connect_endpoint=connect_endpoint)
         
         # Set base class fields.
         self.desired_read_period = self.message_period
@@ -63,12 +66,12 @@ class GpsNmeaSerial(SensorBase):
         '''Read in new data from sensor.'''
         
         # Block until we get data or the timeout occurs.
-        nmea_string = self.connection.readline().strip()           
+        nmea_string = self.connection.readline().strip()
         
         if len(nmea_string) == 0:
             return 'timed_out'
     
-        success = self.process_nmea_message(nmea_string)
+        success = self.process_nmea_message(nmea_string, self.sys_time)
         
         return 'normal' if success else 'error'
         

@@ -209,7 +209,7 @@ sensors:
           type: string
           description: GPS fix ID that must be maintained. 'none' to disable check.
           default_value: none
-        - name: required_precision
+        - name: required_error
           type: float
           description: The max standard deviation of latitude/longitude error for usable data.
           units: TODO
@@ -236,6 +236,10 @@ sensors:
           type: float
           units: meters
           tags: [position_z]
+        - name: num_sats
+          type: float
+        - name: hdop
+          type: float
   
     gps_nmea_test:
       version: "1.0"
@@ -253,14 +257,13 @@ sensors:
           max_value: 1000000
         - name: required_fix
           type: string
-          description: GPS fix ID that must be maintained. 'None' to disable check.
+          description: GPS fix ID that must be maintained. 'none' to disable monitoring.
           default_value: none
-        - name: required_precision
+        - name: required_error
           type: float
-          description: The max standard deviation of latitude/longitude error for usable data.
-          units: TODO
+          description: The maximum 1 sigma error in lat/long for usable data. Less than or equal to zero to disable monitoring.
+          units: meters
           default_value: 1
-          min_value: 0
           max_value: 100000
       tags: [time, position]
       data:
@@ -282,6 +285,10 @@ sensors:
           type: float
           units: meters
           tags: [position_z]
+        - name: num_sats
+          type: float
+        - name: hdop
+          type: float
           
     canon_edsdk:
       version: "1.0"
