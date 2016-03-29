@@ -71,7 +71,8 @@ class IRT_UE(SensorBase):
         read_timeout = min(self.sample_period, self.max_read_new_data_period)
         self.connection = serial.Serial(port=self.port,
                                         baudrate=self.baud,
-                                        timeout=read_timeout)
+                                        timeout=read_timeout,
+                                        writeTimeout=2)
         
     def request_new_data(self):
         

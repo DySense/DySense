@@ -63,7 +63,8 @@ class GreenSeeker(SensorBase):
         read_timeout = min(self.output_period, self.max_read_new_data_period)
         self.connection = serial.Serial(port=self.port,
                                         baudrate=self.baud,
-                                        timeout=read_timeout)
+                                        timeout=read_timeout,
+                                        writeTimeout=2)
         
     def read_new_data(self):
         '''Read in new data from sensor.'''
