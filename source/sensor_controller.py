@@ -398,8 +398,8 @@ class SensorController(object):
         # Get metadata that was stored with this controller.
         metadata = self.sensor_metadata[sensor_info['sensor_type']]
         
-        sensor_name = sensor_info['sensor_name']
-        sensor_type = sensor_info['sensor_type']
+        sensor_name = sensor_info['sensor_name'].strip()
+        sensor_type = sensor_info['sensor_type'].strip()
         position_offsets = sensor_info.get('position_offsets', [0, 0, 0])
         orientation_offsets = sensor_info.get('orientation_offsets', [0, 0, 0])
         instrument_id = sensor_info.get('instrument_id', 'none')
@@ -418,9 +418,14 @@ class SensorController(object):
         
             settings[setting_name] = settings_value 
         
-        # TODO reject new sensor if name isn't unique
-        sensor_name = self._make_sensor_name_unique(sensor_name)
+        if sensor_name == '':
+            self.log_message("Need to provide a non-empty sensor name.".format(sensor_name), logging.ERROR, manager)
+            return
         
+        if sensor_name != self._make_sensor_name_unique(sensor_name):
+            self.log_message("Cannot add sensor '{}' because there's already a sensor with that name.".format(sensor_name), logging.ERROR, manager)
+            return
+            
         new_sensor = SensorConnection(metadata['version'], sensor_name, self.controller_id, sensor_type, sensor_name,
                                       SENSOR_HEARTBEAT_PERIOD, settings, position_offsets, orientation_offsets,
                                       instrument_id, metadata, self, self.sensor_driver_factory)
@@ -517,10 +522,7 @@ class SensorController(object):
         
         info_name, value = change
         
-        if info_name == 'sensor_name':
-            new_name = self._make_sensor_name_unique(value.strip(), sensor_id)
-            sensor.update_sensor_name(new_name)
-        elif info_name == 'instrument_id':
+        if info_name == 'instrument_id':
             sensor.update_instrument_id(value)
         elif info_name == 'position_offsets':
             try:

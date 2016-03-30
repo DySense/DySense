@@ -10,6 +10,7 @@ import yaml
 from ui_settings import ui_version
 from PyQt4.QtCore import QObject, QTimer
 from select_sources_window import SelectSourcesWindow
+from add_sensor_window import AddSensorWindow
 
 RECEIVE_TIMER_INTERVAL = 0.1 # seconds
 
@@ -61,8 +62,6 @@ class MainPresenter(QObject):
     def setup_view(self, view):
         
         self.view = view
-        
-        self.view.set_possible_sensor_types(sorted(self.sensor_metadata.keys()))
    
     def setup_logging(self):
       
@@ -181,6 +180,14 @@ class MainPresenter(QObject):
         self.select_sources_window = SelectSourcesWindow(self, active_controller, self.sensors)
         self.select_sources_window.setModal(True)
         self.select_sources_window.show()
+        
+    def add_sensor_requested(self):
+        
+        possible_sensor_types = sorted(self.sensor_metadata.keys())
+        
+        self.add_sensor_window = AddSensorWindow(self, possible_sensor_types)
+        self.add_sensor_window.setModal(True)
+        self.add_sensor_window.show()
         
     def change_controller_info(self, info_name, info_value):
         

@@ -592,6 +592,12 @@
                  </item>
                  <item>
                   <widget class="QPushButton" name="load_config_button">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>40</height>
+                    </size>
+                   </property>
                    <property name="font">
                     <font>
                      <pointsize>15</pointsize>
@@ -604,36 +610,16 @@
                  </item>
                  <item>
                   <widget class="QPushButton" name="save_config_button">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>40</height>
+                    </size>
+                   </property>
                    <property name="text">
                     <string>Save Config</string>
                    </property>
                   </widget>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_3">
-                   <item>
-                    <widget class="QLabel" name="sensor_type_label">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="minimumSize">
-                      <size>
-                       <width>0</width>
-                       <height>0</height>
-                      </size>
-                     </property>
-                     <property name="text">
-                      <string>Sensor Type</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QComboBox" name="sensor_type_combo_box"/>
-                   </item>
-                  </layout>
                  </item>
                  <item>
                   <widget class="QPushButton" name="add_sensor_button">
@@ -686,6 +672,19 @@
                     <string>Select Sources</string>
                    </property>
                   </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_2">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
+                    </size>
+                   </property>
+                  </spacer>
                  </item>
                 </layout>
                </widget>
@@ -771,7 +770,6 @@
   <tabstop>select_config_tool_button</tabstop>
   <tabstop>load_config_button</tabstop>
   <tabstop>save_config_button</tabstop>
-  <tabstop>sensor_type_combo_box</tabstop>
   <tabstop>add_sensor_button</tabstop>
   <tabstop>main_message_center_text_edit</tabstop>
   <tabstop>clear_main_message_center_button</tabstop>

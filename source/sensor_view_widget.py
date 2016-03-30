@@ -92,6 +92,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         #Set fields not to be edited by user as read only
         self.sensor_message_center_text_edit.setReadOnly(True)
         self.sensor_type_line_edit.setReadOnly(True)
+        self.sensor_name_line_edit.setReadOnly(True)
            
         
         # Connect User Changes        

@@ -151,11 +151,6 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def last_loaded_config_file_path(self, new_value):
         self.qt_settings.setValue("last_loaded_config_file_path", new_value)
       
-    def set_possible_sensor_types(self, possible_sensor_types):
-        self.sensor_type_combo_box.clear()
-        self.sensor_type_combo_box.addItems(possible_sensor_types)
-      
-      
     def setup_sensors_button_clicked(self):
         self.presenter.setup_all_sensors(only_on_active_controller=True)
         
@@ -208,12 +203,8 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             
     def add_sensor_button_clicked(self, sensor_info):
         
-        #Get sensor type from the sensor type drop down
-        new_sensor_info =  {'sensor_type': str(self.sensor_type_combo_box.currentText()), 
-                            'sensor_name': 'new_sensor_name'}
-        
-        self.presenter.add_sensor(new_sensor_info)              
-        
+        self.presenter.add_sensor_requested()
+            
     def select_sources_button_clicked(self):
         
         self.presenter.select_data_sources()        
