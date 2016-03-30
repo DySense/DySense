@@ -226,7 +226,7 @@
      <property name="sizeHint" stdset="0">
       <size>
        <width>20</width>
-       <height>12</height>
+       <height>9</height>
       </size>
      </property>
     </spacer>
@@ -340,7 +340,7 @@
      <property name="sizeHint" stdset="0">
       <size>
        <width>20</width>
-       <height>12</height>
+       <height>9</height>
       </size>
      </property>
     </spacer>
@@ -351,7 +351,7 @@
       <widget class="QLabel" name="message_center_label">
        <property name="font">
         <font>
-         <pointsize>12</pointsize>
+         <pointsize>11</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -382,35 +382,7 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QPushButton" name="clear_sensor_message_center_button">
-       <property name="text">
-        <string>Clear Message Center</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="sensor_connection_state_label">
-       <property name="text">
-        <string>connection_state</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
+    <layout class="QHBoxLayout" name="horizontalLayout"/>
    </item>
    <item>
     <widget class="QGroupBox" name="data_group_box">
@@ -572,7 +544,6 @@
   <tabstop>pitch_orientation_line_edit</tabstop>
   <tabstop>yaw_orientation_line_edit</tabstop>
   <tabstop>sensor_message_center_text_edit</tabstop>
-  <tabstop>clear_sensor_message_center_button</tabstop>
   <tabstop>setup_sensor_button</tabstop>
   <tabstop>start_sensor_button</tabstop>
   <tabstop>pause_sensor_button</tabstop>

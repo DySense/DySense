@@ -34,9 +34,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             self.sensor_metadata = yaml.load(stream)
         
         #set logo
-        main_logo = QtGui.QPixmap('../resources/dysense_logo.png')
-        main_logo = main_logo.scaled(90,80)      
-        self.logo_label.setPixmap(main_logo)
+#         main_logo = QtGui.QPixmap('../resources/dysense_logo_no_text.png')
+#         main_logo = main_logo.scaled(90,80)      
+#         self.logo_label.setPixmap(main_logo)
         
         #set version number
         # TODO the version from metadata should be the 'controller' version once

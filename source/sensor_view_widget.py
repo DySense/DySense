@@ -113,7 +113,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.remove_sensor_button.clicked.connect(self.remove_sensor_button_clicked)
         
         #Connect clear button
-        self.clear_sensor_message_center_button.clicked.connect(self.clear_sensor_message_center_button_clicked)
+        #self.clear_sensor_message_center_button.clicked.connect(self.clear_sensor_message_center_button_clicked)
     
 
     def setup_settings(self, settings):
@@ -163,6 +163,9 @@ class SensorViewWidget(QWidget,Ui_Form):
         for n, data_metadata in enumerate(self.sensor_metadata['data']):
             
             name = data_metadata.get('name', 'No Name')
+#             if name in ['sys_time', 'utc_time', 'system_time']:
+#                 continue
+            
             units = data_metadata.get('units', None)
             
             self.name_label = QtGui.QLabel()
@@ -268,8 +271,8 @@ class SensorViewWidget(QWidget,Ui_Form):
                 self.sensor_message_center_text_edit.clear()
             self.last_connection_state = current_connection_state
             
-        if info_name == 'connection_state':
-            self.sensor_connection_state_label.setText(value)
+#         if info_name == 'connection_state':
+#             self.sensor_connection_state_label.setText(value)
     
     def sensor_name_changed(self):
         
