@@ -45,6 +45,8 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.setting_name_to_object = {}
         self.object_to_setting_name = {}
         
+        # Populated when generating data visualization from metadata.       
+        self.data_line_edits = []
         
                                         #'output_rate': self.capture_rate_line_edit                                                                           
                                         
@@ -63,10 +65,14 @@ class SensorViewWidget(QWidget,Ui_Form):
         
         
         
-        #get type dependent settings from metadata
+        # get type dependent settings from metadata
         #default_settings = self.sensor_info['settings']
         sensor_type = sensor_info['sensor_type']
         self.setup_settings(self.sensor_info['settings'])
+        
+        # setup data visualization        
+        self.setup_data_visualization()
+        
         
         #set the special commands from metadata
         special_commands_list = self.sensor_metadata.get('special_commands', None)
@@ -115,7 +121,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.settings_group_box_layout = QtGui.QGridLayout()
         self.settings_group_box.setLayout(self.settings_group_box_layout)
         
-        # create dicts of the settings name labels, line edits, and units labels
+        # create name labels, line edits, and units labels for settings
         for n, setting_metadata in enumerate(self.sensor_metadata['settings']):    
             
             name = setting_metadata.get('name', 'No name in metadata')
@@ -126,7 +132,7 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.units_label = QtGui.QLabel()
             self.line_edit = QtGui.QLineEdit()
             
-            # Set tooltips
+            # Set tool tips
             self.name_label.setToolTip(description)
             self.units_label.setToolTip(description)
             self.line_edit.setToolTip(description)
@@ -147,7 +153,32 @@ class SensorViewWidget(QWidget,Ui_Form):
             # Connect the line edit signal
             self.line_edit.editingFinished.connect(self.setting_changed_by_user)
 
+    
+    def setup_data_visualization(self):
         
+                
+        self.data_group_box_layout = QtGui.QHBoxLayout()
+        self.data_group_box.setLayout(self.data_group_box_layout)
+        
+        for n, data_metadata in enumerate(self.sensor_metadata['data']):
+            
+            name = data_metadata.get('name', 'No Name')
+            units = data_metadata.get('units', None)
+            
+            self.name_label = QtGui.QLabel()
+            self.line_edit = QtGui.QLineEdit()
+            
+            
+            # Store the line edit references and corresponding name
+            self.data_line_edits.append(self.line_edit)            
+            
+            self.data_group_box_layout.addWidget(self.name_label)
+            self.data_group_box_layout.addWidget(self.line_edit)
+            
+            self.name_label.setText(pretty(name) + ':')
+            
+            
+            
     def setup_special_commands(self, special_commands):
         
         if special_commands == None:
@@ -172,10 +203,19 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.special_commands_references[obj_ref] = command  
             
             b.clicked.connect(self.special_command_clicked)
+    
+    def update_data_visualization(self, data):        
+                 
+
+        for n, line_edit in enumerate(self.data_line_edits):
+            try:
+                line_edit.setText(data[n])
+            except IndexError:
+                pass # not all data was provided
                   
     def special_command_clicked(self):
                 
-        obj_ref = str(self.sender()).split()[3]    
+        obj_ref = str(self.sender()).split()[3]    # TODO get rid of split, here and in setup_special_commands
         command = self.special_commands_references[obj_ref]
         
         self.presenter.send_sensor_command(command)       

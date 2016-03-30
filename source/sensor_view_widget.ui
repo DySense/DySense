@@ -413,6 +413,33 @@
     </layout>
    </item>
    <item>
+    <widget class="QGroupBox" name="data_group_box">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>70</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>13</pointsize>
+      </font>
+     </property>
+     <property name="title">
+      <string>Data Visualization</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="commands_group_box">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -428,7 +455,7 @@
      </property>
      <property name="font">
       <font>
-       <pointsize>14</pointsize>
+       <pointsize>13</pointsize>
       </font>
      </property>
      <property name="title">
@@ -516,7 +543,7 @@
      </property>
      <property name="font">
       <font>
-       <pointsize>14</pointsize>
+       <pointsize>13</pointsize>
       </font>
      </property>
      <property name="title">
@@ -532,6 +559,7 @@
   <zorder>verticalSpacer_2</zorder>
   <zorder>commands_group_box</zorder>
   <zorder>verticalSpacer</zorder>
+  <zorder>data_group_box</zorder>
  </widget>
  <tabstops>
   <tabstop>sensor_name_line_edit</tabstop>

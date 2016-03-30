@@ -43,7 +43,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         # we support multiple of those and the GUI version should come from ui_settings.py
         version = self.sensor_metadata.get('version', 'No Version Number')
         self.version_value_label.setText(version)
-        
+             
         
                 #example to create yaml file
 #         new_sensor_info = {'version': '1.0',
@@ -75,11 +75,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                                         'surveyed': self.surveyed_check_box                                     
                                         }   
             
-#         self.controller_setting_line_edit_references = {
-#                                                         ''
-#                                               
-#                                                         }    
-#                   
+
         
         #Lookup table of sensor views in the stacked widget
         #key - sensor id
@@ -131,6 +127,8 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         # Populate last saved config file so user doesn't always have to select it.
         self.config_line_edit.setText(self.last_loaded_config_file_path)
+        
+              
                 
     @property
     def last_saved_config_file_path(self):
@@ -357,11 +355,16 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             if self.settings_name_to_object[key] == obj_ref:  
                 setting_name = key
                 
+                                
                 if setting_name == 'surveyed':
                     state = self.surveyed_check_box.isChecked()
                     new_value = str(state).lower()
-               
-        self.presenter.change_controller_setting(setting_name, new_value)        
+                    
+                
+                        
+        self.presenter.change_controller_setting(setting_name, new_value)
+         
+                     
    
     def remove_controller(self, controller_id):
         pass # TODO
@@ -405,7 +408,15 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         del self.sensor_list[(controller_id, sensor_id)]
     
     def show_new_sensor_data(self, controller_id, sensor_id, data):
-        pass # TODO
+                
+        # if the passed sensor is active, call function in sensor_viewer to update data visualization
+        # data visualization
+        if (controller_id, sensor_id) == (self.presenter.active_controller_id, self.presenter.active_sensor_id):
+            
+            sensor_view = self.sensor_to_widget[(controller_id, sensor_id)]
+                        
+            sensor_view.update_data_visualization(data)
+            
     
     def append_sensor_message(self, controller_id, sensor_id, text):
 
