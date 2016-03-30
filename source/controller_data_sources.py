@@ -1,14 +1,13 @@
 
 class AbstractDataSource(object):
     
-    def __init__(self, callback, controller_id='none', sensor_id='-1', sensor_name='none', sensor_metadata=None):
+    def __init__(self, callback, **kargs):
         
         self.callback = callback
-        self._controller_id = controller_id
-        self._sensor_id = sensor_id
-        self._sensor_name = sensor_name
+        self._controller_id = kargs.get('controller_id', 'None')
+        self._sensor_id = kargs.get('sensor_id', 'None')
         self._receiving = False
-        self._sensor_metadata = sensor_metadata
+        self._sensor_metadata = kargs.get('metadata', None)
         
         if self.sensor_metadata is not None:
             self.verify_metadata()
@@ -17,6 +16,7 @@ class AbstractDataSource(object):
     def public_info(self):
         return { 'controller_id': self.controller_id,
                  'sensor_id': self.sensor_id,
+                 'metadata': self.sensor_metadata,
                  'receiving': self.receiving }
         
     @property
@@ -25,9 +25,6 @@ class AbstractDataSource(object):
     @property
     def sensor_id(self):
         return self._sensor_id
-    @property
-    def sensor_name(self):
-        return self._sensor_name
     @property
     def receiving(self):
         return self._receiving
@@ -56,10 +53,10 @@ class AbstractDataSource(object):
      
 class TimeDataSource(AbstractDataSource):
     
-    def __init__(self, **kargs):
+    def __init__(self, callback,  **kargs):
         self.utc_time_idx = None
         self.sys_time_idx = None
-        super(TimeDataSource, self).__init__(**kargs)
+        super(TimeDataSource, self).__init__(callback, **kargs)
         
     def verify_metadata(self):
         try:
@@ -70,12 +67,12 @@ class TimeDataSource(AbstractDataSource):
         
 class PositionDataSource(AbstractDataSource):
     
-    def __init__(self, **kargs):
+    def __init__(self, callback, **kargs):
         self.position_x_idx = None
         self.position_y_idx = None
         self.position_z_idx = None
         self.position_zone_idx = None
-        super(PositionDataSource, self).__init__(**kargs)
+        super(PositionDataSource, self).__init__(callback, **kargs)
         
     def verify_metadata(self):
         try:
@@ -83,7 +80,7 @@ class PositionDataSource(AbstractDataSource):
             self.position_y_idx = self.get_matching_tag_idx('position_y')
             self.position_z_idx = self.get_matching_tag_idx('position_z')
         except ValueError:
-            raise ValueError("Could not find valid x, y and z position tags in sensor metdata")
+            raise ValueError("Could not find valid x, y and z position tags in sensor metadata")
 
         # Zone is optional so don't raise exception if not found
         try:
@@ -93,12 +90,13 @@ class PositionDataSource(AbstractDataSource):
 
 class OrientationDataSource(AbstractDataSource):
     
-    def __init__(self, **kargs):
+    def __init__(self, callback, angle_name, **kargs):
         self.orientation_idx = None
-        super(OrientationDataSource, self).__init__(**kargs)
+        self.angle_name = angle_name
+        super(OrientationDataSource, self).__init__(callback, **kargs)
         
     def verify_metadata(self):
         try:
-            self.orientation_idx = self.sensor_metadata['data'].index('orientation')
+            self.orientation_idx = self.get_matching_tag_idx(self.angle_name)
         except ValueError:
-            raise ValueError("Could not find 'orientation' in sensor output types {}".format(self.sensor_metadata['data']))
+            raise ValueError("Could not find {} tag in sensor metadata".format(self.angle_name))

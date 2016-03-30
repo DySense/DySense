@@ -14,14 +14,15 @@ class SensorConnection(object):
                        'error': 'bad',
                        }
     
-    def __init__(self, version, sensor_id, sensor_type, sensor_name, heartbeat_period, settings,
+    def __init__(self, version, sensor_id, controller_id, sensor_type, sensor_name, heartbeat_period, settings,
                  position_offsets, orientation_offsets, instrument_id, metadata, observer, driver_factory):
         '''Constructor'''
         
         self.version = version
         self.sensor_id = str(sensor_id)
+        self.controller_id = str(controller_id)
         self.sensor_type = sensor_type
-        self.sensor_name = sensor_name
+        self.sensor_name = sensor_id # TODO remove name all together so ID is name
         self.settings = settings
         self.metadata = metadata
         #self.parameters = self.load_parameters(metadata)
@@ -84,6 +85,7 @@ class SensorConnection(object):
     def public_info(self):
         
         return {'sensor_id': self.sensor_id,
+                'controller_id': self.controller_id,
                 'sensor_type': self.sensor_type,
                 'sensor_name': self.sensor_name,
                 'settings': self.settings,

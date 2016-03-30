@@ -5,7 +5,6 @@ import time
 import zmq
 import json
 import threading
-import uuid
 import datetime
 import sys
 import logging
@@ -51,7 +50,7 @@ class SensorController(object):
         self._position_sources = []
         self._orientation_sources = []
         
-        self.controller_id = str(uuid.uuid4())
+        self.controller_id = 'local' # TODO allow to pass in from constructor
         
         self.settings = {'base_out_directory': '',
                          'operator_name': '',
@@ -63,9 +62,6 @@ class SensorController(object):
         # Vehicle position/orientation files. New ones created for each session.
         self.position_source_log = None
         self.orientation_source_log = None
-
-        # Start ID at 1 since 0 represents all sensors. Note IDs are always stored as strings.. not integers.
-        self.next_sensor_id = 1
         
         self.stop_request = threading.Event()
         
@@ -106,7 +102,7 @@ class SensorController(object):
                                   'change_sensor_info': self.handle_change_sensor_info,
                                   'change_sensor_setting': self.handle_change_sensor_setting,
                                   'send_sensor_command': self.handle_send_sensor_command,
-                                  'change_data_source': self.handle_change_data_source,
+                                  'change_controller_info': self.handle_change_controller_info,
                                   'change_controller_setting': self.handle_change_controller_setting,
                                   'new_data_source_data': self.handle_data_source_data,
                                   'controller_command': self.handle_controller_command,
@@ -170,11 +166,7 @@ class SensorController(object):
         if new_value is None:
             self._time_source = None
         else:
-            self._time_source = TimeDataSource(callback=self.send_entire_controller_info,
-                                               controller_id=new_value['controller_id'],
-                                               sensor_id=new_value['sensor_id'],
-                                               sensor_name=new_value['sensor_name'],
-                                               sensor_metadata=new_value['metadata'])
+            self._time_source = TimeDataSource(self.send_entire_controller_info, **new_value)
         self.send_entire_controller_info()
         
     @property
@@ -184,11 +176,7 @@ class SensorController(object):
     def position_sources(self, new_value):
         self._position_sources = []
         for val in new_value:
-            self._position_sources.append(PositionDataSource(callback=self.send_entire_controller_info,
-                                                             controller_id=val['controller_id'],
-                                                             sensor_id=val['sensor_id'],
-                                                             sensor_name=val['sensor_name'],
-                                                             sensor_metadata=val['metadata']))
+            self._position_sources.append(PositionDataSource(self.send_entire_controller_info, **val))
         self.send_entire_controller_info()
         
     @property
@@ -198,11 +186,7 @@ class SensorController(object):
     def orientation_sources(self, new_value):
         self._orientation_sources = []
         for val in new_value:
-            self._orientation_sources.append(OrientationDataSource(callback=self.send_entire_controller_info,
-                                                                   controller_id=val['controller_id'],
-                                                                   sensor_id=val['sensor_id'],
-                                                                   sensor_name=val['sensor_name'],
-                                                                   sensor_metadata=val['metadata']))
+            self._orientation_sources.append(OrientationDataSource(self.send_entire_controller_info, val['angle_type'], **val))
         self.send_entire_controller_info()
         
     def setup_logging(self):
@@ -434,14 +418,13 @@ class SensorController(object):
         
             settings[setting_name] = settings_value 
         
+        # TODO reject new sensor if name isn't unique
         sensor_name = self._make_sensor_name_unique(sensor_name)
         
-        new_sensor = SensorConnection(metadata['version'], str(self.next_sensor_id), sensor_type, sensor_name,
+        new_sensor = SensorConnection(metadata['version'], sensor_name, self.controller_id, sensor_type, sensor_name,
                                       SENSOR_HEARTBEAT_PERIOD, settings, position_offsets, orientation_offsets,
                                       instrument_id, metadata, self, self.sensor_driver_factory)
         
-        self.next_sensor_id += 1
-    
         self.sensors.append(new_sensor)
         
         self.send_entire_sensor_info('all', new_sensor)
@@ -451,25 +434,6 @@ class SensorController(object):
             new_sensor.update_setting(setting_name, setting_value)
         
         self.log_message("Added new {} sensor.".format(sensor_type))
-        
-        # TODO - remove this once user can select data sources.  Right now if it can be a datasource then make it one.
-        new_source_info =  {'controller_id': self.controller_id, 
-                            'sensor_id': new_sensor.sensor_id,
-                            'sensor_name': new_sensor.sensor_name, 
-                            'metadata': new_sensor.metadata,  }
-        if 'time' in metadata.get('tags',[]):
-            self.time_source = new_source_info
-        if 'position' in metadata.get('tags',[]):
-            existing_source_info = []
-            for existing_source in self.position_sources:
-                existing_info =  {'controller_id': existing_source.controller_id, 
-                                 'sensor_id': existing_source.sensor_id,
-                                 'sensor_name': existing_source.sensor_name, 
-                                 'metadata': existing_source.sensor_metadata,  }
-                existing_source_info.append(existing_info)
-            self.position_sources = existing_source_info + [new_source_info]
-        if 'orientation' in metadata.get('tags',[]):
-            self.orientation_sources = self.orientation_sources + [new_source_info]
 
     def handle_remove_sensor(self, manager, sensor_id):
         '''Search through sensors and remove one that has matching id.'''
@@ -493,10 +457,10 @@ class SensorController(object):
             if self.time_source and self.time_source.matches(sensor.sensor_id, self.controller_id):
                 self.time_source = None
             for source in self.position_sources[:]:
-                if source.matches(sensor.sensor_id, self.controller_id):
+                if source.matches(sensor.sensor_id, sensor.controller_id):
                     self.position_sources.remove(source)
             for source in self.orientation_sources[:]:
-                if source.matches(sensor.sensor_id, self.controller_id):
+                if source.matches(sensor.sensor_id, sensor.controller_id):
                     self.orientation_sources.remove(source)
 
     def handle_request_sensor(self, manager, sensor_id):
@@ -587,22 +551,22 @@ class SensorController(object):
             else:
                 self._send_sensor_message(sensor.sensor_id, 'command', command)
     
-    def handle_change_data_source(self, manager, data_source_name, data_source_info):
+    def handle_change_controller_info(self, manager, info_name, info_value):
 
         # Make sure data source is allowed to be changed.
         if self.session_active:
-            self.log_message('Cannot change source while session is active.', logging.ERROR, manager)
+            self.log_message('Cannot change info while session is active.', logging.ERROR, manager)
             self.send_entire_controller_info() # so user can be notified didn't change.
             return 
 
-        data_source_info['receiving'] = False
-
-        if data_source_name == 'time':
-            self.time_source = data_source_info
-        if data_source_name == 'position':
-            self.position_source = data_source_info
-        if data_source_name == 'orientation':
-            self.orientation_source = data_source_info
+        if info_name == 'time_source':
+            self.time_source = info_value
+        elif info_name == 'position_sources':
+            self.position_sources = info_value
+        elif info_name == 'orientation_sources':
+            self.orientation_sources = info_value
+        else:
+            self.log_message("Info '{}' cannot be changed externally.".format(info_name), logging.ERROR, manager)
 
     def handle_change_controller_setting(self, manager, settings_name, settings_value):
 
@@ -688,7 +652,8 @@ class SensorController(object):
 
         for source in self.orientation_sources:
             if source.matches(sensor_id, controller_id):
-                pass #self.orientation_source_log.write((source.sensor_name,) + data)
+                angle = data[source.orientation_idx]
+                self.orientation_source_log.write((source.angle_type[0], angle))
 
     def handle_controller_command(self, manager, command_name):
         
@@ -762,6 +727,7 @@ class SensorController(object):
                 self.session_state = 'waiting_for_position'
         
         if self.session_state == 'waiting_for_position':
+            print self.position_sources
             for source in self.position_sources:
                 if False: # TODO not source.receiving:
                     return
@@ -901,7 +867,8 @@ class SensorController(object):
         
         info_directory = os.path.join(self.session_path, 'sensor_info/')
         
-        os.makedirs(info_directory)
+        if not os.path.exists(info_directory):
+            os.makedirs(info_directory)
         
         for sensor in self.sensors:
             

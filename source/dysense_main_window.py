@@ -122,6 +122,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.save_config_button.clicked.connect(self.save_config_button_clicked)
         
         self.add_sensor_button.clicked.connect(self.add_sensor_button_clicked)
+        self.select_sources_button.clicked.connect(self.select_sources_button_clicked)
         
         self.sensor_list_widget.itemClicked.connect(self.list_item_clicked)
         
@@ -212,6 +213,10 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                             'sensor_name': 'new_sensor_name'}
         
         self.presenter.add_sensor(new_sensor_info)              
+        
+    def select_sources_button_clicked(self):
+        
+        self.presenter.select_data_sources()        
         
     def add_sensor_to_list_widget(self, controller_id, sensor_id, sensor_name):
         

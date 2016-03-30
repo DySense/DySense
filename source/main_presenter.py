@@ -9,6 +9,7 @@ import logging
 import yaml
 from ui_settings import ui_version
 from PyQt4.QtCore import QObject, QTimer
+from select_sources_window import SelectSourcesWindow
 
 RECEIVE_TIMER_INTERVAL = 0.1 # seconds
 
@@ -136,11 +137,10 @@ class MainPresenter(QObject):
                 if info_name == 'settings':
                     for setting_name, setting_value in info_value.iteritems():
                         self.change_controller_setting(setting_name, setting_value)
+                elif info_name == 'version':
+                    pass # TODO verify program version matches config version
                 else:
-                    pass
-                    # TODO Change controller info, currently this isn't support and you must change data source separately,
-                    # need to refactor sensor controller. 
-                    #self.change_controller_info(info_name, info_value) 
+                    self.change_controller_info(info_name, info_value) 
                     
         # Request that all saved sensors get added to the active controller (which right now is the only allowed controller)
         for saved_sensor_info in data.get('sensors', []):
@@ -174,14 +174,17 @@ class MainPresenter(QObject):
 
         self._send_message('add_controller', (endpoint, name))
         
-    def change_controller_data_source(self, data_source_name, sensor_id, controller_id):
+    def select_data_sources(self):
         
-        # We need to provide the metadata since the controller might not know anything about the sensor.
-        source_metadata = self.sensors[(controller_id, sensor_id)]['metadata']
+        active_controller = self.controllers[self.active_controller_id]
         
-        new_source = {"controller_id": controller_id, "sensor_id": sensor_id, 'metadata': source_metadata}
-
-        self._send_message_to_active_controller('change_data_source', (data_source_name, new_source))
+        self.select_sources_window = SelectSourcesWindow(self, active_controller, self.sensors)
+        self.select_sources_window.setModal(True)
+        self.select_sources_window.show()
+        
+    def change_controller_info(self, info_name, info_value):
+        
+        self._send_message_to_active_controller('change_controller_info', (info_name, info_value))
         
     def remove_controller(self, controller_id):
 
