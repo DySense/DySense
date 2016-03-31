@@ -290,7 +290,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
 
         config_file_path = self.config_line_edit.text()
         
-        self.presenter.load_config(config_file_path)
+        self.presenter.try_load_config(config_file_path)
  
     def save_config_button_clicked(self):
 
@@ -302,7 +302,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         self.last_saved_config_file_path = config_file_path
         
-        self.presenter.save_config(config_file_path)
+        self.presenter.try_save_config(config_file_path)
              
     def display_message(self, message):
         self.main_message_center_text_edit.append(message)

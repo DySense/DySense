@@ -83,6 +83,12 @@ class MainPresenter(QObject):
      
         log.info('DySense UI Version {}'.format(ui_version))
         
+    def try_save_config(self, file_path):
+        try:
+            self.save_config(file_path)
+        except:
+            self.handle_error_message("Unexpected error occurred when saving config.", logging.CRITICAL)
+        
     def save_config(self, file_path):
         '''Write current controller/sensors out to specified file path so the user can reload it later.'''
         # Data is what gets dumped to the file using yaml.
@@ -111,6 +117,12 @@ class MainPresenter(QObject):
     
         with open(file_path, 'w') as outfile:
             outfile.write(yaml.dump(data, default_flow_style=False))
+        
+    def try_load_config(self, file_path):
+        try:
+            self.load_config(file_path)
+        except:
+            self.handle_error_message("Unexpected error occurred when loading config.", logging.CRITICAL)
         
     def load_config(self, file_path):
         '''Load controller/sensors out of specified yaml file path.'''
