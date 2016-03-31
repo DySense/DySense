@@ -37,12 +37,10 @@ if __name__ == '__main__':
         sensor_metadata = yaml.load(stream)
         
     # Configure system.
-    sensor_controller = SensorController(zmq_context, sensor_metadata)
     controller_manager = ControllerManager(zmq_context)
     main_presenter = MainPresenter(zmq_context, controller_manager, sensor_metadata)
-    
-    # main_window = TestWindow(main_presenter) #for use with test window
-    main_window = DysenseMainWindow(main_presenter) #for use with new main window
+    main_window = DysenseMainWindow(main_presenter)
+    sensor_controller = SensorController(zmq_context, sensor_metadata, main_window.local_controller_name)
     
     main_presenter.setup_view(main_window)
     

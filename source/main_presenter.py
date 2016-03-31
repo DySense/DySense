@@ -195,6 +195,12 @@ class MainPresenter(QObject):
         self.add_sensor_window.setModal(True)
         self.add_sensor_window.show()
         
+    def controller_name_changed(self, new_controller_name):
+        
+        self.view.local_controller_name = new_controller_name
+        
+        self.view.show_user_message('New controller name will take effect once application is restarted.', logging.INFO)
+        
     def change_controller_info(self, info_name, info_value):
         
         self._send_message_to_active_controller('change_controller_info', (info_name, info_value))
@@ -343,7 +349,7 @@ class MainPresenter(QObject):
         
         logging.getLogger("ui").log(level, message)
         
-        self.view.show_error_message(message, level)
+        self.view.show_user_message(message, level)
     
     def handle_new_controller_text(self, controller, text):
         self.view.display_message(text)

@@ -28,7 +28,7 @@ class ManagerConnection(object):
 
 class SensorController(object):
     
-    def __init__(self, context, metadata):
+    def __init__(self, context, metadata, controller_id):
         
         self.setup_logging()
         
@@ -50,7 +50,7 @@ class SensorController(object):
         self._position_sources = []
         self._orientation_sources = []
         
-        self.controller_id = 'local' # TODO allow to pass in from constructor
+        self.controller_id = controller_id
         
         self.settings = {'base_out_directory': '',
                          'operator_name': '',

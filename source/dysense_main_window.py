@@ -90,6 +90,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.sensor_list = {}
         
         # Connect controller setting line edits
+        self.controller_name_line_edit.editingFinished.connect(self.controller_name_changed)
         self.output_directory_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.operator_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.platform_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
@@ -128,8 +129,6 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         # Populate last saved config file so user doesn't always have to select it.
         self.config_line_edit.setText(self.last_loaded_config_file_path)
-        
-              
                 
     @property
     def last_saved_config_file_path(self):
@@ -150,6 +149,17 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     @last_loaded_config_file_path.setter
     def last_loaded_config_file_path(self, new_value):
         self.qt_settings.setValue("last_loaded_config_file_path", new_value)
+        
+    @property
+    def local_controller_name(self):
+        controller_name = self.qt_settings.value("local_controller_name")
+        if controller_name is None:
+            controller_name = "default"
+        return str(controller_name)
+        
+    @local_controller_name.setter
+    def local_controller_name(self, new_value):
+        self.qt_settings.setValue("local_controller_name", new_value)
       
     def setup_sensors_button_clicked(self):
         self.presenter.setup_all_sensors(only_on_active_controller=True)
@@ -317,6 +327,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                 obj = self.name_to_object[info_name]
                 obj.setText(value)
                 
+            if info_name == 'id':
+                self.controller_name_line_edit.setText(value)
+                
             if info_name == 'session_active':
                 self.session_value_label.setText(str('Active' if value else 'Not Started'))
                 
@@ -337,6 +350,11 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                     if settings_name in self.settings_name_to_object:
                         obj = self.settings_name_to_object[settings_name]
                         obj.setText(str(settings_value))
+            
+    def controller_name_changed(self):
+        
+        if self.sender().isModified():
+            self.presenter.controller_name_changed(str(self.controller_name_line_edit.text()))
             
     def controller_setting_changed_by_user(self):
         obj_ref = self.sender()  
@@ -419,7 +437,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         sensor_view = self.sensor_to_widget[(controller_id, sensor_id)]  
         sensor_view.display_message(str(text).strip('[]').replace(',', ',\n'), True)  
         
-    def show_error_message(self, message, level):
+    def show_user_message(self, message, level):
         
         popup = QtGui.QMessageBox()
         
@@ -429,11 +447,17 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         elif level == logging.ERROR:
             level_text = "Error"
             icon = QStyle.SP_MessageBoxWarning
+        elif level == logging.WARN:
+            level_text = "Warning"
+            icon = QStyle.SP_MessageBoxWarning
+        elif level == logging.INFO:
+            level_text = "Info"
+            icon = QStyle.SP_MessageBoxInformation
         else:
             return # not a level we need to show
             
         popup.setText(message)
-        popup.setWindowTitle('{}!'.format(level_text))
+        popup.setWindowTitle('{}'.format(level_text))
         popup.setWindowIcon(popup.style().standardIcon(icon))
         
         popup.exec_()

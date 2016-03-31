@@ -300,61 +300,61 @@
                  <set>Qt::AlignCenter</set>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_4">
-                 <item row="0" column="0">
+                 <item row="1" column="0">
                   <widget class="QLabel" name="label">
                    <property name="text">
                     <string>Output Directory</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="0">
+                 <item row="3" column="0">
                   <widget class="QLabel" name="platform_name_label">
                    <property name="text">
                     <string>Platform Name</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
+                 <item row="4" column="1">
                   <widget class="QLineEdit" name="platform_id_line_edit"/>
                  </item>
-                 <item row="3" column="0">
+                 <item row="4" column="0">
                   <widget class="QLabel" name="platform_id_label">
                    <property name="text">
                     <string>Platform ID</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="0">
+                 <item row="5" column="0">
                   <widget class="QLabel" name="field_id_label">
                    <property name="text">
                     <string>Field ID</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
+                 <item row="6" column="1">
                   <widget class="QCheckBox" name="surveyed_check_box">
                    <property name="text">
                     <string>Surveyed</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="1">
+                 <item row="5" column="1">
                   <widget class="QLineEdit" name="field_id_line_edit"/>
                  </item>
-                 <item row="2" column="1">
+                 <item row="3" column="1">
                   <widget class="QLineEdit" name="platform_name_line_edit"/>
                  </item>
-                 <item row="1" column="0">
+                 <item row="2" column="0">
                   <widget class="QLabel" name="operator_name_label">
                    <property name="text">
                     <string>Operator Name</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="2" column="1">
                   <widget class="QLineEdit" name="operator_name_line_edit"/>
                  </item>
-                 <item row="0" column="1">
+                 <item row="1" column="1">
                   <layout class="QHBoxLayout" name="horizontalLayout_4">
                    <item>
                     <widget class="QLineEdit" name="output_directory_line_edit"/>
@@ -367,6 +367,16 @@
                     </widget>
                    </item>
                   </layout>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="controller_name_label">
+                   <property name="text">
+                    <string>Controller Name</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="controller_name_line_edit"/>
                  </item>
                 </layout>
                </widget>
