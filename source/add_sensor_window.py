@@ -55,7 +55,7 @@ class AddSensorWindow(QDialog):
     def add_button_clicked(self):
 
         new_sensor_info =  {'sensor_type': str(self.sensor_type_combo_box.currentText()).strip(), 
-                            'sensor_name': str(self.sensor_name_line_edit.text()).strip()}
+                            'sensor_id': str(self.sensor_name_line_edit.text()).strip()}
         
         self.presenter.add_sensor(new_sensor_info)
         

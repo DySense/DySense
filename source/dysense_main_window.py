@@ -209,7 +209,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         self.presenter.select_data_sources()        
         
-    def add_sensor_to_list_widget(self, controller_id, sensor_id, sensor_name):
+    def add_sensor_to_list_widget(self, controller_id, sensor_id):
         
         
         row = self.sensor_list_widget.count()
@@ -218,12 +218,12 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.sensor_list[(controller_id, sensor_id)] = row
             
         
-        self.sensor_list_widget.addItem(sensor_name)
+        self.sensor_list_widget.addItem(sensor_id)
         
     def update_sensor_list_widget(self, controller_id, sensor_id):
         
         sensor = self.presenter.sensors[(controller_id, sensor_id)]
-        sensor_name = sensor['sensor_name']
+        sensor_name = sensor['sensor_id']
         if sensor['sensor_paused']:
             sensor_name += ' (paused)'
         
@@ -381,7 +381,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         sensor_view = self.sensor_to_widget[(controller_id, sensor_id)]             
         sensor_view.update_sensor_view(info_name, value)
 
-        if info_name == 'sensor_name' or info_name == 'sensor_paused':
+        if info_name == 'sensor_paused':
             self.update_sensor_list_widget(controller_id, sensor_id)  
         
     def remove_sensor(self, controller_id, sensor_id):

@@ -30,7 +30,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         #dictionaries for relating the sensor info names to their corresponding line edits/labels        
         self.info_name_to_object =  {
                                'sensor_type': self.sensor_type_line_edit,
-                               'sensor_name': self.sensor_name_line_edit,                                      
+                               'sensor_id': self.sensor_name_line_edit,                                      
 
                                'instrument_id': self.sensor_id_line_edit,
                                'position_offsets': [self.forward_position_line_edit,
@@ -96,8 +96,6 @@ class SensorViewWidget(QWidget,Ui_Form):
            
         
         # Connect User Changes        
-        # self.sensor_name_line_edit.textEdited.connect(self.sensor_name_changed)
-        self.sensor_name_line_edit.editingFinished.connect(self.sensor_name_changed)
         self.sensor_id_line_edit.editingFinished.connect(self.instrument_id_changed)
         self.forward_position_line_edit.editingFinished.connect(self.position_offset_changed)
         self.left_position_line_edit.editingFinished.connect(self.position_offset_changed)
@@ -274,12 +272,6 @@ class SensorViewWidget(QWidget,Ui_Form):
             
 #         if info_name == 'connection_state':
 #             self.sensor_connection_state_label.setText(value)
-    
-    def sensor_name_changed(self):
-        
-        if self.sender().isModified():
-            new_name = str(self.sensor_name_line_edit.text())
-            self.presenter.change_sensor_info('sensor_name', new_name)
         
     def instrument_id_changed(self):    
         

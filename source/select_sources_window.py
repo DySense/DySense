@@ -47,14 +47,14 @@ class SelectSourcesWindow(QDialog):
         self.time_group_box.setLayout(self.time_gb_layout)
         
         self.possible_time_sensors = self.find_sensors_with_tag(sensors, 'time')
-        possible_time_sensors_names = [s['sensor_name'] for s in self.possible_time_sensors]
+        possible_time_sensors_names = [s['sensor_id'] for s in self.possible_time_sensors]
 
         self.time_selector.addItems(possible_time_sensors_names)
         
         try:
             current_time_id = controller_info['time_source']['sensor_id']
             current_time_sensor = [s for s in self.possible_time_sensors if s['sensor_id'] == current_time_id][0]
-            active_idx = self.possible_time_sensors.index(current_time_sensor['sensor_name'])
+            active_idx = self.possible_time_sensors.index(current_time_sensor['sensor_id'])
             self.time_selector.setCurrentIndex(active_idx)
         except (ValueError, IndexError, TypeError):
             pass
@@ -98,7 +98,7 @@ class SelectSourcesWindow(QDialog):
         possible_position_sensors = self.find_sensors_with_tag(sensors, 'position')
         for sensor_info in possible_position_sensors:
             checkbox = QCheckBox()
-            checkbox.setText(sensor_info['sensor_name'])
+            checkbox.setText(sensor_info['sensor_id'])
             
             self.position_sensor_to_checkbox[sensor_info['sensor_id']] = checkbox
             self.checkbox_to_position_sensor[checkbox] = sensor_info

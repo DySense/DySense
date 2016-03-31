@@ -104,7 +104,7 @@ class MainPresenter(QObject):
             # TODO save sensors underneath controllers?
             useful_info = {}
             for info_name, info_value in sensor_info.iteritems():
-                if info_name in ['sensor_type', 'sensor_name', 'settings', 'position_offsets', 'orientation_offsets', 'instrument_id']:
+                if info_name in ['sensor_type', 'sensor_id', 'settings', 'position_offsets', 'orientation_offsets', 'instrument_id']:
                     useful_info[info_name] = info_value
             sensors.append(useful_info)
         data['sensors'] = sensors
@@ -154,13 +154,7 @@ class MainPresenter(QObject):
     def sensor_view_field_changed(self, info_name, value, sensor_id):
     
         self.change_sensor_info(info_name, str(value))
-        # calling self.change_sensor yields TypeError: PyQt4.QtCore.QString(u'sensor2') is not JSON serializable
-        
-        
-        #if the value changed is sensor name, call function to update the name in the sensor list
-        if info_name == 'sensor_name':
-            self.view.sensor_name_changed(value, sensor_id)           
-        
+
     def connect_endpoint(self, manager_endpoint):
         
         self.manager_socket.connect(manager_endpoint)
@@ -277,15 +271,14 @@ class MainPresenter(QObject):
 
     def handle_entire_sensor_update(self, controller_id, sensor_info):
         sensor_id = sensor_info['sensor_id']
-        sensor_name = sensor_info['sensor_name'] 
-        
+
         is_new_sensor = (controller_id, sensor_id) not in self.sensors
         
         self.sensors[(controller_id, sensor_id)] = sensor_info
 
         if is_new_sensor:
             #creates the new sensor view which then calls view.update_all_sensor_info
-            self.view.add_sensor_to_list_widget(controller_id, sensor_id, sensor_name)
+            self.view.add_sensor_to_list_widget(controller_id, sensor_id)
             self.view.create_new_sensor_view(controller_id, sensor_id, sensor_info)
         else:
             self.view.update_all_sensor_info(controller_id, sensor_id, sensor_info)                   

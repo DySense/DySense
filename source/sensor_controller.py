@@ -328,6 +328,7 @@ class SensorController(object):
         try:
             sensor = self.find_sensor(sensor_id)
         except ValueError:
+            # TODO
             print "Couldn't handle message from sensor {} since it doesn't exist.".format(sensor_id)
             return
         
@@ -398,7 +399,7 @@ class SensorController(object):
         # Get metadata that was stored with this controller.
         metadata = self.sensor_metadata[sensor_info['sensor_type']]
         
-        sensor_name = sensor_info['sensor_name'].strip()
+        sensor_name = sensor_info['sensor_id'].strip()
         sensor_type = sensor_info['sensor_type'].strip()
         position_offsets = sensor_info.get('position_offsets', [0, 0, 0])
         orientation_offsets = sensor_info.get('orientation_offsets', [0, 0, 0])
@@ -426,7 +427,7 @@ class SensorController(object):
             self.log_message("Cannot add sensor '{}' because there's already a sensor with that name.".format(sensor_name), logging.ERROR, manager)
             return
             
-        new_sensor = SensorConnection(metadata['version'], sensor_name, self.controller_id, sensor_type, sensor_name,
+        new_sensor = SensorConnection(metadata['version'], sensor_name, self.controller_id, sensor_type,
                                       SENSOR_HEARTBEAT_PERIOD, settings, position_offsets, orientation_offsets,
                                       instrument_id, metadata, self, self.sensor_driver_factory)
         
@@ -457,7 +458,7 @@ class SensorController(object):
             self.sensors.remove(sensor)
             self._send_manager_message('all', 'sensor_removed', sensor.sensor_id)
             
-            self.log_message("Removed {}".format(sensor.sensor_name))
+            self.log_message("Removed {}".format(sensor.sensor_id))
             
             if self.time_source and self.time_source.matches(sensor.sensor_id, self.controller_id):
                 self.time_source = None
@@ -647,7 +648,7 @@ class SensorController(object):
                     position_data.append(zone)
                     
                 if len(self.position_sources) > 1:
-                    position_data.insert(0, source.sensor_name)
+                    position_data.insert(0, source.sensor_id)
 
                 if self.session_active:
                     self.position_source_log.write(position_data)
@@ -729,7 +730,6 @@ class SensorController(object):
                 self.session_state = 'waiting_for_position'
         
         if self.session_state == 'waiting_for_position':
-            print self.position_sources
             for source in self.position_sources:
                 if False: # TODO not source.receiving:
                     return
@@ -790,7 +790,7 @@ class SensorController(object):
 
         for sensor in self.sensors:
             
-            sensor_csv_file_name = "{}_{}_{}.csv".format(sensor.sensor_name,
+            sensor_csv_file_name = "{}_{}_{}.csv".format(sensor.sensor_id,
                                                          sensor.instrument_id,
                                                          formatted_time)
             
@@ -863,7 +863,7 @@ class SensorController(object):
             
             writer.writerow(['#sensor_name', 'sensor_id', 'x', 'y', 'z', 'roll', 'pitch', 'yaw'])
             for sensor in self.sensors:
-                writer.writerow([sensor.sensor_name, sensor.instrument_id] + sensor.position_offsets + sensor.orientation_offsets)
+                writer.writerow([sensor.sensor_id, sensor.instrument_id] + sensor.position_offsets + sensor.orientation_offsets)
 
     def write_sensor_info_files(self):
         
@@ -874,12 +874,12 @@ class SensorController(object):
         
         for sensor in self.sensors:
             
-            file_path = os.path.join(info_directory, '{}_{}.yaml'.format(sensor.sensor_name, sensor.instrument_id))
+            file_path = os.path.join(info_directory, '{}_{}.yaml'.format(sensor.sensor_id, sensor.instrument_id))
             
             with open(file_path, 'w') as outfile:
                 outdata = []
                 for key, value in sorted(sensor.public_info.items()):
-                    if key in ['sensor_type', 'sensor_name', 'settings', 'parameters', 'text_messages',
+                    if key in ['sensor_type', 'sensor_id', 'settings', 'parameters', 'text_messages',
                                 'position_offsets', 'orientation_offsets', 'instrument_id', 'metadata']:
                         outdata.append([key, value])
                 outfile.write(yaml.dump(outdata, default_flow_style=False))
@@ -925,7 +925,7 @@ class SensorController(object):
 
     def _make_sensor_name_unique(self, sensor_name, sensor_id='none'):
         
-        existing_sensor_names = [s.sensor_name for s in self.sensors if s.sensor_id != sensor_id]
+        existing_sensor_names = [s.sensor_id for s in self.sensors if s.sensor_id != sensor_id]
         original_sensor_name = sensor_name
         
         while sensor_name in existing_sensor_names:
