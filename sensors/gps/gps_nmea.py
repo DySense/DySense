@@ -109,8 +109,11 @@ class GpsNmea(SensorBase):
         utc_time = data['utc_time']
         if math.isnan(utc_time):
             self.send_text('Invalid UTC time: {}'.format(utc_time))
-            return False
+            return False        
         
+        num_sats = data['num_satellites']
+        hdop = data["hdop"]
+
         fix = str(data['fix_type'])
         
         if self.required_fix != 'none' and fix != self.required_fix:
@@ -130,7 +133,7 @@ class GpsNmea(SensorBase):
             # Error too high so can't handle message.
             return False
              
-        self.handle_data((utc_time, message_read_time, latitude, longitude, altitude))
+        self.handle_data((utc_time, message_read_time, latitude, longitude, altitude, num_sats, hdop))
         
         return True # successfully handled
         
