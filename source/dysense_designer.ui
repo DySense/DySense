@@ -37,13 +37,13 @@
         <property name="minimumSize">
          <size>
           <width>60</width>
-          <height>55</height>
+          <height>35</height>
          </size>
         </property>
         <property name="maximumSize">
          <size>
           <width>65</width>
-          <height>60</height>
+          <height>35</height>
          </size>
         </property>
         <property name="text">
@@ -207,7 +207,7 @@
         </property>
         <property name="font">
          <font>
-          <pointsize>24</pointsize>
+          <pointsize>19</pointsize>
           <weight>75</weight>
           <bold>true</bold>
          </font>
@@ -682,19 +682,6 @@
                     <string>Select Sources</string>
                    </property>
                   </widget>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_2">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
                  </item>
                 </layout>
                </widget>
