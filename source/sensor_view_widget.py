@@ -162,15 +162,21 @@ class SensorViewWidget(QWidget,Ui_Form):
         for n, data_metadata in enumerate(self.sensor_metadata['data']):
             
             name = data_metadata.get('name', 'No Name')
-#             if name in ['sys_time', 'utc_time', 'system_time']:
-#                 continue
-            
-            units = data_metadata.get('units', None)
-            
+            if name in ['sys_time', 'utc_time', 'system_time']:
+                self.data_line_edits.append('skip')
+                continue
+             
+            units = data_metadata.get('units', False)
+                        
             self.name_label = QtGui.QLabel()
             self.line_edit = QtGui.QLineEdit()
             
-            
+            #Add units as tool tip
+            if units:
+                self.name_label.setToolTip(units)
+                self.line_edit.setToolTip(units)
+                
+                
             # Store the line edit references and corresponding name
             self.data_line_edits.append(self.line_edit)            
             
@@ -211,7 +217,13 @@ class SensorViewWidget(QWidget,Ui_Form):
 
         for n, line_edit in enumerate(self.data_line_edits):
             try:
-                line_edit.setText(str(data[n]))
+                if line_edit == 'skip':
+                    continue
+                else:
+                    if isinstance(data[n], float):
+                        line_edit.setText(str("{0:.5f}".format(data[n])))                        
+                    else:
+                        line_edit.setText(str(data[n]))
             except IndexError:
                 pass # not all data was provided
                   

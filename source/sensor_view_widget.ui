@@ -404,7 +404,7 @@
       </font>
      </property>
      <property name="title">
-      <string>Data Visualization</string>
+      <string>Data</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
