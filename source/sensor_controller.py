@@ -602,15 +602,15 @@ class SensorController(object):
     def handle_new_sensor_data(self, sensor, data):
         
         self.try_process_data_source_data(sensor.sensor_id, self.controller_id, data)
-
-        if not self.session_active:
-            return # TODO - need to update data sources 'receiving' even if we're not logging data.
-
-        sensor.output_file.write(data)
         
         # TODO manage manager subscriptions 
         self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, data))
-    
+
+        # TODO - need to update data sources 'receiving'
+
+        if self.session_active:
+            sensor.output_file.write(data)
+
     def handle_data_source_data(self, manager, sensor_id, controller_id, data):
 
         self.try_process_data_source_data(sensor_id, controller_id, data)

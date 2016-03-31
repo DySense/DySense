@@ -211,7 +211,7 @@ class SensorViewWidget(QWidget,Ui_Form):
 
         for n, line_edit in enumerate(self.data_line_edits):
             try:
-                line_edit.setText(data[n])
+                line_edit.setText(str(data[n]))
             except IndexError:
                 pass # not all data was provided
                   
