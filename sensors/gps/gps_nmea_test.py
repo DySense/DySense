@@ -9,7 +9,7 @@ from gps_nmea import GpsNmea
 
 class GpsNmeaTest(GpsNmea):
 
-    def __init__(self, sensor_id, settings, context, connect_endpoint):
+    def __init__(self, sensor_id, instrument_id, settings, context, connect_endpoint):
         
         try:
             self.test_file_path = str(settings['test_file_path'])
@@ -22,7 +22,8 @@ class GpsNmeaTest(GpsNmea):
             raise ValueError("Bad sensor setting.  Exception {}".format(repr(e)))
         
         GpsNmea.__init__(self, self.required_fix, self.required_latlon_error, 
-                         sensor_id=sensor_id, context=context, connect_endpoint=connect_endpoint)
+                         sensor_id=sensor_id, instrument_id=instrument_id,
+                         context=context, connect_endpoint=connect_endpoint)
         
         self.desired_read_period = self.output_period
         

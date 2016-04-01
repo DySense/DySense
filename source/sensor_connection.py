@@ -191,7 +191,7 @@ class SensorConnection(object):
         self.reset();
         
         try:
-            self.sensor_driver = self.driver_factory.create_sensor(self.sensor_type, self.sensor_id, self.settings)
+            self.sensor_driver = self.driver_factory.create_sensor(self.sensor_type, self.sensor_id, self.instrument_id, self.settings)
         except Exception as e:
             self.observer.handle_new_sensor_text(self, "{}".format(repr(e)))
         

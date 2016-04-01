@@ -13,7 +13,7 @@ from sensor_base.sensor_base import SensorBase
 class GreenSeeker(SensorBase):
     '''Receive data from GreenSeeker sensor.'''
     
-    def __init__(self, sensor_id, settings, context, connect_endpoint):
+    def __init__(self, sensor_id, instrument_id, settings, context, connect_endpoint):
         '''
         Constructor. Save properties for opening serial port later.
         
@@ -29,7 +29,7 @@ class GreenSeeker(SensorBase):
         Raises:
             ValueError - if not all settings are provided or not in correct format.
         '''
-        SensorBase.__init__(self, sensor_id, context, connect_endpoint)
+        SensorBase.__init__(self, sensor_id, instrument_id, context, connect_endpoint)
 
         try:
             self.port = str(settings['port'])

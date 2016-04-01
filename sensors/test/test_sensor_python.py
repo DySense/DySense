@@ -14,7 +14,7 @@ from sensor_base.sensor_base import SensorBase
 class TestSensor(SensorBase):
     ''''''
     
-    def __init__(self, sensor_id, settings, context, connect_endpoint):
+    def __init__(self, sensor_id, instrument_id, settings, context, connect_endpoint):
         '''
         Constructor.
         
@@ -32,7 +32,7 @@ class TestSensor(SensorBase):
         Raises:
             ValueError - if not all settings are provided or not in correct format.
         '''
-        SensorBase.__init__(self, sensor_id, context, connect_endpoint)
+        SensorBase.__init__(self, sensor_id, instrument_id, context, connect_endpoint)
 
         try:
             self.output_rate = float(settings['output_rate'])

@@ -17,13 +17,13 @@ class SensorDriverFactory(object):
         self.local_endpoint = local_endpoint
         self.remote_endpoint = remote_endpoint
 
-    def create_sensor(self, sensor_type, sensor_id, sensor_settings):
+    def create_sensor(self, sensor_type, sensor_id, instrument_id, sensor_settings):
         '''
         '''
         sensor = None
         
-        local_startup_args = [sensor_id, sensor_settings, self.context, self.local_endpoint]
-        remote_startup_args = [sensor_id, sensor_settings, self.remote_endpoint]
+        local_startup_args = [sensor_id, instrument_id, sensor_settings, self.context, self.local_endpoint]
+        remote_startup_args = [sensor_id, instrument_id, sensor_settings, self.remote_endpoint]
         
         # Use local imports for threads in case they have dependencies that other users don't care about.
         if sensor_type == 'greenseeker':

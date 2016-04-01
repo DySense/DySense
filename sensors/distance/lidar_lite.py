@@ -16,7 +16,7 @@ from sensor_base.sensor_base import SensorBase
 class LidarLite(SensorBase):
     '''Receive data over serial port from microcontroller hooked up to sensor.'''
     
-    def __init__(self, sensor_id, settings, context, connect_endpoint):
+    def __init__(self, sensor_id, instrument_id, settings, context, connect_endpoint):
         '''
         Constructor. Save properties for opening serial port later.
         
@@ -31,7 +31,7 @@ class LidarLite(SensorBase):
         Raises:
             ValueError - if not all settings are provided or not in correct format.
         '''
-        SensorBase.__init__(self, sensor_id, context, connect_endpoint, throttle_sensor_read=False)
+        SensorBase.__init__(self, sensor_id, instrument_id, context, connect_endpoint, throttle_sensor_read=False)
 
         try:
             self.port = str(settings['port'])

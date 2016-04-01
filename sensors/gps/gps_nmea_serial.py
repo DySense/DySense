@@ -7,7 +7,7 @@ from gps_nmea import GpsNmea
 class GpsNmeaSerial(GpsNmea):
     '''Receive and process data from GPS using NMEA format.'''
     
-    def __init__(self, sensor_id, settings, context, connect_endpoint):
+    def __init__(self, sensor_id, instrument_id, settings, context, connect_endpoint):
         '''
         Constructor. Save properties for opening serial port later.
         
@@ -33,7 +33,8 @@ class GpsNmeaSerial(GpsNmea):
             raise ValueError("Bad sensor setting.  Exception {}".format(e))
         
         GpsNmea.__init__(self, self.required_fix, self.required_latlon_error, 
-                         sensor_id=sensor_id, context=context, connect_endpoint=connect_endpoint)
+                         sensor_id=sensor_id, instrument_id=instrument_id, 
+                         context=context, connect_endpoint=connect_endpoint)
         
         # Set base class fields.
         self.desired_read_period = self.message_period

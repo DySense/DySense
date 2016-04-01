@@ -22,7 +22,7 @@ class SensorBase(object):
                        'error': 'bad',
                        }
 
-    def __init__(self, sensor_id, context, connect_endpoint, desired_read_period=0.25, max_closing_time=0.1, 
+    def __init__(self, sensor_id, instrument_id, context, connect_endpoint, desired_read_period=0.25, max_closing_time=0.1, 
                  heartbeat_period=0.5, wait_for_valid_time=True, throttle_sensor_read=True):
         '''
         Base constructor.
@@ -35,6 +35,7 @@ class SensorBase(object):
                                  how often we should send one back.
         '''
         self.sensor_id = str(sensor_id)
+        self.instrument_id = str(instrument_id)
         self.context = context
         self.connect_endpoint = connect_endpoint
         self.desired_read_period = max(0, desired_read_period)
