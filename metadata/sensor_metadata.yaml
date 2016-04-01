@@ -232,18 +232,22 @@ sensors:
           type: float
           units: degrees
           tags: [position_x]
+          decimal_places: 6
         - name: longitude
           type: float
           units: degrees
           tags: [position_y]
+          decimal_places: 6
         - name: altitude
           type: float
           units: meters
           tags: [position_z]
+          decimal_places: 6
         - name: num_sats
           type: float
         - name: hdop
           type: float
+          decimal_places: 1
   
     gps_nmea_test:
       version: "1.0"
@@ -281,18 +285,22 @@ sensors:
           type: float
           units: degrees
           tags: [position_x]
+          decimal_places: 6
         - name: longitude
           type: float
           units: degrees
           tags: [position_y]
+          decimal_places: 6
         - name: altitude
           type: float
           units: meters
           tags: [position_z]
+          decimal_places: 6
         - name: num_sats
           type: float
         - name: hdop
           type: float
+          decimal_places: 1
           
     canon_edsdk:
       version: "1.0"

@@ -5,6 +5,7 @@ sip.setapi('QVariant', 2)
 from PyQt4.QtGui import *
 from sensor_view_widget_designer import Ui_Form
 from PyQt4 import QtGui
+from decimal import *
 import yaml
 from utility import pretty
 
@@ -44,6 +45,11 @@ class SensorViewWidget(QWidget,Ui_Form):
         # Populated when generating settings from metadata.
         self.setting_name_to_object = {}
         self.object_to_setting_name = {}
+        
+        # Populated when generating data line edits
+        # key = index in data list from metadata
+        # value = number of decimal places to display. False if not specified
+        self.dec_places = {}
         
         # Populated when generating data visualization from metadata.       
         self.data_line_edits = []
@@ -127,6 +133,7 @@ class SensorViewWidget(QWidget,Ui_Form):
             default_value = setting_metadata.get('default_value', 'no default')
             units = setting_metadata.get('units', '')
             description = setting_metadata.get('description', '')
+            
             self.name_label = QtGui.QLabel()
             self.units_label = QtGui.QLabel()
             self.line_edit = QtGui.QLineEdit()
@@ -135,6 +142,8 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.name_label.setToolTip(description)
             self.units_label.setToolTip(description)
             self.line_edit.setToolTip(description)
+            
+                        
             
             # Store the line edit references and corresponding name
             obj_ref = self.line_edit
@@ -167,10 +176,15 @@ class SensorViewWidget(QWidget,Ui_Form):
                 continue
              
             units = data_metadata.get('units', False)
+            decimal_places = data_metadata.get('decimal_places', False)  
+             
+            # Store number of decimal places if value is given
+            self.dec_places[n] = decimal_places   
+               
                         
             self.name_label = QtGui.QLabel()
             self.line_edit = QtGui.QLineEdit()
-            
+            self.line_edit.setReadOnly(True)
             #Add units as tool tip
             if units:
                 self.name_label.setToolTip(units)
@@ -217,13 +231,30 @@ class SensorViewWidget(QWidget,Ui_Form):
 
         for n, line_edit in enumerate(self.data_line_edits):
             try:
+                # skips over line edits we don't want displayed, such as utc and sys times
                 if line_edit == 'skip':
                     continue
-                else:
+                else:           
+                    
                     if isinstance(data[n], float):
-                        line_edit.setText(str("{0:.5f}".format(data[n])))                        
+                             
+                        desired_length = self.dec_places[n] # = False if not specified
+                        
+                        current_length = abs(Decimal(str(data[n])).as_tuple().exponent)
+                        
+                        if desired_length: # set number of decimal places to desired length if given
+                            line_edit.setText(str('{:.{prec}f}'.format(data[n], prec=desired_length)))
+                            
+                        elif current_length > 5: # if float has more than 5 dec places, cap it at 5
+                            line_edit.setText(str("{0:.5f}".format(data[n])))           
+                            
+                        else:
+                            line_edit.setText(str(data[n]))       
+                                            
                     else:
                         line_edit.setText(str(data[n]))
+                        
+                        
             except IndexError:
                 pass # not all data was provided
                   
