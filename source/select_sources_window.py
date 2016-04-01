@@ -3,6 +3,7 @@
 import sys
 from PyQt4.Qt import *
 from PyQt4 import QtGui
+from source.utility import get_from_list
 
 class SelectSourcesWindow(QDialog):
     
@@ -19,6 +20,9 @@ class SelectSourcesWindow(QDialog):
         
         # Used to associate combo box index with sensor info.
         self.possible_time_sensors = []
+        
+        # Used to associated sensor info with orientation index in combo box.
+        self.orientation_selector_infos = []
         
         self.setWindowTitle('Select Sources')
         self.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
@@ -67,15 +71,53 @@ class SelectSourcesWindow(QDialog):
         
         self.roll_selector = QComboBox(self.orientation_group_box)
         self.roll_label = QLabel("Roll:")
+        self.roll_selector.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
         self.roll_label.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred))
         
         self.pitch_selector = QComboBox(self.orientation_group_box)
         self.pitch_label = QLabel("Pitch:")
+        self.pitch_selector.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
         self.pitch_label.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred))
         
         self.yaw_selector = QComboBox(self.orientation_group_box)
         self.yaw_label = QLabel("Yaw:")
+        self.yaw_selector.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
         self.yaw_label.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred))
+                        
+        def populate_selector(selector, angle_tag, current_orientation_source):
+            
+            selector.addItem('N/A')
+            self.orientation_selector_infos.append({'sensor_id': 'none', 'controller_id': 'none'})
+            
+            selector.addItem('Derived')
+            self.orientation_selector_infos.append({'sensor_id': 'derived', 'controller_id': 'derived'})
+            
+            possible_sensors = self.find_sensors_with_tag(sensors, angle_tag)
+            for sensor_info in possible_sensors:
+                selector.addItem(sensor_info['sensor_id'])
+                self.orientation_selector_infos.append(sensor_info)
+        
+            if current_orientation_source is not None:
+                if current_orientation_source['sensor_id'].lower() == 'none':
+                    selector.setCurrentIndex(selector.findText('N/A'))
+                elif current_orientation_source['sensor_id'].lower() == 'derived':
+                    selector.setCurrentIndex(selector.findText('Derived'))
+                else:
+                    for sensor_info in possible_sensors:
+                        # TODO update for multiple controllers
+                        if current_orientation_source['sensor_id'] == sensor_info['sensor_id']:
+                            for idx, selector_info in enumerate(self.orientation_selector_infos):
+                                if selector_info['sensor_id'] == current_orientation_source['sensor_id']:
+                                    selector.setCurrentIndex(idx)
+                                    break
+ 
+        current_roll_source = get_from_list(controller_info['orientation_sources'], 0)
+        current_pitch_source = get_from_list(controller_info['orientation_sources'], 1)
+        current_yaw_source = get_from_list(controller_info['orientation_sources'], 2)
+        
+        populate_selector(self.roll_selector, 'roll', current_roll_source)
+        populate_selector(self.pitch_selector, 'pitch', current_pitch_source)
+        populate_selector(self.yaw_selector, 'yaw', current_yaw_source)
         
         self.orientation_gb_layout = QGridLayout()
         self.orientation_gb_layout.addWidget(self.roll_label, 0, 1)
@@ -121,6 +163,8 @@ class SelectSourcesWindow(QDialog):
         self.button_layout = QHBoxLayout()
         self.button_layout.addWidget(self.cancel_button)
         self.button_layout.addWidget(self.ok_button)
+        
+        self.ok_button.setDefault(True)
 
     def find_sensors_with_tag(self, sensors, tag):
         
@@ -144,8 +188,12 @@ class SelectSourcesWindow(QDialog):
             if checkbox.isChecked():
                 position_sources.append(sensor_info)
         
-        orientation_sources = [] # TODO
-
+        roll_source = self.orientation_selector_infos[self.roll_selector.currentIndex()]
+        pitch_source = self.orientation_selector_infos[self.pitch_selector.currentIndex()]
+        yaw_source = self.orientation_selector_infos[self.yaw_selector.currentIndex()]
+        
+        orientation_sources = [roll_source, pitch_source, yaw_source]
+        
         self.presenter.change_controller_info('time_source', time_source_info)
         self.presenter.change_controller_info('position_sources', position_sources)
         self.presenter.change_controller_info('orientation_sources', orientation_sources)

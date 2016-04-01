@@ -25,7 +25,7 @@ class CSVLog:
         self.file = None
         
     def write(self, data):
-        '''Write data to file or buffer it depending on class settings. Data is a tuple.'''
+        '''Write data to file or buffer it depending on class settings. Data is a list.'''
                 
         if (data is None) or (len(data) == 0):
             # Create blank one element tuple so it's obvious in log that no data was received.
@@ -34,7 +34,7 @@ class CSVLog:
         # Convert all values using built in representation function.  This avoids loss of precision
         # on floating point numbers due to the way floats are printed in python.
         for i, val in enumerate(data):
-            data[i] = repr(val)
+            data[i] = str(repr(val))
         
         # Check if all we need to do is buffer data.
         if self.buffer_size > 1:

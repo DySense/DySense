@@ -26,20 +26,24 @@ sensors:
           type: bool
           description: Either true or false.
           default_value: true
+      tags: [roll, pitch, yaw]
       data:
         - name: utc_time
           type: float
           units: seconds
         - name: counter
           type: str
+          tags: [roll] # for testing data sources
         - name: rand_int
           type: int
           min_value: 0
           max_value: 100
+          tags: [pitch] # for testing data sources
         - name: rand_float
           type: float
           min_value: 0.0
           max_value: 1.0
+          tags: [yaw] # for testing data sources
         - name: system_time
           type: float
           units: seconds

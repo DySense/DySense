@@ -70,7 +70,7 @@ class SensorController(object):
         # Last utc time received from timesource.  Set to None when a session is stopped.
         self.first_received_utc_time = None
         
-        # Similar to first received utc time, but doesn't get invalided after session is stopped.
+        # Similar to first received utc time, but doesn't get invalidated after session is stopped.
         self.session_start_utc = 0.0
         
         # Last received utc time.
@@ -185,8 +185,9 @@ class SensorController(object):
     @orientation_sources.setter
     def orientation_sources(self, new_value):
         self._orientation_sources = []
-        for val in new_value:
-            self._orientation_sources.append(OrientationDataSource(self.send_entire_controller_info, val['angle_type'], **val))
+        angle_types = ['roll', 'pitch', 'yaw']
+        for n, val in enumerate(new_value):
+            self._orientation_sources.append(OrientationDataSource(self.send_entire_controller_info, angle_types[n], **val))
         self.send_entire_controller_info()
         
     def setup_logging(self):
@@ -626,7 +627,7 @@ class SensorController(object):
 
         if self.session_active:
             sensor.output_file.write(data)
-
+            
     def handle_data_source_data(self, manager, sensor_id, controller_id, data):
 
         self.try_process_data_source_data(sensor_id, controller_id, data)
@@ -672,7 +673,9 @@ class SensorController(object):
         for source in self.orientation_sources:
             if source.matches(sensor_id, controller_id):
                 angle = data[source.orientation_idx]
-                self.orientation_source_log.write((source.angle_type[0], angle))
+                
+                if self.session_active:
+                    self.orientation_source_log.write([source.angle_name[0], angle])
 
     def handle_controller_command(self, manager, command_name):
         
@@ -722,8 +725,11 @@ class SensorController(object):
 
         time_sensor = self.find_sensor(self.time_source.sensor_id)
         position_sensors = [self.find_sensor(s.sensor_id) for s in self.position_sources]
-        orientation_sensors = [self.find_sensor(s.sensor_id) for s in self.orientation_sources]
-        
+        orientation_sensors = []
+        for s in self.orientation_sources:
+            if s.sensor_id not in ['none', 'derived']:
+                orientation_sensors.append(self.find_sensor(s.sensor_id))
+            
         for sensor in [time_sensor] + position_sensors + orientation_sensors:
             if sensor.num_messages_received == 0:
                 self.log_message("Can't startup session until all data sources are setup.", logging.ERROR, manager)

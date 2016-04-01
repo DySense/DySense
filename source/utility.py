@@ -5,6 +5,12 @@ def find_last_index(list_to_search, element):
     except ValueError:
         return -1 # element not found at all
     
+def get_from_list(lst, idx):
+    try:
+        return lst[idx]
+    except IndexError:
+        return None
+    
 def pretty(text):
     return text.replace('_',' ').title()
 
