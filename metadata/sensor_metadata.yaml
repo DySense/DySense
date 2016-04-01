@@ -220,6 +220,10 @@ sensors:
           default_value: 1
           min_value: 0
           max_value: 100000
+        - name: min_sats
+          type: int
+          description: Minimum number of satellites that must be maintained.
+          default_value: 0
       tags: [time, position]
       data:
         - name: utc_time
@@ -273,6 +277,10 @@ sensors:
           units: meters
           default_value: 1
           max_value: 100000
+        - name: min_sats
+          type: int
+          description: Minimum number of satellites that must be maintained.
+          default_value: 0
       tags: [time, position]
       data:
         - name: utc_time

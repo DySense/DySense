@@ -7,7 +7,7 @@ from sensor_base.sensor_base import SensorBase
 
 class GpsNmea(SensorBase):
     
-    def __init__(self, required_fix, max_allowed_latlon_error, **kargs):
+    def __init__(self, required_fix, max_allowed_latlon_error, min_sats, **kargs):
         SensorBase.__init__(self, wait_for_valid_time=False, **kargs)
     
         # Fix types reported by GGA message.
@@ -30,6 +30,9 @@ class GpsNmea(SensorBase):
         # If zero or negative then disables 
         self.max_allowed_latlon_error = float(max_allowed_latlon_error)
         
+        # If the # of satellites drops below this then class stops reporting data.
+        self.min_sats = min_sats
+        
         # Set to true if user specified a valid lat/lon error to monitor.
         self.monitor_latlon_error = self.max_allowed_latlon_error > 0
         
@@ -41,6 +44,9 @@ class GpsNmea(SensorBase):
         
         # Last max lat/lon error received from GST message.
         self.last_latlon_error = -1.0
+        
+        # Set to true if there was enough satellites last time GGA message was received.
+        self.enough_satellites_last_message = True
         
         # Initialize last fix to something that won't occur so user will get notified of initial fix.
         self.last_fix = '-1'
@@ -132,6 +138,19 @@ class GpsNmea(SensorBase):
         if not self.latlon_error_ok:
             # Error too high so can't handle message.
             return False
+        
+        enough_satellites = num_sats >= self.min_sats
+        
+        if not enough_satellites:
+            if self.enough_satellites_last_message:
+                self.send_text('Not enough satellites.')
+            self.enough_satellites_last_message = enough_satellites
+            return False
+        
+        if self.min_sats > 0 and enough_satellites and not self.enough_satellites_last_message:
+            self.send_text('Tracking enough satellites.')
+            
+        self.enough_satellites_last_message = enough_satellites    
              
         self.handle_data((utc_time, message_read_time, latitude, longitude, altitude, num_sats, hdop))
         

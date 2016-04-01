@@ -29,10 +29,11 @@ class GpsNmeaSerial(GpsNmea):
             self.message_period = 1.0 / float(settings['message_rate'])
             self.required_fix = str(settings['required_fix'])
             self.required_latlon_error = float(settings['required_error'])
+            self.min_sats = int(settings['min_sats'])
         except (KeyError, ValueError, ZeroDivisionError) as e:
             raise ValueError("Bad sensor setting.  Exception {}".format(e))
         
-        GpsNmea.__init__(self, self.required_fix, self.required_latlon_error, 
+        GpsNmea.__init__(self, self.required_fix, self.required_latlon_error, self.min_sats,
                          sensor_id=sensor_id, instrument_id=instrument_id, 
                          context=context, connect_endpoint=connect_endpoint)
         

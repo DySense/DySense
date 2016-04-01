@@ -6,7 +6,6 @@ import sys
 import yaml
 import os
 
-#from test_window import TestWindow #for use with test window
 from dysense_main_window import DysenseMainWindow #for use with new main window
 from main_presenter import MainPresenter
 from controller_manager import ControllerManager
