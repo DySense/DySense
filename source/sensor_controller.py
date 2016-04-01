@@ -849,6 +849,7 @@ class SensorController(object):
         
         if not self.session_active:
             self.log_message("Session already closed.")
+            self.session_state = 'closed' # make sure state is reset
             return # already closed
         
         for sensor in self.sensors:
