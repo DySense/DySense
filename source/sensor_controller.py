@@ -50,7 +50,7 @@ class SensorController(object):
         self._position_sources = []
         self._orientation_sources = []
         
-        self.controller_id = controller_id
+        self.controller_id = controller_id.strip().replace(' ', '_')
         
         self.settings = {'base_out_directory': '',
                          'operator_name': '',
@@ -399,11 +399,11 @@ class SensorController(object):
         # Get metadata that was stored with this controller.
         metadata = self.sensor_metadata[sensor_info['sensor_type']]
         
-        sensor_name = sensor_info['sensor_id'].strip()
+        sensor_name = sensor_info['sensor_id'].strip().replace(' ', '_')
         sensor_type = sensor_info['sensor_type'].strip()
         position_offsets = sensor_info.get('position_offsets', [0, 0, 0])
         orientation_offsets = sensor_info.get('orientation_offsets', [0, 0, 0])
-        instrument_id = sensor_info.get('instrument_id', 'none')
+        instrument_id = sensor_info.get('instrument_id', 'none').strip().replace(' ', '_')
         
         settings = {}
         for setting_metadata in metadata['settings']:
@@ -523,7 +523,13 @@ class SensorController(object):
         
         info_name, value = change
         
+        try:
+            value = value.strip()
+        except AttributeError:
+            pass
+        
         if info_name == 'instrument_id':
+            value = str(value).strip().replace(' ', '_')
             sensor.update_instrument_id(value)
         elif info_name == 'position_offsets':
             try:
@@ -561,6 +567,11 @@ class SensorController(object):
             self.log_message('Cannot change info while session is active.', logging.ERROR, manager)
             self.send_entire_controller_info() # so user can be notified didn't change.
             return 
+        
+        try:
+            info_value = info_value.strip()
+        except AttributeError:
+            pass
 
         if info_name == 'time_source':
             self.time_source = info_value
@@ -585,6 +596,11 @@ class SensorController(object):
         if not value_can_change:
             self.send_entire_controller_info() # so user can be notified setting didn't change.
             return 
+        
+        try:
+            settings_value = settings_value.strip()
+        except AttributeError:
+            pass
 
         self.settings[settings_name] = settings_value
         self.send_entire_controller_info()

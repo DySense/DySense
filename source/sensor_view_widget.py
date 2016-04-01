@@ -238,6 +238,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         
         if not self.sender().isModified():
             return
+        self.sender().setModified(False)
         
         new_value = str(self.sender().text())
         
@@ -290,6 +291,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         if self.sender().isModified():
             new_value = str(self.sensor_id_line_edit.text())
             self.presenter.change_sensor_info('instrument_id', new_value)
+            self.sender().setModified(False)
              
     def position_offset_changed(self):    
         
@@ -297,7 +299,8 @@ class SensorViewWidget(QWidget,Ui_Form):
             forward = str(self.forward_position_line_edit.text())
             left = str(self.left_position_line_edit.text())
             up = str(self.up_position_line_edit.text())
-            self.presenter.change_sensor_info('position_offsets', [forward, left, up])     
+            self.presenter.change_sensor_info('position_offsets', [forward, left, up])
+            self.sender().setModified(False)
      
     def orientation_offset_changed(self):    
         
@@ -305,8 +308,8 @@ class SensorViewWidget(QWidget,Ui_Form):
             roll = str(self.roll_orientation_line_edit.text())
             pitch = str(self.pitch_orientation_line_edit.text())
             yaw = str(self.yaw_orientation_line_edit.text())
-            self.presenter.change_sensor_info('orientation_offsets', [roll, pitch, yaw])        
-
+            self.presenter.change_sensor_info('orientation_offsets', [roll, pitch, yaw])
+            self.sender().setModified(False)
     
     # clears and sets text messages for entire sensor update, appends messages for single message update    
     def display_message(self, message, append):

@@ -355,12 +355,16 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         if self.sender().isModified():
             self.presenter.controller_name_changed(str(self.controller_name_line_edit.text()))
+            self.sender().setModified(False)
             
     def controller_setting_changed_by_user(self):
         obj_ref = self.sender()  
         
-        if isinstance(obj_ref, QLineEdit) and not obj_ref.isModified():
-            return
+        if isinstance(obj_ref, QLineEdit):
+            if not obj_ref.isModified():
+                return
+            else:
+                obj_ref.setModified(False)
         
         #the new value will be the text in the line edits, except when it is the surveyed checkbox. 
         new_value = str(self.sender().text())        
