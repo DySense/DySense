@@ -618,21 +618,31 @@ class SensorController(object):
 
     def handle_new_sensor_data(self, sensor, data):
         
-        self.try_process_data_source_data(sensor.sensor_id, self.controller_id, data)
+        self.try_process_time_source_data(sensor.sensor_id, self.controller_id, data)
         
-        # TODO manage manager subscriptions 
+        # TODO manage manager subscriptions
+        # TODO only send to other controllers if not paused
         self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, data))
 
         # TODO - need to update data sources 'receiving'
 
-        if self.session_active:
+        # Share time regardless of whether sensor is paused or session is active since 
+        # it has nothing to do with logging.
+        self.try_process_time_source_data(sensor.sensor_id, self.controller_id, data)
+
+        if self.session_active and not sensor.sensor_paused:
+            
+            # Check if sensor is a position/orientation source.
+            self.try_process_position_source_data(sensor.sensor_id, self.controller_id, data)
+            self.try_process_orientation_source_data(sensor.sensor_id, self.controller_id, data)
+
             sensor.output_file.write(data)
             
     def handle_data_source_data(self, manager, sensor_id, controller_id, data):
 
         self.try_process_data_source_data(sensor_id, controller_id, data)
 
-    def try_process_data_source_data(self, sensor_id, controller_id, data):
+    def try_process_time_source_data(self, sensor_id, controller_id, data):
         
         if self.time_source and self.time_source.matches(sensor_id, controller_id):
             sys_time = data[self.time_source.sys_time_idx]
@@ -652,7 +662,9 @@ class SensorController(object):
             if not self.first_received_utc_time:
                 self.first_received_utc_time = utc_time
                 self.session_start_utc = utc_time
-            
+        
+    def try_process_position_source_data(self, sensor_id, controller_id, data):
+        
         for source in self.position_sources:
             if source.matches(sensor_id, controller_id):
                 utc_time = data[0]
@@ -669,6 +681,8 @@ class SensorController(object):
 
                 if self.session_active:
                     self.position_source_log.write(position_data)
+                    
+    def try_process_orientation_source_data(self, sensor_id, controller_id, data):
 
         for source in self.orientation_sources:
             if source.matches(sensor_id, controller_id):

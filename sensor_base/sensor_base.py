@@ -294,8 +294,6 @@ class SensorBase(object):
     def handle_data(self, data):
         '''Send data to controller if everything is in the right state.'''
         self.last_received_data_time = self.sys_time
-        if not self.should_record_data():
-            return
         # Make sure data is sent as a tuple.
         self.send_message('new_sensor_data', (data,))
         self.num_data_messages_sent += 1
