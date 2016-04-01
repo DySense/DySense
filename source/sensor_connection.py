@@ -161,7 +161,7 @@ class SensorConnection(object):
         for offset in new_value:
             validated_offsets.append(validate_type(offset, 'float'))
         
-        self.orientation_offsets = new_value
+        self.orientation_offsets = validated_offsets
         self.observer.notify_sensor_changed(self.sensor_id, 'orientation_offsets', self.orientation_offsets)
         
     def update_instrument_id(self, new_value):
