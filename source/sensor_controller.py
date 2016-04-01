@@ -16,6 +16,7 @@ from sensor_connection import SensorConnection
 from sensor_creation import SensorDriverFactory, SensorCloseTimeout
 from csv_log import CSVLog
 from controller_data_sources import *
+from utility import pretty
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
 
@@ -718,7 +719,6 @@ class SensorController(object):
     def handle_new_sensor_event(self, sensor, event_name):
             
         if event_name == 'closing':
-            sensor.closing = True
             sensor.update_connection_state('closed')
         
     def notify_sensor_changed(self, sensor_id, info_name, value):

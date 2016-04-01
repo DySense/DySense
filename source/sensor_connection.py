@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import time
-from source.utility import validate_setting, validate_type
+from source.utility import validate_setting, validate_type, pretty
 
 class SensorConnection(object):
     
@@ -115,13 +115,24 @@ class SensorConnection(object):
         self.observer.notify_sensor_changed(self.sensor_id, 'settings', self.settings)
         
     def update_connection_state(self, new_value):
+        
+        # Auto close if connection state closes or goes bad.
+        if new_value in ['closed', 'error', 'timed_out'] and not self.is_closed():
+            self.close()
+        
         if self.connection_state == new_value:
             return 
+        
         self.connection_state = new_value
         self.connection_health = SensorConnection.possible_states[new_value]
         self.observer.notify_sensor_changed(self.sensor_id, 'connection_state', self.connection_state)
         self.observer.notify_sensor_changed(self.sensor_id, 'connection_health', self.connection_health)
         self.update_overall_health()
+        
+        # Show user (and log) changes in connection state.  Don't show opened since printing two
+        # messages is obnoxious.  If it's not opened then it will throw an error or timeout.
+        if new_value != 'opened':
+            self.observer.handle_new_sensor_text(self, 'Driver {}'.format(pretty(new_value)))
         
     def update_sensor_state(self, new_value):
         self.sensor_state = new_value
@@ -204,6 +215,10 @@ class SensorConnection(object):
 
     def close(self):
         '''Close down process or thread associated with connection.  Need to send close message before calling this.'''
+        
+        # Mark that sensor is closing so it doesn't try to re-open when new messages arrive.
+        self.closing = True
+        
         if self.sensor_driver:
             self.sensor_driver.close(timeout=3) # TODO allow sensor driver to specify timeout
             self.sensor_driver = None

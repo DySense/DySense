@@ -180,7 +180,6 @@ class SensorBase(object):
                         raise Exception("Controller connection timed out.") 
                     
                     if self.received_close_request:
-                        self.send_text('Closing...')
                         break # end main loop
 
                     if self.need_to_send_heartbeat():
