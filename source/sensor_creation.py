@@ -105,8 +105,9 @@ class SensorDriverProcess(object):
 
     def _run_process(self, relative_path, startup_args, language):
         
-        startup_args[0] = str(startup_args[0]) # make sure ID is a string.
-        startup_args[1] = json.dumps(startup_args[1]) # serialize sensor settings
+        startup_args[0] = str(startup_args[0]) # make sure sensor ID is a string.
+        startup_args[1] = str(startup_args[1]) # make sure instrument ID is a string.
+        startup_args[2] = json.dumps(startup_args[2]) # serialize sensor settings
     
         absolute_path = os.path.join(os.path.abspath(sys.path[0]), relative_path)
         try:

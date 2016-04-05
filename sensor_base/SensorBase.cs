@@ -28,8 +28,11 @@ namespace DySense
             { "error", "bad" },
         };
 
-        // Unique sensor ID.
+        // Unique sensor ID assigned by user.
         string sensorID;
+
+        // Unique sensor ID that's associated with sensor (e.g. serial number)
+        protected string InstrumentID { get; set; } 
 
         // Controller endpoint to connect to and get messages from.
         string connectEndpoint;
@@ -115,10 +118,11 @@ namespace DySense
         // Associate callback methods with different message types.
         Dictionary<string, Func<object, bool>> messageTable;
 
-        public SensorBase(string sensorID, string connectEndpoint, double desiredReadPeriod = 0.25, double maxClosingTime=0,
+        public SensorBase(string sensorID, string instrumentID, string connectEndpoint, double desiredReadPeriod = 0.25, double maxClosingTime=0,
                           double heartbeatPeriod=0.5, bool waitForValidTime=true, bool decideTimeout=true)
         {
             this.sensorID = sensorID;
+            this.InstrumentID = instrumentID;
             this.connectEndpoint = connectEndpoint;
             this.DesiredReadPeriod = desiredReadPeriod;
             this.MaxClosingTime = maxClosingTime;
@@ -367,10 +371,6 @@ namespace DySense
         protected void HandleData(List<object> data)
         {
             lastReceivedDataTime = SysTime;
-            if (!ShouldRecordData())
-            {
-                return;
-            }
             SendMessage("new_sensor_data", new List<List<object>>() { data });
             NumDataMessageSent += 1;
         }
