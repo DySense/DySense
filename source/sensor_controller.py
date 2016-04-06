@@ -619,23 +619,33 @@ class SensorController(object):
 
     def handle_new_sensor_data(self, sensor, data):
         
-        self.try_process_time_source_data(sensor.sensor_id, self.controller_id, data)
+        # Determine if the sensor is any of our data sources.
+        # TODO - make this more efficient.
+        is_time_source = self.time_source and self.time_source.matches(sensor.sensor_id, self.controller_id)
+        matching_position_sources = [source for source in self.position_sources if source.matches(sensor.sensor_id, self.controller_id)]
+        matching_orientation_sources = [source for source in self.orientation_sources if source.matches(sensor.sensor_id, self.controller_id)]
+        
+        need_to_log_data = not sensor.sensor_paused and self.session_state == 'started'
+        
+        if is_time_source:
+            self.time_source.mark_updated()
+            self.process_time_source_data(data)
+        
+        for source in matching_position_sources:
+            source.mark_updated()
+            if need_to_log_data:
+                self.process_position_source_data(source, data)
+        
+        for source in matching_orientation_sources:
+            source.mark_updated()
+            if need_to_log_data:
+                self.process_orientation_source_data(source, data)
         
         # TODO manage manager subscriptions
         # TODO only send to other controllers if not paused
         self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, data))
 
-        # TODO - need to update data sources 'receiving'
-
-        # Share time regardless of whether sensor is paused or session is active since 
-        # it has nothing to do with logging.
-        self.try_process_time_source_data(sensor.sensor_id, self.controller_id, data)
-
-        if self.session_active and not sensor.sensor_paused:
-            
-            # Check if sensor is a position/orientation source.
-            self.try_process_position_source_data(sensor.sensor_id, self.controller_id, data)
-            self.try_process_orientation_source_data(sensor.sensor_id, self.controller_id, data)
+        if need_to_log_data:
 
             sensor.output_file.write(data)
             
@@ -643,54 +653,47 @@ class SensorController(object):
 
         self.try_process_data_source_data(sensor_id, controller_id, data)
 
-    def try_process_time_source_data(self, sensor_id, controller_id, data):
-        
-        if self.time_source and self.time_source.matches(sensor_id, controller_id):
-            sys_time = data[self.time_source.sys_time_idx]
-            if sys_time <= 0:
-                # Time came from another controller so timestamp when we received it to account for future latency.
-                sys_time = time.time()
-                
-            utc_time = data[self.time_source.utc_time_idx]
+    def process_time_source_data(self, data):
 
-            new_time = (utc_time, sys_time)
-            self._send_sensor_message('all', 'time', new_time)
+        sys_time = data[self.time_source.sys_time_idx]
+        if sys_time <= 0:
+            # Time came from another controller so timestamp when we received it to account for future latency.
+            sys_time = time.time()
             
-            self.last_utc_time = utc_time
+        utc_time = data[self.time_source.utc_time_idx]
+
+        new_time = (utc_time, sys_time)
+        self._send_sensor_message('all', 'time', new_time)
+        
+        self.last_utc_time = utc_time
+        
+        # Save off utc time in case we need to use it for timestamping a new session.
+        # Only grab the first one since the test GPS relies on that.
+        if not self.first_received_utc_time:
+            self.first_received_utc_time = utc_time
+            self.session_start_utc = utc_time
+        
+    def process_position_source_data(self, source, data):
+
+        utc_time = data[0]
+        x = data[source.position_x_idx]
+        y = data[source.position_y_idx]
+        z = data[source.position_z_idx]
+        position_data = [utc_time, x, y, z]
+        
+        if source.position_zone_idx is not None:
+            zone = data[source.position_zone_idx]
+            position_data.append(zone)
             
-            # Save off utc time in case we need to use it for timestamping a new session.
-            # Only grab the first one since the test GPS relies on that.
-            if not self.first_received_utc_time:
-                self.first_received_utc_time = utc_time
-                self.session_start_utc = utc_time
-        
-    def try_process_position_source_data(self, sensor_id, controller_id, data):
-        
-        for source in self.position_sources:
-            if source.matches(sensor_id, controller_id):
-                utc_time = data[0]
-                x = data[source.position_x_idx]
-                y = data[source.position_y_idx]
-                z = data[source.position_z_idx]
-                position_data = [utc_time, x, y, z]
-                if source.position_zone_idx is not None:
-                    zone = data[source.position_zone_idx]
-                    position_data.append(zone)
-                    
-                if len(self.position_sources) > 1:
-                    position_data.insert(0, source.sensor_id)
+        if len(self.position_sources) > 1:
+            position_data.insert(0, source.sensor_id)
 
-                if self.session_active:
-                    self.position_source_log.write(position_data)
+        self.position_source_log.write(position_data)
                     
-    def try_process_orientation_source_data(self, sensor_id, controller_id, data):
+    def process_orientation_source_data(self, source, data):
 
-        for source in self.orientation_sources:
-            if source.matches(sensor_id, controller_id):
-                angle = data[source.orientation_idx]
-                
-                if self.session_active:
-                    self.orientation_source_log.write([source.angle_name[0], angle])
+        angle = data[source.orientation_idx]
+        self.orientation_source_log.write([source.angle_name[0], angle])
 
     def handle_controller_command(self, manager, command_name):
         
@@ -767,14 +770,14 @@ class SensorController(object):
         
         if self.session_state == 'waiting_for_position':
             for source in self.position_sources:
-                if False: # TODO not source.receiving:
+                if not source.receiving:
                     return
             # All sources receiving.    
             self.session_state = 'waiting_for_orientation'
         
         if self.session_state == 'waiting_for_orientation':
             for source in self.orientation_sources:
-                if False: # TODO not source.receiving:
+                if not source.receiving:
                     return
             # All sources receiving.    
             self.session_state = 'starting'
@@ -784,10 +787,30 @@ class SensorController(object):
             self.session_state = 'started'
             
         if self.session_state == 'started':
-            pass # TODO monitor data sources and sensors and report events
-        
+            if self.time_source and not self.time_source.receiving:
+                self.session_state = 'suspended'
+            for source in self.position_sources:
+                if not source.receiving:
+                    self.session_state = 'suspended'
+            for source in self.orientation_sources:
+                if not source.receiving:
+                    self.session_state = 'suspended'
+                    
         if self.session_state == 'suspended':
-            pass # TODO monitor data sources nad sensors and see if can get back to started state
+            all_receiving = True
+            for source in self.position_sources + self.orientation_sources + ([self.time_source] if self.time_source else []):
+                if not source.receiving:
+                    all_receiving = False
+            if all_receiving:
+                self.session_state = 'started'
+                # Make sure all sensors are started.
+                for sensor in self.sensors:
+                    self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
+            else: 
+                # Make sure all sensors aren't saving data files because data isn't being logged.
+                for sensor in self.sensors:
+                    self._send_sensor_message(sensor.sensor_id, 'command', 'pause')
+
 
     def verify_controller_settings(self, manager):
         

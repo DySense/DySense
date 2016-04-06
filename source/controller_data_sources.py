@@ -1,4 +1,6 @@
 
+import time
+
 class AbstractDataSource(object):
     
     def __init__(self, callback, **kargs):
@@ -6,8 +8,14 @@ class AbstractDataSource(object):
         self.callback = callback
         self._controller_id = kargs.get('controller_id', 'None')
         self._sensor_id = kargs.get('sensor_id', 'None')
-        self._receiving = False
         self._sensor_metadata = kargs.get('metadata', None)
+        
+        # The minimum amount of time that needs to elapse without being updated before
+        # the sensor is considered as 'not receiving'.
+        self.timeout_duration = 1.5
+        
+        # The last time the source received new data.
+        self.last_update_time = 0
         
         if self.sensor_metadata is not None:
             self.verify_metadata()
@@ -27,17 +35,19 @@ class AbstractDataSource(object):
         return self._sensor_id
     @property
     def receiving(self):
-        return self._receiving
-    @receiving.setter
-    def receiving(self, new_value):
-        self._receiving = new_value
-        self.callback()
+        if self.sensor_id in ['derived', 'none']:
+            return True # always report as receiving because will never get data
+        else:
+            return time.time() <= (self.last_update_time + self.timeout_duration)
     @property
     def sensor_metadata(self):
         return self._sensor_metadata
     @property
     def sensor_output_names(self):
         return [outparam['name'] for outparam in self.sensor_metadata['data']]
+    
+    def mark_updated(self):
+        self.last_update_time = time.time()
     
     def get_matching_tag_idx(self, desired_tag_name):
         for i, data in enumerate(self.sensor_metadata['data']):
