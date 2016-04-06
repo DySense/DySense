@@ -51,6 +51,9 @@ class SensorDriverFactory(object):
         if sensor_type == 'lidar_lite':
             from sensors.distance.lidar_lite import LidarLite
             sensor = SensorDriverThread(LidarLite, local_startup_args)
+        if sensor_type == 'sonar_banner_qe':
+            from sensors.distance.sonar_banner_qe import SonarBannerQE
+            sensor = SensorDriverThread(SonarBannerQE, local_startup_args)
         
         sensor.run()
         

@@ -353,3 +353,42 @@ sensors:
           type: int
           uints: centimeters
         
+    sonar_banner_qe:
+      version: "1.0"
+      settings:    
+        - name: port
+          type: string
+          description: Serial port (e.g. COM2 or /dev/ttyS2)
+          default_value: COM1
+        - name: baud
+          type: int
+          description: How fast the device is sending data.
+          units: bits/sec
+          default_value: 19200
+          min_value: 1
+          max_value: 10000000
+        - name: output_period
+          type: float
+          description: How fast sensor is configured to send data.
+          units: seconds
+          default_value: .1
+          min_value: 0.0000001
+          max_value: 100000000
+        - name: default_reading
+          type: float
+          description: Distance that sensor returns when its not getting a valid return.
+          units: cm
+          default_value: -1
+        - name: timeout_duration
+          type: float
+          description: How long that default reading has to be received before reporting an error.
+          units: seconds
+          default_value: -1
+      data:
+        - name: utc_time
+          type: float
+          units: seconds
+        - name: distance
+          type: float
+          uints: centimeters
+        
