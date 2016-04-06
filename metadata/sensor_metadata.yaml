@@ -204,21 +204,20 @@ sensors:
           max_value: 10000000
         - name: message_rate
           type: float
-          description: How fast GPS is setup to output messages
+          description: How fast GPS is setup to output messages.  If different types of messages then this should be the fastest rate.
           units: Hz
           default_value: 10
           min_value: 0.0000001
           max_value: 100000000
         - name: required_fix
           type: string
-          description: GPS fix ID that must be maintained. 'none' to disable check.
+          description: GPS fix ID that must be maintained. 'none' to disable monitoring.
           default_value: none
         - name: required_error
           type: float
-          description: The max standard deviation of latitude/longitude error for usable data.
-          units: TODO
-          default_value: 1
-          min_value: 0
+          description: The maximum 1 sigma error in lat/long for usable data. Less than or equal to zero to disable monitoring.
+          units: meters
+          default_value: -1
           max_value: 100000
         - name: min_sats
           type: int
@@ -275,7 +274,7 @@ sensors:
           type: float
           description: The maximum 1 sigma error in lat/long for usable data. Less than or equal to zero to disable monitoring.
           units: meters
-          default_value: 1
+          default_value: -1
           max_value: 100000
         - name: min_sats
           type: int
