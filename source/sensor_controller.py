@@ -264,6 +264,10 @@ class SensorController(object):
         poller.register(self.manager_socket, zmq.POLLIN)
         poller.register(self.sensor_socket, zmq.POLLIN)
     
+        # How often to run slower rate 'update' loop.
+        update_loop_interval = 0.1
+        next_update_loop_time = time.time()
+    
         while True:
             
             if self.stop_request.is_set():
@@ -271,22 +275,25 @@ class SensorController(object):
             
             self.process_new_messages(poller, timeout)
 
-            # TODO only do this at a certain rate
-            for sensor in self.sensors:
-                # Mark that we've tried to receive message from sensor.
-                sensor.last_message_processing_time = time.time()
+            current_time = time.time()
+            if current_time >= next_update_loop_time:
+
+                for sensor in self.sensors:
+                    # Mark that we've tried to receive message from sensor.
+                    sensor.last_message_processing_time = time.time()
+                    
+                    if sensor.stopped_responding() and not sensor.closing:
+                        sensor.update_connection_state('timed_out')
+                    else:
+                        if sensor.need_to_send_heartbeat():
+                            self._send_sensor_message(sensor.sensor_id, 'heartbeat', '')
+                            sensor.last_sent_heartbeat_time = time.time()
+                        if sensor.num_messages_received > 0 and not sensor.closing:
+                            sensor.update_connection_state('opened')
+
+                self.update_session_state()
                 
-                if sensor.stopped_responding() and not sensor.closing:
-                    sensor.update_connection_state('timed_out')
-                else:
-                    if sensor.need_to_send_heartbeat():
-                        self._send_sensor_message(sensor.sensor_id, 'heartbeat', '')
-                        sensor.last_sent_heartbeat_time = time.time()
-                    if sensor.num_messages_received > 0 and not sensor.closing:
-                        sensor.update_connection_state('opened')
-            
-            # TODO only do this at a certain rate
-            self.update_session_state()
+                next_update_loop_time = current_time + update_loop_interval
             
     def close_down(self):
         
