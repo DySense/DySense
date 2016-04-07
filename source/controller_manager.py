@@ -179,9 +179,9 @@ class ControllerManager(object):
         
         self._send_message_to_presenter('new_sensor_text', (controller.id, sensor_id, text))
     
-    def handle_new_sensor_data(self, controller, sensor_id, data):
+    def handle_new_sensor_data(self, controller, sensor_id, data, data_ok):
         
-        self._send_message_to_presenter('new_sensor_data', (controller.id, sensor_id, data))
+        self._send_message_to_presenter('new_sensor_data', (controller.id, sensor_id, data, data_ok))
     
     def handle_new_time(self, controller, time):
         '''Could come from any controller.'''

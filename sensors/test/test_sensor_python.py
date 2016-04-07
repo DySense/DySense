@@ -51,6 +51,9 @@ class TestSensor(SensorBase):
         # Counter for each time data has been generated.
         self.counter = 0
         
+        # Flag that can be overridden with special command for testing.
+        self.data_quality_ok = True
+        
         # Flag to signify that the sensor is 'closed'
         self.closed = True
 
@@ -67,16 +70,22 @@ class TestSensor(SensorBase):
         
         new_data = (self.utc_time, str(self.counter), random.randint(0, 100), random.random(), self.sys_time)
         
-        self.handle_data(new_data)
+        self.handle_data(new_data, self.data_quality_ok)
         
         self.counter += 1
         
-        return 'normal'
+        return 'normal' if self.data_quality_ok else 'bad_data'
         
     def handle_special_command(self, command):
         
         if command == 'crash':
             raise Exception("Intentional crash for testing.")
+        
+        if command == 'bad_data':
+            self.data_quality_ok = False
+            
+        if command == 'good_data':
+            self.data_quality_ok = True
         
 if __name__ == '__main__':
 

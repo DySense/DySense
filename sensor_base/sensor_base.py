@@ -20,6 +20,7 @@ class SensorBase(object):
                        'normal': 'good',
                        'timed_out': 'bad',
                        'error': 'bad',
+                       'bad_data': 'bad'
                        }
 
     def __init__(self, sensor_id, instrument_id, context, connect_endpoint, desired_read_period=0.25, max_closing_time=0.1, 
@@ -291,11 +292,11 @@ class SensorBase(object):
         '''
         self.send_message('new_sensor_status', (self.state, self.health, self.paused))
         
-    def handle_data(self, data):
-        '''Send data to controller if everything is in the right state.'''
+    def handle_data(self, data, data_ok=True):
+        '''Send data to controller.  If data_ok is false then that indicates the data shouldn't be trusted or logged.'''
         self.last_received_data_time = self.sys_time
         # Make sure data is sent as a tuple.
-        self.send_message('new_sensor_data', (data,))
+        self.send_message('new_sensor_data', (data, data_ok))
         self.num_data_messages_sent += 1
         
     def should_record_data(self):

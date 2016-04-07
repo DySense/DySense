@@ -49,7 +49,8 @@ sensors:
           units: seconds
       special_commands:
         - crash
-        - trigger
+        - bad_data
+        - good_data
         
         
     test_sensor_csharp:

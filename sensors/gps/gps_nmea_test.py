@@ -58,6 +58,6 @@ class GpsNmeaTest(GpsNmea):
         else:
             utc_override = None
         
-        success = self.process_nmea_message(nmea_string, self.sys_time, utc_override)
+        current_state = self.process_nmea_message(nmea_string, self.sys_time, utc_override)
         
-        return 'normal' if success else 'error'
+        return current_state

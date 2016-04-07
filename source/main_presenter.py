@@ -317,7 +317,7 @@ class MainPresenter(QObject):
         
         self.view.remove_sensor(controller_id, sensor_id)
     
-    def handle_new_sensor_data(self, controller_id, sensor_id, data):
+    def handle_new_sensor_data(self, controller_id, sensor_id, data, data_ok):
         self.view.show_new_sensor_data(controller_id, sensor_id, data)
     
     def handle_new_sensor_text(self, controller_id, sensor_id, text):

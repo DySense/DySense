@@ -74,7 +74,7 @@ class GpsNmeaSerial(GpsNmea):
         if len(nmea_string) == 0:
             return 'timed_out'
     
-        success = self.process_nmea_message(nmea_string, self.sys_time)
+        current_state = self.process_nmea_message(nmea_string, self.sys_time)
         
-        return 'normal' if success else 'error'
+        return current_state
         

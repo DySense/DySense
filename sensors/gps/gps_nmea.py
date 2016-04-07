@@ -59,7 +59,7 @@ class GpsNmea(SensorBase):
         self.num_messages_processed = 0
         
         # Last result returned from handle_gga_message() 
-        self.last_gga_handle_result = False
+        self.last_gga_handle_result = 'normal'
               
     def process_nmea_message(self, nmea_string, message_read_time, utc_override=None):
         
@@ -77,27 +77,29 @@ class GpsNmea(SensorBase):
             self.send_text("Failed to parse NMEA sentence. Sentence was: {}".format(nmea_string))
             return False
 
-        # Set to true if message is handled successfully.        
-        processed_successfully = False
+        # Set below based on which message is processed.  Default to last GGA result since that's really the
+        # message we can about.      
+        current_state = self.last_gga_handle_result
         
         if 'GGA' == sentence_type:
-            processed_successfully = self.handle_gga_message(parsed_sentence, message_read_time, utc_override)
-            self.last_gga_handle_result = processed_successfully
+            current_state = self.handle_gga_message(parsed_sentence, message_read_time, utc_override)
+            self.last_gga_handle_result = current_state
 
         elif 'GST' == sentence_type:
             processed_successfully = self.handle_gst_message(parsed_sentence)
-            if processed_successfully:
-                # Override with last GGA result because we don't want the state of the driver to be 'good' or 'normal'
-                # solely based on whether or not processing a GST message was successful.
-                processed_successfully = self.last_gga_handle_result
+            if not processed_successfully:
+                current_state = 'error'
                                       
         # Make sure GST messages are being received if the user's trying to monitor fix accuracy.    
         if self.monitor_latlon_error and (self.gga_count % 100 == 0) and self.gst_count == 0:
             self.send_text('Received {} GGA messages without receiving a GST message'.format(self.gga_count))
                                           
-        return processed_successfully
+        return current_state
                                                         
     def handle_gga_message(self, data, message_read_time, utc_override):
+        
+        # Set to false below if one of the data monitoring checks fails.
+        data_quality_ok = True
         
         self.gga_count += 1
                                   
@@ -115,7 +117,7 @@ class GpsNmea(SensorBase):
         utc_time = data['utc_time']
         if math.isnan(utc_time):
             self.send_text('Invalid UTC time: {}'.format(utc_time))
-            return False        
+            return 'error'      
         
         num_sats = data['num_satellites']
         hdop = data["hdop"]
@@ -126,18 +128,17 @@ class GpsNmea(SensorBase):
             if fix != self.last_fix:
                 self.send_text('Insufficient fix: {} ({})'.format(self.fix_types[fix], fix))
             self.last_fix = fix
-            return False # bad fix 
+            data_quality_ok = False
             
-        if fix != self.last_fix:  
-            self.last_fix = fix
-            self.send_text('Current fix: {}'.format(self.fix_types[fix]))
-                
-            if utc_override:
-                utc_time = utc_override
+        elif fix != self.last_fix:  # fix is ok so just so user once 
+            self.send_text('Current fix: {} ({})'.format(self.fix_types[fix], fix))
+             
+        self.last_fix = fix
                 
         if not self.latlon_error_ok:
             # Error too high so can't handle message.
-            return False
+            # Don't send any text to user because that's handled in GST message.
+            data_quality_ok = False
         
         enough_satellites = num_sats >= self.min_sats
         
@@ -145,16 +146,22 @@ class GpsNmea(SensorBase):
             if self.enough_satellites_last_message:
                 self.send_text('Not enough satellites.')
             self.enough_satellites_last_message = enough_satellites
-            return False
+            data_quality_ok = False
         
         if self.min_sats > 0 and enough_satellites and not self.enough_satellites_last_message:
             self.send_text('Tracking enough satellites.')
             
-        self.enough_satellites_last_message = enough_satellites    
-             
-        self.handle_data((utc_time, message_read_time, latitude, longitude, altitude, num_sats, hdop))
+        self.enough_satellites_last_message = enough_satellites
         
-        return True # successfully handled
+        if utc_override:
+            utc_time = utc_override
+            # Override data quality because this is only used for test GPS to make sure first time stamp
+            # is unique, so need to make sure the over-ridden UTC time is actually used.
+            data_quality_ok = True
+             
+        self.handle_data((utc_time, message_read_time, latitude, longitude, altitude, num_sats, hdop), data_quality_ok)
+        
+        return 'normal' if data_quality_ok else 'bad_data'
         
     def handle_gst_message(self, data):
             

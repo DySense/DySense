@@ -105,6 +105,18 @@ class SonarBannerQE(SensorBase):
             self.send_text("Bad reported distance '{}'".format(new_distance))
             return 'error'
         
+        current_state = self.update_monitoring_state(new_distance)
+        
+        data_ok = (current_state != 'bad_data')
+        
+        self.handle_data((self.utc_time, new_distance), data_ok)
+
+        return current_state
+
+    def update_monitoring_state(self, new_distance):
+        
+        current_state = 'normal'
+        
         if self.monitor_state != 'disabled':
             
             # Make sure distance reading is changing and not stuck at the default value.
@@ -121,19 +133,17 @@ class SonarBannerQE(SensorBase):
                         self.monitor_state = 'timed_out'
                         self.send_text('Received default distance {} for {} straight seconds'.format(self.default_reading, self.timeout_duration))
                 else: # got a different reading
-                    self.monitor_state == 'ok'
+                    self.monitor_state = 'ok'
                     
             if self.monitor_state == 'timed_out':
                 
                 if new_distance == self.default_reading:
-                    return 'error'
+                    current_state = 'bad_data'
                 else: # started getting new readings again
                     self.monitor_state = 'ok'
                     self.send_text('Received non-default distance {}.'.format(new_distance))
-        
-        self.handle_data((self.utc_time, new_distance))
-
-        return 'normal'
+    
+        return current_state
     
     def parse_distance(self, new_bytes):
         '''
@@ -160,3 +170,5 @@ class SonarBannerQE(SensorBase):
         self.byte_buffer = self.byte_buffer[end_index+1:]
 
         return distance
+
+

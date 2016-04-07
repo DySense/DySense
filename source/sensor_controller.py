@@ -617,7 +617,7 @@ class SensorController(object):
         for sensor in sensors:
             sensor.setup()
 
-    def handle_new_sensor_data(self, sensor, data):
+    def handle_new_sensor_data(self, sensor, data, data_ok):
         
         # Determine if the sensor is any of our data sources.
         # TODO - make this more efficient.
@@ -625,7 +625,7 @@ class SensorController(object):
         matching_position_sources = [source for source in self.position_sources if source.matches(sensor.sensor_id, self.controller_id)]
         matching_orientation_sources = [source for source in self.orientation_sources if source.matches(sensor.sensor_id, self.controller_id)]
         
-        need_to_log_data = not sensor.sensor_paused and self.session_state == 'started'
+        need_to_log_data = data_ok and (not sensor.sensor_paused) and self.session_state == 'started'
         
         if is_time_source:
             self.time_source.mark_updated()
@@ -643,7 +643,7 @@ class SensorController(object):
         
         # TODO manage manager subscriptions
         # TODO only send to other controllers if not paused
-        self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, data))
+        self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, data, data_ok))
 
         if need_to_log_data:
 
