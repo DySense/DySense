@@ -303,7 +303,7 @@ class SensorViewWidget(QWidget,Ui_Form):
             if value == True:
                 self.paused_label.setText('Paused')
             elif value == False:
-                self.paused_label.setText('Running')
+                self.paused_label.setText('Active')
                 
         if info_name == 'sensor_state':
             self.sensor_state_value_label.setText(pretty(value))
