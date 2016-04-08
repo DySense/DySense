@@ -107,7 +107,7 @@ class SonarBannerQE(SensorBase):
         
         current_state = self.update_monitoring_state(new_distance)
         
-        data_ok = (current_state != 'bad_data')
+        data_ok = (current_state != 'bad_data_quality')
         
         self.handle_data(self.utc_time, self.sys_time, [new_distance], data_ok)
 
@@ -138,7 +138,7 @@ class SonarBannerQE(SensorBase):
             if self.monitor_state == 'timed_out':
                 
                 if new_distance == self.default_reading:
-                    current_state = 'bad_data'
+                    current_state = 'bad_data_quality'
                 else: # started getting new readings again
                     self.monitor_state = 'ok'
                     self.send_text('Received non-default distance {}.'.format(new_distance))

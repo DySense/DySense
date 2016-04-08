@@ -20,7 +20,7 @@ class SensorBase(object):
                        'normal': 'good',
                        'timed_out': 'bad',
                        'error': 'bad',
-                       'bad_data': 'bad'
+                       'bad_data_quality': 'bad'
                        }
 
     def __init__(self, sensor_id, instrument_id, context, connect_endpoint, desired_read_period=0.25, max_closing_time=0.1, 

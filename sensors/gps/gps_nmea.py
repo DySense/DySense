@@ -161,7 +161,7 @@ class GpsNmea(SensorBase):
              
         self.handle_data(utc_time, message_read_sys_time, [latitude, longitude, altitude, num_sats, hdop], data_quality_ok)
         
-        return 'normal' if data_quality_ok else 'bad_data'
+        return 'normal' if data_quality_ok else 'bad_data_quality'
         
     def handle_gst_message(self, data):
             

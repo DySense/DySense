@@ -74,7 +74,7 @@ class TestSensor(SensorBase):
         
         self.counter += 1
         
-        return 'normal' if self.data_quality_ok else 'bad_data'
+        return 'normal' if self.data_quality_ok else 'bad_data_quality'
         
     def handle_special_command(self, command):
         
