@@ -69,13 +69,13 @@ class GpsNmea(SensorBase):
             if self.num_messages_processed > 1:
                 # Only send message if wasn't first message because sometimes first message isn't complete.
                 self.send_text("Invalid checksum. Sentence was: {}".format(nmea_string))
-            return False
+            return 'error'
         
         try:
             sentence_type, parsed_sentence = parse_nmea_sentence(nmea_string)
         except ValueError:
             self.send_text("Failed to parse NMEA sentence. Sentence was: {}".format(nmea_string))
-            return False
+            return 'error'
 
         # Set below based on which message is processed.  Default to last GGA result since that's really the
         # message we can about.      
