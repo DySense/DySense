@@ -345,7 +345,7 @@ class SensorViewWidget(QWidget,Ui_Form):
     
     def overall_sensor_health_update(self, health):
         # call method to update change list widget item color for corresponding health
-        self.view.update_list_widget_color(self.controller_id, self.sensor_id, health)
+        self.view.update_list_widget_color(health, self.controller_id, self.sensor_id)
         
         if health in ['N/A', 'neutral']:
             self.sensor_health_icon_label.setPixmap(self.neutral_icon)    

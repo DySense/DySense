@@ -55,7 +55,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         # Associate sensor (controller_id, sensor_id) to its widget.
         self.sensor_to_widget = {}
-            
+    
+        # Associate controller (controller_id) to its widget.
+        self.controller_to_widget = {}
             
         #dictionaries for relating the controller info names to their corresponding line edits/labels        
         self.name_to_object =  {
@@ -78,16 +80,25 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
 
         
         #Lookup table of sensor views in the stacked widget
-        #key - sensor id
+        #key - (controller_id, sensor id)
         #value - index in stacked widget
-        #menu page is always index 0 
         self.sensor_view_stack = {}
                
+        #Lookup table of controller views in the stacked widget
+        #key - controller_id
+        #value - index in stacked widget
+        #menu page is always index 0 
+        self.controller_view_stack = {}
         
         #Lookup table of sensor 'items' in the list widget
         #key - tuple of (controller id, sensor id)
-        #value - row position of list item
-        self.sensor_list = {}
+        #value - row position index of list item
+        self.sensor_to_list_row = {}
+        
+        #Lookup table of controller 'items' in the list widget
+        #key - controller id
+        #value - row position index of list item
+        self.controller_to_list_row = {}
         
         # Connect controller setting line edits
         self.controller_name_line_edit.editingFinished.connect(self.controller_name_changed)
@@ -180,19 +191,41 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         self.presenter.close_all_sensors(only_on_active_controller=True)
     
-    def update_list_widget_color(self, controller_id, sensor_id, health):
-        if (controller_id, sensor_id) in self.sensor_list:
-            row = self.sensor_list[(controller_id, sensor_id)]
-            item = self.sensor_list_widget.item(row)
-            
-            if health in ['N/A', 'neutral']:                      
-                item.setBackgroundColor(QColor(255,255,255)) #white
-                                        
-            elif health == 'good':
-                item.setBackgroundColor(QColor(12,245,0)) # light green
-                  
-            elif health == 'bad':
-                item.setBackgroundColor(QColor(250,145,145)) # light red
+    def update_list_widget_color(self, health, controller_id, sensor_id):
+        
+        if sensor_id is None:
+            row_idx = self.controller_to_list_row[controller_id]
+        else:
+            row_idx = self.sensor_to_list_row[(controller_id, sensor_id)]
+
+        item = self.sensor_list_widget.item(row_idx)
+        
+        if health in ['N/A', 'neutral']:                      
+            item.setBackgroundColor(QColor(255,255,255)) #white
+                                    
+        elif health == 'good':
+            item.setBackgroundColor(QColor(12,245,0)) # light green
+              
+        elif health == 'bad':
+            item.setBackgroundColor(QColor(250,145,145)) # light red
+    
+    def add_new_controller(self, controller_id, controller_info):
+        
+        # TODO
+        #self.create_new_controller_view(controller_id, controller_info)
+        self.controller_view_stack[controller_id] = 0 # TODO move to create new view
+        self.controller_to_widget[controller_id] = self.menu_page
+        
+        self.refresh_sensor_list_widget()
+    
+    def add_new_sensor(self, controller_id, sensor_id, sensor_info):
+        
+        self.create_new_sensor_view(controller_id, sensor_id, sensor_info)
+        
+        self.refresh_sensor_list_widget()
+        
+        # Now that sensor is in list widget update it's info.
+        self.update_all_sensor_info(controller_id, sensor_id, sensor_info)
     
     def create_new_sensor_view(self, controller_id, sensor_id, sensor_info):
         
@@ -202,14 +235,12 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.stacked_widget.addWidget(new_sensor_view)
             
         #Add the widget to sensor_view_stack dict - currently used in show_sensor
-        self.sensor_view_stack[sensor_id] = self.stacked_widget.indexOf(new_sensor_view)
+        self.sensor_view_stack[(controller_id, sensor_id)] = self.stacked_widget.indexOf(new_sensor_view)
         
         stack_index = self.stacked_widget.indexOf(new_sensor_view)
         
         #add widget instance and index to the sensor_info
         self.sensor_to_widget[(controller_id, sensor_id)] = new_sensor_view
-                
-        self.update_all_sensor_info(controller_id, sensor_id, sensor_info)
             
     def add_sensor_button_clicked(self, sensor_info):
         
@@ -219,16 +250,56 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         self.presenter.select_data_sources()        
         
-    def add_sensor_to_list_widget(self, controller_id, sensor_id):
+    def refresh_sensor_list_widget(self):
         
+        self.recalculate_list_widget_ordering()
+
+        self.sensor_list_widget.clear()
         
-        row = self.sensor_list_widget.count()
+        for controller_id, row_idx in self.controller_to_list_row.items():
+            controller_list_item = QListWidgetItem()
+            controller_list_item.setText(controller_id)
+            font = QtGui.QFont()
+            font.setBold(True)
+            font.setUnderline(True)
+            controller_list_item.setFont(font)
+            self.sensor_list_widget.insertItem(row_idx, controller_list_item)
         
-        #Add sensor to sensor_list dict to keep track of items in list
-        self.sensor_list[(controller_id, sensor_id)] = row
+        for (controller_id, sensor_id), row_idx in self.sensor_to_list_row.items():
+            self.sensor_list_widget.insertItem(row_idx, sensor_id)
             
+        # Update list for things like paused status and color.
+        for (controller_id, sensor_id) in self.sensor_to_list_row:
+            self.update_sensor_list_widget(controller_id, sensor_id)
+        for controller_id in self.controller_to_list_row:
+            self.update_controller_in_sensor_list_widget(controller_id)
+            
+    def recalculate_list_widget_ordering(self):
         
-        self.sensor_list_widget.addItem(sensor_id)
+        # The next row index in the list widget to assign to a controller or sensor.
+        next_row_idx = 0
+        
+        # Reset list index lookups.
+        self.controller_to_list_row = {}
+        self.sensor_to_list_row = {}
+        
+        # Alphabetize controller IDs (names) while keeping the local controller first.
+        remote_controller_ids = [c_id for c_id in self.controller_to_widget if c_id != self.local_controller_name]
+        remote_controller_ids = sorted(remote_controller_ids)
+        sorted_controller_ids = [self.local_controller_name] + remote_controller_ids
+        
+        for controller_id in sorted_controller_ids:
+            self.controller_to_list_row[controller_id] = next_row_idx
+            next_row_idx += 1
+        
+            matching_sensor_ids = [s_id for (c_id, s_id) in self.sensor_to_widget if c_id == controller_id]
+            sorted_sensor_ids = sorted(matching_sensor_ids)
+            for sensor_id in sorted_sensor_ids:
+                self.sensor_to_list_row[(controller_id, sensor_id)] = next_row_idx
+                next_row_idx += 1
+        
+            # Increment again to put a space in between controllers.
+            next_row_idx += 1
         
     def update_sensor_list_widget(self, controller_id, sensor_id):
         
@@ -237,34 +308,48 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         if sensor['sensor_paused']:
             sensor_name += ' (paused)'
         
-        row = self.sensor_list[(controller_id, sensor_id)]
+        row = self.sensor_to_list_row[(controller_id, sensor_id)]
         item = self.sensor_list_widget.item(row)
         item.setText(sensor_name)
+        
+        self.update_list_widget_color(sensor['overall_health'], controller_id, sensor_id)
+        
+    def update_controller_in_sensor_list_widget(self, controller_id):
+        
+        # TODO tie color to issues.
+        #controller = self.presenter.controllers[controller_id]
+        self.update_list_widget_color('neutral', controller_id, sensor_id=None)
         
     def list_item_clicked(self, item):
                 
         #item name = text of item in display list, which is the same as the sensor name
-        row = self.sensor_list_widget.currentRow()
+        row_idx = self.sensor_list_widget.currentRow()
         
-        #get the tuple of ids based on the name of the item clicked  
-        for key in self.sensor_list:
-            if self.sensor_list[key] == row:
-                ids = key
-                
-        controller_id = ids[0]
-        sensor_id = ids[1] 
-                
-        self.presenter.new_sensor_selected(controller_id, sensor_id)     
-            
-      
-    def show_sensor(self,sensor_id):
-        self.stacked_widget.setCurrentIndex(self.sensor_view_stack[sensor_id])
-        
-        #TODO - call self.presenter.update_active_sensor to update both the controller and sensor ids
-        #for now, just update the sensor here and assume one controller
-        self.presenter.active_sensor_id = sensor_id
 
-                
+        # Check if it was a sensor that was clicked on.
+        for (controller_id, sensor_id), value in self.sensor_to_list_row.items():
+            if value == row_idx:
+                self.presenter.new_sensor_selected(controller_id, sensor_id)
+                return 
+               
+        # Check if it was a controller that was clicked on. 
+        for controller_id, value in self.controller_to_list_row.items():
+            if value == row_idx:
+                self.presenter.new_controller_selected(controller_id)
+                return 
+      
+    def show_sensor(self, controller_id, sensor_id):
+        
+        self.stacked_widget.setCurrentIndex(self.sensor_view_stack[(controller_id, sensor_id)])
+        
+        self.presenter.update_active_sensor(controller_id, sensor_id)
+      
+    def show_controller(self, controller_id):
+        
+        self.stacked_widget.setCurrentIndex(self.controller_view_stack[controller_id])
+        
+        self.presenter.active_controller = controller_id
+        
     def menu_button_clicked(self):
         #set menu page to the front of the stacked widget, menu page will always be index 0
         self.stacked_widget.setCurrentIndex(0)
@@ -412,18 +497,11 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         # switch to the controller view page 
         self.stacked_widget.setCurrentIndex(0)
         
-        # remove sensor item from list widget
-        row_to_delete = self.sensor_list[(controller_id, sensor_id)]
-        self.sensor_list_widget.takeItem(row_to_delete)
-        
-        # shift affected rows down by one to stay in sync with list widget
-        for key in self.sensor_list:
-            if self.sensor_list[key] > row_to_delete:
-                self.sensor_list[key] -= 1
-                
         # remove sensor from appropriate dictionaries
-        del self.sensor_view_stack[sensor_id]
-        del self.sensor_list[(controller_id, sensor_id)]
+        del self.sensor_to_widget[(controller_id, sensor_id)]
+        del self.sensor_view_stack[(controller_id, sensor_id)]
+        
+        self.refresh_sensor_list_widget()
     
     def show_new_sensor_data(self, controller_id, sensor_id, data):
                 

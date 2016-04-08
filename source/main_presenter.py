@@ -160,8 +160,11 @@ class MainPresenter(QObject):
         
     def new_sensor_selected(self, controller_id, sensor_id):
         
-        #call show_sensor to set the active sensor id and set the correct widget to front
-        self.view.show_sensor(sensor_id)    
+        self.view.show_sensor(controller_id, sensor_id)    
+    
+    def new_controller_selected(self, controller_id):
+    
+        self.view.show_controller(controller_id)
     
     #called when user changes field in sensor view
     def sensor_view_field_changed(self, info_name, value, sensor_id):
@@ -296,9 +299,7 @@ class MainPresenter(QObject):
         self.sensors[(controller_id, sensor_id)] = sensor_info
 
         if is_new_sensor:
-            #creates the new sensor view which then calls view.update_all_sensor_info
-            self.view.add_sensor_to_list_widget(controller_id, sensor_id)
-            self.view.create_new_sensor_view(controller_id, sensor_id, sensor_info)
+            self.view.add_new_sensor(controller_id, sensor_id, sensor_info)
         else:
             self.view.update_all_sensor_info(controller_id, sensor_id, sensor_info)                   
         
@@ -336,7 +337,7 @@ class MainPresenter(QObject):
             self.active_controller_id = controller_id
         
         if is_new_controller:
-            pass # TODO create new controller viewer once we support multiple controllers
+            self.view.add_new_controller(controller_id, controller_info)
             
         self.view.update_all_controller_info(controller_info['id'], controller_info)
         
