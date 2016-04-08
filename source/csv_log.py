@@ -29,7 +29,7 @@ class CSVLog:
                 
         if (data is None) or (len(data) == 0):
             # Create blank one element tuple so it's obvious in log that no data was received.
-            data = ' ',
+            raise Exception("Data can't be empty.")
             
         # Convert all values using built in representation function.  This avoids loss of precision
         # on floating point numbers due to the way floats are printed in python.

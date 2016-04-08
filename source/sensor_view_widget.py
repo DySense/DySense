@@ -171,10 +171,6 @@ class SensorViewWidget(QWidget,Ui_Form):
         for n, data_metadata in enumerate(self.sensor_metadata['data']):
             
             name = data_metadata.get('name', 'No Name')
-            if name in ['sys_time', 'utc_time', 'system_time']:
-                self.data_line_edits.append('skip')
-                continue
-             
             units = data_metadata.get('units', False)
             decimal_places = data_metadata.get('decimal_places', False)  
              
@@ -231,28 +227,23 @@ class SensorViewWidget(QWidget,Ui_Form):
 
         for n, line_edit in enumerate(self.data_line_edits):
             try:
-                # skips over line edits we don't want displayed, such as utc and sys times
-                if line_edit == 'skip':
-                    continue
-                else:           
+                if isinstance(data[n], float):
+                         
+                    desired_length = self.dec_places[n] # = False if not specified
                     
-                    if isinstance(data[n], float):
-                             
-                        desired_length = self.dec_places[n] # = False if not specified
+                    current_length = abs(Decimal(str(data[n])).as_tuple().exponent)
+                    
+                    if desired_length: # set number of decimal places to desired length if given
+                        line_edit.setText(str('{:.{prec}f}'.format(data[n], prec=desired_length)))
                         
-                        current_length = abs(Decimal(str(data[n])).as_tuple().exponent)
+                    elif current_length > 5: # if float has more than 5 dec places, cap it at 5
+                        line_edit.setText(str("{0:.5f}".format(data[n])))           
                         
-                        if desired_length: # set number of decimal places to desired length if given
-                            line_edit.setText(str('{:.{prec}f}'.format(data[n], prec=desired_length)))
-                            
-                        elif current_length > 5: # if float has more than 5 dec places, cap it at 5
-                            line_edit.setText(str("{0:.5f}".format(data[n])))           
-                            
-                        else:
-                            line_edit.setText(str(data[n]))       
-                                            
                     else:
-                        line_edit.setText(str(data[n]))
+                        line_edit.setText(str(data[n]))       
+                                        
+                else:
+                    line_edit.setText(str(data[n]))
                         
                         
             except IndexError:

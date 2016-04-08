@@ -64,16 +64,11 @@ class AbstractDataSource(object):
 class TimeDataSource(AbstractDataSource):
     
     def __init__(self, callback,  **kargs):
-        self.utc_time_idx = None
-        self.sys_time_idx = None
         super(TimeDataSource, self).__init__(callback, **kargs)
         
     def verify_metadata(self):
-        try:
-            self.utc_time_idx = self.sensor_output_names.index('utc_time')
-            self.sys_time_idx = self.sensor_output_names.index('sys_time')
-        except ValueError:
-            raise ValueError("Could not find 'utc_time' and 'sys_time' in sensor output types {}".format(self.sensor_output_names))
+        # UTC and system time are standardized as the first and second piece of data passed so don't need to lookup indices.
+        pass
         
 class PositionDataSource(AbstractDataSource):
     
@@ -85,6 +80,7 @@ class PositionDataSource(AbstractDataSource):
         super(PositionDataSource, self).__init__(callback, **kargs)
         
     def verify_metadata(self):
+
         try:
             self.position_x_idx = self.get_matching_tag_idx('position_x')
             self.position_y_idx = self.get_matching_tag_idx('position_y')
@@ -106,6 +102,7 @@ class OrientationDataSource(AbstractDataSource):
         super(OrientationDataSource, self).__init__(callback, **kargs)
         
     def verify_metadata(self):
+
         try:
             self.orientation_idx = self.get_matching_tag_idx(self.angle_name)
         except ValueError:

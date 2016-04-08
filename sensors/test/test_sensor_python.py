@@ -68,9 +68,9 @@ class TestSensor(SensorBase):
     def read_new_data(self):
         '''Generate new data to output and return current read state.'''
         
-        new_data = (self.utc_time, str(self.counter), random.randint(0, 100), random.random(), self.sys_time)
+        new_data = [str(self.counter), random.randint(0, 100), random.random(), self.sys_time]
         
-        self.handle_data(new_data, self.data_quality_ok)
+        self.handle_data(self.utc_time, self.sys_time, new_data, self.data_quality_ok)
         
         self.counter += 1
         

@@ -56,9 +56,9 @@ class ControllerManager(object):
                                   'sensor_removed': self.handle_sensor_removed,
                                   'new_sensor_text': self.handle_new_sensor_text,
                                   'new_sensor_data': self.handle_new_sensor_data,
-                                  'new_time': self.handle_new_time,
                                   'error_message': self.handle_error_message,
                                   'new_controller_text': self.handle_new_controller_text,
+                                  'new_source_data': self.handle_new_source_data,
                                   }
 
     def run(self):
@@ -179,17 +179,9 @@ class ControllerManager(object):
         
         self._send_message_to_presenter('new_sensor_text', (controller.id, sensor_id, text))
     
-    def handle_new_sensor_data(self, controller, sensor_id, data, data_ok):
+    def handle_new_sensor_data(self, controller, sensor_id, utc_time, sys_time, data, data_ok):
         
-        self._send_message_to_presenter('new_sensor_data', (controller.id, sensor_id, data, data_ok))
-    
-    def handle_new_time(self, controller, time):
-        '''Could come from any controller.'''
-        utc_time, sys_time = time
-        if sys_time <= 0:
-            # Time came from another computer so need to record time.
-            sys_time = time.time()
-        self._send_message_to_controller('new_time', (utc_time, sys_time), local_controller)
+        self._send_message_to_presenter('new_sensor_data', (controller.id, sensor_id, utc_time, sys_time, data, data_ok))
         
     def handle_error_message(self, controller, message, level):
         ''''''
@@ -198,6 +190,10 @@ class ControllerManager(object):
     def handle_new_controller_text(self, controller, text):
         
         self._send_message_to_presenter('new_controller_text', (controller.id, text))
+        
+    def handle_new_source_data(self, controller, sensor_id, source_type, utc_time, sys_time, data):
+        
+        self._send_message_to_presenter('new_source_data', (controller.id, sensor_id, source_type, utc_time, sys_time, data))
         
     def _send_message_to_presenter(self, message_type, message_body):
 

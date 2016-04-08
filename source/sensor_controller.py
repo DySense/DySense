@@ -624,7 +624,7 @@ class SensorController(object):
         for sensor in sensors:
             sensor.setup()
 
-    def handle_new_sensor_data(self, sensor, data, data_ok):
+    def handle_new_sensor_data(self, sensor, utc_time, sys_time, data, data_ok):
         
         # Determine if the sensor is any of our data sources.
         # TODO - make this more efficient.
@@ -636,39 +636,35 @@ class SensorController(object):
         
         if is_time_source:
             self.time_source.mark_updated()
-            self.process_time_source_data(data)
+            self.process_time_source_data(utc_time, sys_time)
         
         for source in matching_position_sources:
             source.mark_updated()
-            if need_to_log_data:
-                self.process_position_source_data(source, data)
+            self.process_position_source_data(source, utc_time, sys_time, data, need_to_log_data)
         
         for source in matching_orientation_sources:
             source.mark_updated()
-            if need_to_log_data:
-                self.process_orientation_source_data(source, data)
+            self.process_orientation_source_data(source, utc_time, sys_time, data, need_to_log_data)
         
         # TODO manage manager subscriptions
         # TODO only send to other controllers if not paused
-        self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, data, data_ok))
+        self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, utc_time, sys_time, data, data_ok))
 
         if need_to_log_data:
-
+            data.insert(0, utc_time)
             sensor.output_file.write(data)
             
     def handle_data_source_data(self, manager, sensor_id, controller_id, data):
 
-        self.try_process_data_source_data(sensor_id, controller_id, data)
+        raise NotImplementedError()
+        #self.try_process_data_source_data(sensor_id, controller_id, data)
 
-    def process_time_source_data(self, data):
+    def process_time_source_data(self, utc_time, sys_time):
 
-        sys_time = data[self.time_source.sys_time_idx]
         if sys_time <= 0:
             # Time came from another controller so timestamp when we received it to account for future latency.
             sys_time = time.time()
             
-        utc_time = data[self.time_source.utc_time_idx]
-
         new_time = (utc_time, sys_time)
         self._send_sensor_message('all', 'time', new_time)
         
@@ -680,27 +676,40 @@ class SensorController(object):
             self.first_received_utc_time = utc_time
             self.session_start_utc = utc_time
         
-    def process_position_source_data(self, source, data):
+    def process_position_source_data(self, source, utc_time, sys_time, data, need_to_log):
 
-        utc_time = data[0]
         x = data[source.position_x_idx]
         y = data[source.position_y_idx]
         z = data[source.position_z_idx]
-        position_data = [utc_time, x, y, z]
+        position_data = [x, y, z]
         
         if source.position_zone_idx is not None:
             zone = data[source.position_zone_idx]
             position_data.append(zone)
-            
-        if len(self.position_sources) > 1:
-            position_data.insert(0, source.sensor_id)
 
-        self.position_source_log.write(position_data)
+        # TODO just send to local manager.
+        self._send_manager_message('all', 'new_source_data', (source.sensor_id, 'position', utc_time, sys_time, position_data))
+
+        if need_to_log:
+            
+            position_data.insert(0, utc_time)
                     
-    def process_orientation_source_data(self, source, data):
+            if len(self.position_sources) > 1:
+                position_data.insert(0, source.sensor_id)
+    
+            self.position_source_log.write(position_data)
+                    
+    def process_orientation_source_data(self, source, utc_time, sys_time, data, need_to_log):
 
         angle = data[source.orientation_idx]
-        self.orientation_source_log.write([source.angle_name[0], angle])
+        orientation_data = [source.angle_name[0], angle]
+        
+        # TODO just send to local manager.
+        self._send_manager_message('all', 'new_source_data', (source.sensor_id, 'orientation', utc_time, sys_time, orientation_data))
+        
+        if need_to_log:
+            orientation_data.insert(0, utc_time)
+            self.orientation_source_log.write(orientation_data)
 
     def handle_controller_command(self, manager, command_name):
         

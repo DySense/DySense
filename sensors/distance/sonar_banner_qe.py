@@ -109,7 +109,7 @@ class SonarBannerQE(SensorBase):
         
         data_ok = (current_state != 'bad_data')
         
-        self.handle_data((self.utc_time, new_distance), data_ok)
+        self.handle_data(self.utc_time, self.sys_time, [new_distance], data_ok)
 
         return current_state
 

@@ -292,11 +292,11 @@ class SensorBase(object):
         '''
         self.send_message('new_sensor_status', (self.state, self.health, self.paused))
         
-    def handle_data(self, data, data_ok=True):
+    def handle_data(self, utc_time, sys_time, data, data_ok=True):
         '''Send data to controller.  If data_ok is false then that indicates the data shouldn't be trusted or logged.'''
         self.last_received_data_time = self.sys_time
         # Make sure data is sent as a tuple.
-        self.send_message('new_sensor_data', (data, data_ok))
+        self.send_message('new_sensor_data', (utc_time, sys_time, data, data_ok))
         self.num_data_messages_sent += 1
         
     def should_record_data(self):

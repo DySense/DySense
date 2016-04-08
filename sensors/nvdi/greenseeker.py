@@ -91,7 +91,7 @@ class GreenSeeker(SensorBase):
         except ValueError:
             return 'normal' # sometimes greenseeker sends data labels as text. Don't want to do anything with those.
 
-        self.handle_data((self.utc_time, internal_timestamp, nvdi, extra_vi))
+        self.handle_data(self.utc_time, self.sys_time, [internal_timestamp, nvdi, extra_vi])
 
         return 'normal'
         

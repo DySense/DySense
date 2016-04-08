@@ -28,9 +28,6 @@ sensors:
           default_value: true
       tags: [roll, pitch, yaw]
       data:
-        - name: utc_time
-          type: float
-          units: seconds
         - name: counter
           type: str
           tags: [roll] # for testing data sources
@@ -68,9 +65,6 @@ sensors:
           description: Any number that is a floating point number.
           default_value: 1.25
       data:
-        - name: utc_time
-          type: float
-          units: seconds
         - name: counter
           type: str
         - name: rand_int
@@ -116,12 +110,6 @@ sensors:
           min_value: -1
           max_value: 100000
       data:
-        - name: utc_time
-          type: float
-          units: seconds
-        - name: sys_time
-          type: float
-          units: seconds
         - name: type
           type: string
         - name: file_name
@@ -149,9 +137,6 @@ sensors:
           min_value: 0.0000001
           max_value: 100000000
       data:
-        - name: utc_time
-          type: float
-          units: seconds
         - name: temperature
           type: float
           units: celcius
@@ -178,9 +163,6 @@ sensors:
           min_value: 0.0000001
           max_value: 100000000
       data:
-        - name: utc_time
-          type: float
-          units: seconds
         - name: internal_time
           type: int
           uints: milliseconds
@@ -226,12 +208,6 @@ sensors:
           default_value: 0
       tags: [time, position]
       data:
-        - name: utc_time
-          type: float
-          units: seconds
-        - name: sys_time
-          type: float
-          units: seconds
         - name: latitude
           type: float
           units: degrees
@@ -283,12 +259,6 @@ sensors:
           default_value: 0
       tags: [time, position]
       data:
-        - name: utc_time
-          type: float
-          units: seconds
-        - name: sys_time
-          type: float
-          units: seconds
         - name: latitude
           type: float
           units: degrees
@@ -325,9 +295,6 @@ sensors:
           min_value: 0.001
           max_value: 100000000
       data:
-        - name: utc_time
-          type: float
-          units: seconds
         - name: image_name
           type: string
           
@@ -346,9 +313,6 @@ sensors:
           min_value: 1
           max_value: 10000000
       data:
-        - name: utc_time
-          type: float
-          units: seconds
         - name: distance
           type: int
           uints: centimeters
@@ -385,9 +349,6 @@ sensors:
           units: seconds
           default_value: -1
       data:
-        - name: utc_time
-          type: float
-          units: seconds
         - name: distance
           type: float
           uints: centimeters

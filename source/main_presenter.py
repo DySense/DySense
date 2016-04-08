@@ -55,6 +55,7 @@ class MainPresenter(QObject):
                                   'controller_removed': self.handle_controller_removed,
                                   'error_message': self.handle_error_message,
                                   'new_controller_text': self.handle_new_controller_text,
+                                  'new_source_data': self.handle_new_source_data,
                                   }
         
         self.manager_socket = self.context.socket(zmq.DEALER)
@@ -317,7 +318,7 @@ class MainPresenter(QObject):
         
         self.view.remove_sensor(controller_id, sensor_id)
     
-    def handle_new_sensor_data(self, controller_id, sensor_id, data, data_ok):
+    def handle_new_sensor_data(self, controller_id, sensor_id, utc_time, sys_time, data, data_ok):
         self.view.show_new_sensor_data(controller_id, sensor_id, data)
     
     def handle_new_sensor_text(self, controller_id, sensor_id, text):
@@ -353,6 +354,13 @@ class MainPresenter(QObject):
     
     def handle_new_controller_text(self, controller, text):
         self.view.display_message(text)
+        
+    def handle_new_source_data(self, controller_id, sensor_id, source_type, utc_time, sys_time, data):
+        
+        if source_type == 'position':
+            # TODO update map (system time passed in as argument to this callback)
+            #print "{} {} {} {} {}".format(controller_id, sensor_id, utc_time, sys_time, data)
+            pass
     
     def send_sensor_command(self, command):
     

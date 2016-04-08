@@ -48,7 +48,8 @@ class IRT_UE(SensorBase):
         self.connection = None
         
         # Time the data was requested
-        self.time_of_request = 0
+        self.utc_time_of_request = 0
+        self.sys_time_of_request = 0
         
         # How many bytes to read each time sensor sends data.
         self.bytes_to_read = 2
@@ -81,7 +82,8 @@ class IRT_UE(SensorBase):
         
         # Grab time here since it should, on average, represent the actual sensor measurement time.
         # If we grab it after the read/write we could have a context switch from I/O interactions.
-        self.time_of_request = self.utc_time
+        self.utc_time_of_request = self.utc_time
+        self.sys_time_of_request = self.sys_time
         
         # Request a new reading from the sensor.
         self.connection.write("\x01")
@@ -100,7 +102,7 @@ class IRT_UE(SensorBase):
         b2 = struct.unpack("B", raw_data[1])[0]
         temperature = (b1 * 256.0 + b2 - 1000.0) / 10.0
         
-        self.handle_data((self.time_of_request, temperature))
+        self.handle_data(self.utc_time_of_request, self.sys_time_of_request, [temperature])
         
         return 'normal'
         

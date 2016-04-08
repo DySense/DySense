@@ -87,7 +87,7 @@ class LidarLite(SensorBase):
             self.send_text("Bad reported distance '{}'".format(new_distance))
             return 'error'
         
-        self.handle_data((self.utc_time, new_distance))
+        self.handle_data(self.utc_time, self.sys_time, [new_distance])
 
         return 'normal'
     
