@@ -212,17 +212,17 @@ sensors:
           type: float
           units: degrees
           tags: [position_x]
-          decimal_places: 6
+          decimal_places: 7
         - name: longitude
           type: float
           units: degrees
           tags: [position_y]
-          decimal_places: 6
+          decimal_places: 7
         - name: altitude
           type: float
           units: meters
           tags: [position_z]
-          decimal_places: 6
+          decimal_places: 3
         - name: num_sats
           type: float
         - name: hdop
@@ -263,17 +263,17 @@ sensors:
           type: float
           units: degrees
           tags: [position_x]
-          decimal_places: 6
+          decimal_places: 7
         - name: longitude
           type: float
           units: degrees
           tags: [position_y]
-          decimal_places: 6
+          decimal_places: 7
         - name: altitude
           type: float
           units: meters
           tags: [position_z]
-          decimal_places: 6
+          decimal_places: 3
         - name: num_sats
           type: float
         - name: hdop

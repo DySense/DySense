@@ -25,6 +25,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.qt_settings = QtCore.QSettings("DySense", "DySenseUI")
         
         self.presenter = presenter        
+        
                 
         # Set up the user interface from Designer.
         self.setupUi(self)
@@ -34,24 +35,24 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             self.sensor_metadata = yaml.load(stream)
         
         #set logo
-#         main_logo = QtGui.QPixmap('../resources/dysense_logo_no_text.png')
-#         main_logo = main_logo.scaled(90,80)      
-#         self.logo_label.setPixmap(main_logo)
+        main_logo = QtGui.QPixmap('../resources/horizontal_logo.png')
+        main_logo = main_logo.scaled(140,40)      
+        self.logo_label.setPixmap(main_logo)
+        
+        # Maintains list widget background and text color when focus is lost
+        self.setStyleSheet( """QListWidget:item:selected:!disabled 
+                            {  background: blue; color: white;}"""
+                            )        
+        
+        
         
         #set version number
         # TODO the version from metadata should be the 'controller' version once
         # we support multiple of those and the GUI version should come from ui_settings.py
-        version = self.sensor_metadata.get('version', 'No Version Number')
-        self.version_value_label.setText(version)
-             
-        
-                #example to create yaml file
-#         new_sensor_info = {'version': '1.0',
-#                                'sensor_type': 'test',
-#                                'sensor_name': 'sensor1'}
-#         stream = file('test_config.yaml', 'w')
-#         yaml.dump(new_sensor_info, stream)
-            
+        # Set version to message center and as window title
+        version = self.sensor_metadata.get('version', 'No Version Number')        
+        QMainWindow.setWindowTitle(self, 'DySense Version ' + version)     
+        self.main_message_center_text_edit.setText('Version ' + version)
         
         # Associate sensor (controller_id, sensor_id) to its widget.
         self.sensor_to_widget = {}
