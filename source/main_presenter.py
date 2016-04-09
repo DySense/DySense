@@ -201,6 +201,10 @@ class MainPresenter(QObject):
         
     def controller_name_changed(self, new_controller_name):
         
+        if new_controller_name.strip() == '':
+            self.handle_error_message("Controller name can't be empty string.", logging.ERROR)
+            return
+        
         self.view.local_controller_name = new_controller_name
         
         self.view.show_user_message('New controller name will take effect once application is restarted.', logging.INFO)

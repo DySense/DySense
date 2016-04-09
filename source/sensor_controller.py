@@ -799,6 +799,10 @@ class SensorController(object):
             self.session_state = 'starting'
         
         if self.session_state == 'starting':
+            # Re-verify things in case they changed while waiting for data sources.
+            if not self.verify_controller_settings(manager=None):
+                self.session_state = 'closed'      
+                return      
             self.start_session(self.first_received_utc_time)
             self.session_state = 'started'
             
@@ -833,11 +837,16 @@ class SensorController(object):
         # Need to make sure settings are valid before starting a session.
         empty_setting_names = []
         for key, value in self.settings.iteritems():
-            if value is None or (isinstance(value, str) and value.strip() == ''):
+            if value is None or (isinstance(value, basestring) and value.strip() == ''):
                 empty_setting_names.append(key)
         if len(empty_setting_names) > 0:
             formatted_setting_names = ''.join(['\n   - ' + name for name in empty_setting_names])
             self.log_message("Can't start session until the following settings are updated:{}".format(formatted_setting_names), logging.ERROR, manager)
+            return False
+        
+        # Make sure output directory exists.
+        if not os.path.exists(self.settings['base_out_directory']):
+            self.log_message("Can't start session because the output directory doesn't exist.", logging.ERROR, manager)
             return False
         
         return True # all settings valid
