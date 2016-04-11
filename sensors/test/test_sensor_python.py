@@ -54,6 +54,9 @@ class TestSensor(SensorBase):
         # Flag that can be overridden with special command for testing.
         self.data_quality_ok = True
         
+        # Flag that can be set to true for sending events for doing time testing.
+        self.send_time_test_events = False
+        
         # Flag to signify that the sensor is 'closed'
         self.closed = True
 
@@ -74,6 +77,9 @@ class TestSensor(SensorBase):
         
         self.counter += 1
         
+        if self.send_time_test_events:
+            self.send_event('time_test', self.sys_time)
+        
         return 'normal' if self.data_quality_ok else 'bad_data_quality'
         
     def handle_special_command(self, command):
@@ -81,30 +87,32 @@ class TestSensor(SensorBase):
         if command == 'crash':
             raise Exception("Intentional crash for testing.")
         
-        if command == 'bad_data':
-            self.data_quality_ok = False
+        if command == 'toggle_quality':
+            self.data_quality_ok = not self.data_quality_ok
             
-        if command == 'good_data':
-            self.data_quality_ok = True
+        if command == 'time_test':
+            self.send_time_test_events = not self.send_time_test_events
         
 if __name__ == '__main__':
 
     import argparse
     parser = argparse.ArgumentParser(description='''Test Sensor''')
-    parser.add_argument('id' )
+    parser.add_argument('sensor_id' )
+    parser.add_argument('instrument_id' )
     parser.add_argument('settings')
     parser.add_argument('connect_endpoint')
     
     import json
     args = vars(parser.parse_args())
-    sensor_id = args['id']
+    sensor_id = args['sensor_id']
+    instrument_id = args['instrument_id']
     settings = json.loads(args['settings'])
     connect_endpoint = args['connect_endpoint']
     
     import zmq
     context = zmq.Context()
 
-    sensor = TestSensor(sensor_id, settings, context, connect_endpoint)
+    sensor = TestSensor(sensor_id, instrument_id, settings, context, connect_endpoint)
     
     print "starting test sensor!"
     sensor.run()

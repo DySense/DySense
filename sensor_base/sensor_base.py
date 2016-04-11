@@ -308,9 +308,9 @@ class SensorBase(object):
         '''Send text message to controller (like print)'''
         self.send_message('new_sensor_text', text)
         
-    def send_event(self, event_name):
+    def send_event(self, event_name, event_args=None):
         '''Send event to notify controller something important happened.'''
-        self.send_message('new_sensor_event', event_name)
+        self.send_message('new_sensor_event', (event_name, event_args))
 
     def send_message(self, message_type, message_body):
         '''

@@ -46,8 +46,8 @@ sensors:
           units: seconds
       special_commands:
         - crash
-        - bad_data
-        - good_data
+        - toggle_quality
+        - time_test
         
         
     test_sensor_csharp:

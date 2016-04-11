@@ -83,6 +83,9 @@ class SensorController(object):
         self.last_utc_time = 0.0
         self.last_sys_time_update = 0.0
         
+        # Used for testing message passing timing.
+        self.time_test_durations = []
+        
         # Used for creating new sensor drivers. Can't instantiate it until we know what endpoints we're bound to.
         self.sensor_driver_factory = None
         
@@ -750,10 +753,20 @@ class SensorController(object):
         # Don't need to do anything since all sensor messages are treated as heartbeats.
         pass
     
-    def handle_new_sensor_event(self, sensor, event_name):
+    def handle_new_sensor_event(self, sensor, event_name, event_args):
             
         if event_name == 'closing':
             sensor.update_connection_state('closed')
+        if event_name == 'time_test':
+            start_time = event_args
+            duration = time.time() - start_time
+            self.time_test_durations.append(duration)
+            if len(self.time_test_durations) == 100:
+                avg_dur = float(sum(self.time_test_durations)) / max(len(self.time_test_durations), 1)
+                max_dur = max(self.time_test_durations)
+                min_dur = min(self.time_test_durations)
+                self.handle_new_sensor_text(sensor, "Avg {} Max {} Min {}".format(avg_dur, max_dur, min_dur))
+                self.time_test_durations = []
         
     def notify_sensor_changed(self, sensor_id, info_name, value):
         self._send_manager_message('all', 'sensor_changed', (sensor_id, info_name, value))
