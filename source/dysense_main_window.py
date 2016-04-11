@@ -186,7 +186,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.presenter.resume_all_sensors(only_on_active_controller=True)                     
                                
     def end_session_button_clicked(self):
-        self.presenter.send_controller_command('stop_session', send_to_all_controllers=False)
+        self.presenter.end_session()
     
     def close_sensors_button_clicked(self):
         

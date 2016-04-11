@@ -11,6 +11,7 @@ from ui_settings import ui_version
 from PyQt4.QtCore import QObject, QTimer
 from select_sources_window import SelectSourcesWindow
 from add_sensor_window import AddSensorWindow
+from end_session_dialog import EndSessionDialog
 
 RECEIVE_TIMER_INTERVAL = 0.1 # seconds
 
@@ -183,6 +184,13 @@ class MainPresenter(QObject):
 
         self._send_message('add_controller', (endpoint, name))
         
+    def end_session(self):
+        
+        # TODO update for multiple controllers
+        self.end_session_dialog = EndSessionDialog(self, self.controllers.values()[0])
+        self.end_session_dialog.setModal(True)
+        self.end_session_dialog.show()
+        
     def select_data_sources(self):
         
         active_controller = self.controllers[self.active_controller_id]
@@ -278,12 +286,12 @@ class MainPresenter(QObject):
         
         self._send_message_to_active_controller('change_controller_setting', (setting_name, value))
         
-    def send_controller_command(self, command_name, send_to_all_controllers):
+    def send_controller_command(self, command_name, command_args=None, send_to_all_controllers=False):
         
         if send_to_all_controllers:
-            self._send_message_to_all_controllers('controller_command', command_name)
+            self._send_message_to_all_controllers('controller_command', (command_name, command_args))
         else:
-            self._send_message_to_active_controller('controller_command', command_name)
+            self._send_message_to_active_controller('controller_command', (command_name, command_args))
 
     def receive_messages(self):
         ''''''

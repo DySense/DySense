@@ -44,6 +44,7 @@ class SensorController(object):
         self._session_active = False
         self._session_name = 'N/A'
         self.session_path = "None"
+        self.session_notes = None
         
         self.text_messages = []
         
@@ -67,6 +68,9 @@ class SensorController(object):
         self.stop_request = threading.Event()
         
         self._session_state = 'closed'
+        
+        # Set to true if session is invalidated.
+        self.session_invalidated = False
         
         # Last utc time received from timesource.  Set to None when a session is stopped.
         self.first_received_utc_time = None
@@ -595,8 +599,8 @@ class SensorController(object):
 
         # Make sure value is allowed to be changed.
         value_can_change = True
-        if self.session_active:
-            self.log_message('Cannot change controller settings while session is active.', logging.ERROR, manager)
+        if self.session_active and settings_name == 'base_out_directory':
+            self.log_message('Cannot change output directory while session is active.', logging.ERROR, manager)
             value_can_change = False
         elif not settings_name in self.settings:
             self.log_message('Cannot change setting {} because that settings does not exist.'.format(settings_name), logging.ERROR, manager)
@@ -711,12 +715,19 @@ class SensorController(object):
             orientation_data.insert(0, utc_time)
             self.orientation_source_log.write(orientation_data)
 
-    def handle_controller_command(self, manager, command_name):
+    def handle_controller_command(self, manager, command_name, command_args):
         
         if command_name == 'start_session':
             self.begin_session_startup_procedure(manager)
         elif command_name == 'stop_session':
+            self.session_notes = command_args
             self.stop_session(manager)
+        elif command_name == 'invalidate_session':
+            if not self.session_active:
+                self.log_message("Can't invalidate session because there isn't one active.")
+                return
+            self.log_message("Session invalidated.")
+            self.session_invalidated = True
         else:
             self.log_message("Controller command {} not supported".format(command_name), logging.ERROR, manager)
 
@@ -911,6 +922,9 @@ class SensorController(object):
         self.position_source_log = None
         self.orientation_source_log = None
         
+        for sensor in self.sensors:
+            sensor.output_file.terminate()
+        
         self.close_session_logging()
         self.session_active = False
         self.session_state = 'closed'
@@ -920,6 +934,18 @@ class SensorController(object):
         self.write_sensor_info_files()
         self.write_version_file()
         
+        if self.session_invalidated:
+            self.session_invalidated = False
+            # Rename session directory to show it was invalidated.
+            original_session_path = self.session_path
+            new_session_path = os.path.join(self.settings['base_out_directory'], 'invalid_' + self.session_name)
+            try:
+                os.rename(original_session_path, new_session_path)
+            except OSError:
+                self.log_message("Session path couldn't be renamed.")
+
+        self.session_notes = None
+
         self.log_message("Session closed.")
 
     def write_session_file(self):
@@ -937,8 +963,10 @@ class SensorController(object):
             writer.writerow(['end_utc_human', formatted_end_time])
             
             for key, value in sorted(self.settings.items()):
-                if key not in ['base_out_directory']: 
-                    writer.writerow([key, value])
+                writer.writerow([key, value])
+                
+            if self.session_notes is not None:
+                writer.writerow(['notes', self.session_notes])
                     
     def write_offsets_file(self):
         
