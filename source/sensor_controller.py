@@ -77,9 +77,11 @@ class SensorController(object):
         
         # Similar to first received utc time, but doesn't get invalidated after session is stopped.
         self.session_start_utc = 0.0
+        self.session_start_sys_time = 0.0
         
-        # Last received utc time.
+        # Last received utc time and the corresponding sys time it was updated.
         self.last_utc_time = 0.0
+        self.last_sys_time_update = 0.0
         
         # Used for creating new sensor drivers. Can't instantiate it until we know what endpoints we're bound to.
         self.sensor_driver_factory = None
@@ -673,12 +675,14 @@ class SensorController(object):
         self._send_sensor_message('all', 'time', new_time)
         
         self.last_utc_time = utc_time
+        self.last_sys_time_update = time.time()
         
         # Save off utc time in case we need to use it for timestamping a new session.
         # Only grab the first one since the test GPS relies on that.
         if not self.first_received_utc_time:
             self.first_received_utc_time = utc_time
             self.session_start_utc = utc_time
+            self.session_start_sys_time = time.time()
         
     def process_position_source_data(self, source, utc_time, sys_time, data, need_to_log):
 
@@ -961,6 +965,9 @@ class SensorController(object):
             writer.writerow(['end_utc', self.last_utc_time])
             formatted_end_time = datetime.datetime.fromtimestamp(self.last_utc_time).strftime("%Y/%m/%d %H:%M:%S")
             writer.writerow(['end_utc_human', formatted_end_time])
+            
+            writer.writerow(['start_sys_time', self.session_start_sys_time])
+            writer.writerow(['end_sys_time', self.last_sys_time_update])
             
             for key, value in sorted(self.settings.items()):
                 writer.writerow([key, value])
