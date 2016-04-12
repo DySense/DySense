@@ -30,6 +30,12 @@ class GpsNmeaTest(GpsNmea):
         
         self.test_file = None
         
+        # Set to true to run image latency tests instead of reading from file.
+        self.latency_test = False
+        self.latency_test_period = 0.001
+        self.latency_test_start_utc = 0
+        self.latency_mode_run_count = 0
+        
     def is_closed(self):
         '''Return true if test file is closed.'''
         return self.closed
@@ -48,6 +54,16 @@ class GpsNmeaTest(GpsNmea):
     def read_new_data(self):
         '''Read in new message from test file. Only called when not paused.'''
         
+        if self.latency_test:
+            self.latency_mode_run_count += 1
+            current_time = self.sys_time - self.latency_test_start_time
+            print current_time
+            sys.stdout.flush()
+            # Provide time source at a lower rate.
+            if self.latency_mode_run_count % 50 == 0:
+                self.handle_data(current_time, self.sys_time, [0, 0, 0, 0, 0])
+            return 'normal'
+        
         nmea_string = self.test_file.readline().strip()
         
         # For the very first message use the current system time for UTC time instead of what's
@@ -61,3 +77,14 @@ class GpsNmeaTest(GpsNmea):
         current_state = self.process_nmea_message(nmea_string, self.sys_time, utc_override)
         
         return current_state
+
+    def handle_special_command(self, command):
+            
+        if command == 'latency_test':
+            self.latency_test = not self.latency_test
+            if self.latency_test:
+                self.latency_test_start_time = self.sys_time
+                self.desired_read_period = self.latency_test_period
+            else:
+                # Restore original reading rate.
+                self.desired_read_period = self.output_period

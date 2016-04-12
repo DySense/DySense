@@ -26,6 +26,7 @@ namespace DySense
             { "normal", "good" },
             { "timed_out", "bad" },
             { "error", "bad" },
+            { "bad_data_quality", "bad" },
         };
 
         // Unique sensor ID assigned by user.
@@ -368,10 +369,10 @@ namespace DySense
         }
 
         // Send data to controller
-        protected void HandleData(List<object> data)
+        protected void HandleData(double utcTime, double sysTime, List<object> data, bool dataQualityOk=true)
         {
             lastReceivedDataTime = SysTime;
-            SendMessage("new_sensor_data", new List<List<object>>() { data });
+            SendMessage("new_sensor_data", new List<object>() { utcTime, sysTime, data, dataQualityOk });
             NumDataMessageSent += 1;
         }
 
@@ -389,9 +390,9 @@ namespace DySense
         }
 
         // Send event to notify controller something important happened.
-        protected void SendEvent(string eventName)
+        protected void SendEvent(string eventName, object eventArgs=null)
         {
-            SendMessage("new_sensor_event", eventName);
+            SendMessage("new_sensor_event", new List<object>() { eventName, eventArgs });
         }
 
         // Send message to controller in JSON format.

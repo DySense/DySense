@@ -109,6 +109,11 @@ sensors:
           default_value: 1
           min_value: -1
           max_value: 100000
+        - name: sensor_latency
+          type: float
+          description: Delay between when sensor collects data and when the program receives it.
+          units: milliseconds
+          default_value: 90
       data:
         - name: type
           type: string
@@ -279,6 +284,8 @@ sensors:
         - name: hdop
           type: float
           decimal_places: 1
+      special_commands:
+        - latency_test
           
     canon_edsdk:
       version: "1.0"
