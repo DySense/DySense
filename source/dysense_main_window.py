@@ -523,6 +523,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def show_user_message(self, message, level):
         
         popup = QtGui.QMessageBox()
+        font = QtGui.QFont()
+        font.setPointSize(13)
+        popup.setFont(font)
         
         if level == logging.CRITICAL:
             level_text = "Critical Error"

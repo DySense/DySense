@@ -15,17 +15,25 @@ class AddSensorWindow(QDialog):
         self.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
         self.setMinimumWidth(205)
         
+        self.dialog_font = QtGui.QFont()
+        self.dialog_font.setPointSize(14)
+        
         self.central_layout = QGridLayout(self)
 
         self.type_label = QLabel('Type:')
         self.name_label = QLabel('Name:')
         self.heads_up_label = QLabel('(name cannot be changed once set)')
+        
+        self.type_label.setFont(self.dialog_font)
+        self.name_label.setFont(self.dialog_font)
 
         self.sensor_type_combo_box = QComboBox()
+        self.sensor_type_combo_box.setFont(self.dialog_font)
         self.sensor_type_combo_box.addItems(possible_sensor_types)
         self.sensor_type_combo_box.currentIndexChanged.connect(self.sensor_type_selected)
         
         self.sensor_name_line_edit = QLineEdit()
+        self.sensor_name_line_edit.setFont(self.dialog_font)
         
         self.setup_buttons()
         
@@ -43,6 +51,8 @@ class AddSensorWindow(QDialog):
         
         self.add_button = QPushButton("Add")
         self.cancel_button = QPushButton("Cancel")
+        self.add_button.setFont(self.dialog_font)
+        self.cancel_button.setFont(self.dialog_font)
         self.add_button.clicked.connect(self.add_button_clicked)
         self.cancel_button.clicked.connect(self.cancel_button_clicked)
         self.button_layout = QHBoxLayout()

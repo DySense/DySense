@@ -15,6 +15,9 @@ class EndSessionDialog(QDialog):
         self.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
         self.setMinimumWidth(305)
         
+        self.dialog_font = QtGui.QFont()
+        self.dialog_font.setPointSize(14)
+        
         self.central_layout = QVBoxLayout(self)
         
         self.setup_buttons()
@@ -26,46 +29,54 @@ class EndSessionDialog(QDialog):
         self.session_notes.setLineWrapMode(QTextEdit.WidgetWidth)
         self.session_notes.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.session_notes_box = QGroupBox()
+        self.session_notes.setFontPointSize(12)
         self.session_notes_box.setTitle('Session Notes')
         self.session_notes_box.setAlignment(Qt.AlignHCenter)
+        self.session_notes_box.setFont(self.dialog_font)
         self.session_notes_box_layout = QVBoxLayout(self.session_notes_box)
         self.session_notes_box_layout.addWidget(self.session_notes)
         
+        controller_settings = [('Controller:', controller_info['id']),
+                               ('Operator:', controller_settings['operator_name']),
+                               ('Platform:', controller_settings['platform_name']),
+                               ('Platform ID:', controller_settings['platform_id']),
+                               ('Field ID:', controller_settings['field_id']),
+                               ('Surveyed:', controller_settings['surveyed']),
+                               ]
+        
         self.settings_box = QGroupBox()
         self.settings_box_layout = QGridLayout(self.settings_box)
-        self.settings_box_layout.addWidget(QLabel('Controller:'), 0, 0)
-        self.settings_box_layout.addWidget(QLabel(controller_info['id']), 0, 1)
-        self.settings_box_layout.addWidget(QLabel('Operator:'), 1, 0)
-        self.settings_box_layout.addWidget(QLabel(controller_settings['operator_name']), 1, 1)
-        self.settings_box_layout.addWidget(QLabel('Platform:'), 2, 0)
-        self.settings_box_layout.addWidget(QLabel(controller_settings['platform_name']), 2, 1)
-        self.settings_box_layout.addWidget(QLabel('Platform ID:'), 3, 0)
-        self.settings_box_layout.addWidget(QLabel(controller_settings['platform_id']), 3, 1)
-        self.settings_box_layout.addWidget(QLabel('Field ID:'), 4, 0)
-        self.settings_box_layout.addWidget(QLabel(controller_settings['field_id']), 4, 1)
-        self.settings_box_layout.addWidget(QLabel('Surveyed:'), 5, 0)
-        self.settings_box_layout.addWidget(QLabel(str(controller_settings['surveyed'])), 5, 1)
+        for i, (text, value) in enumerate(controller_settings):
+            text_label = QLabel(text)
+            value_label = QLabel(str(value))
+            text_label.setFont(self.dialog_font)
+            value_label.setFont(self.dialog_font)
+            self.settings_box_layout.addWidget(text_label, i, 0)
+            self.settings_box_layout.addWidget(value_label, i, 1)
         
         self.central_layout.addWidget(self.settings_box)
         self.central_layout.addWidget(self.session_notes_box)
         self.central_layout.addLayout(self.button_layout)
         
-        self.verify_button.setDefault(True)
+        self.confirm_button.setDefault(True)
 
     def setup_buttons(self):
         
-        self.verify_button = QPushButton("Verify")
+        self.confirm_button = QPushButton("Confirm")
         self.cancel_button = QPushButton("Cancel")
         self.invalidate_button = QPushButton("Invalidate")
-        self.verify_button.clicked.connect(self.verify_button_clicked)
+        self.confirm_button.setFont(self.dialog_font)
+        #self.cancel_button.setFont(self.dialog_font)
+        #self.invalidate_button.setFont(self.dialog_font)
+        self.confirm_button.clicked.connect(self.confirm_button_clicked)
         self.cancel_button.clicked.connect(self.cancel_button_clicked)
         self.invalidate_button.clicked.connect(self.invalidate_button_clicked)
         self.button_layout = QHBoxLayout()
         self.button_layout.addWidget(self.cancel_button)
-        self.button_layout.addWidget(self.verify_button)
+        self.button_layout.addWidget(self.confirm_button)
         self.button_layout.addWidget(self.invalidate_button)
 
-    def verify_button_clicked(self):
+    def confirm_button_clicked(self):
 
         notes = str(self.session_notes.toPlainText()).strip()
         
