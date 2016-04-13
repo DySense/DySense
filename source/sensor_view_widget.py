@@ -303,6 +303,8 @@ class SensorViewWidget(QWidget,Ui_Form):
             current_connection_state = value
             if current_connection_state == 'setup' and self.last_connection_state != 'setup':
                 self.sensor_message_center_text_edit.clear()
+                for line_edit in self.data_line_edits:
+                    line_edit.clear()
             self.last_connection_state = current_connection_state
             
 #         if info_name == 'connection_state':
