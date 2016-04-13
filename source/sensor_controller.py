@@ -438,7 +438,11 @@ class SensorController(object):
             settings[setting_name] = settings_value 
         
         if sensor_name == '':
-            self.log_message("Need to provide a non-empty sensor name.".format(sensor_name), logging.ERROR, manager)
+            self.log_message("Need to provide a non-empty sensor name.", logging.ERROR, manager)
+            return
+        
+        if instrument_id == '':
+            self.log_message("Need to provide a non-empty instrument ID.", logging.ERROR, manager)
             return
         
         if sensor_name != self._make_sensor_name_unique(sensor_name):
@@ -548,7 +552,12 @@ class SensorController(object):
         
         if info_name == 'instrument_id':
             value = str(value).strip().replace(' ', '_')
-            sensor.update_instrument_id(value)
+            if value != '':
+                sensor.update_instrument_id(value)
+            else:
+                self.log_message("Instrument ID can't be empty.", logging.ERROR, manager)
+                self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+            
         elif info_name == 'position_offsets':
             try:
                 sensor.update_position_offsets(value)

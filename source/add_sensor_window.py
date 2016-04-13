@@ -22,10 +22,12 @@ class AddSensorWindow(QDialog):
 
         self.type_label = QLabel('Type:')
         self.name_label = QLabel('Name:')
+        self.id_label = QLabel('ID:')
         self.heads_up_label = QLabel('(name cannot be changed once set)')
         
         self.type_label.setFont(self.dialog_font)
         self.name_label.setFont(self.dialog_font)
+        self.id_label.setFont(self.dialog_font)
 
         self.sensor_type_combo_box = QComboBox()
         self.sensor_type_combo_box.setFont(self.dialog_font)
@@ -35,14 +37,19 @@ class AddSensorWindow(QDialog):
         self.sensor_name_line_edit = QLineEdit()
         self.sensor_name_line_edit.setFont(self.dialog_font)
         
+        self.sensor_id_line_edit = QLineEdit()
+        self.sensor_id_line_edit.setFont(self.dialog_font)
+        
         self.setup_buttons()
         
         self.central_layout.addWidget(self.type_label, 0, 0)
         self.central_layout.addWidget(self.sensor_type_combo_box, 0, 1)
         self.central_layout.addWidget(self.name_label, 1, 0)
         self.central_layout.addWidget(self.sensor_name_line_edit, 1, 1)
-        self.central_layout.addWidget(self.heads_up_label, 2, 1)
-        self.central_layout.addLayout(self.button_layout, 3, 0, 1, 2)
+        self.central_layout.addWidget(self.id_label, 2, 0)
+        self.central_layout.addWidget(self.sensor_id_line_edit, 2, 1)
+        self.central_layout.addWidget(self.heads_up_label, 3, 1)
+        self.central_layout.addLayout(self.button_layout, 4, 0, 1, 2)
         
         self.sensor_name_line_edit.setFocus()
         self.add_button.setDefault(True)
@@ -65,7 +72,8 @@ class AddSensorWindow(QDialog):
     def add_button_clicked(self):
 
         new_sensor_info =  {'sensor_type': str(self.sensor_type_combo_box.currentText()).strip(), 
-                            'sensor_id': str(self.sensor_name_line_edit.text()).strip()}
+                            'sensor_id': str(self.sensor_name_line_edit.text()).strip(),
+                            'instrument_id': str(self.sensor_id_line_edit.text()).strip()}
         
         self.presenter.add_sensor(new_sensor_info)
         
