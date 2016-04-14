@@ -301,9 +301,24 @@ sensors:
           default_value: 1
           min_value: 0.001
           max_value: 100000000
+        - name: serial_number
+          type: string
+          description: Unique camera identifier.
+        - name: capture_latency
+          type: float
+          description: Delay between when command is sent to camera and when image is actually exposed.
+          units: milliseconds
+          default_value: 65
+        - name: battery_check
+          type: bool
+          description: If true then having low or empty battery on startup is an error.  
+          default_value: true
       data:
         - name: image_name
           type: string
+        - name: system_time
+          type: float
+          units: seconds
           
     lidar_lite:
       version: "1.0"
