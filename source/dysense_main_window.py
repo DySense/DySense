@@ -44,7 +44,8 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                             {  background: blue; color: white;}"""
                             )        
         
-        
+        # Local controller name at program startup.  Set only once when property is first accessed.
+        self.initial_stored_controller_name = None
         
         #set version number
         # TODO the version from metadata should be the 'controller' version once
@@ -164,10 +165,16 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
     @property
     def local_controller_name(self):
-        controller_name = self.qt_settings.value("local_controller_name")
-        if controller_name is None:
-            controller_name = "default"
-        return str(controller_name)
+        stored_controller_name = self.qt_settings.value("local_controller_name")
+        if stored_controller_name is None:
+            stored_controller_name = "default"
+            
+        # Make it so the first name returned is always the name returned to prevent
+        # the controller name from changing as the program is running.
+        if self.initial_stored_controller_name is None:
+            self.initial_stored_controller_name = stored_controller_name
+            
+        return str(self.initial_stored_controller_name)
         
     @local_controller_name.setter
     def local_controller_name(self, new_value):
@@ -285,9 +292,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.sensor_to_list_row = {}
         
         # Alphabetize controller IDs (names) while keeping the local controller first.
-        remote_controller_ids = [c_id for c_id in self.controller_to_widget if c_id != self.local_controller_name]
+        remote_controller_ids = [c_id for c_id in self.controller_to_widget if c_id != self.presenter.local_controller['id']]
         remote_controller_ids = sorted(remote_controller_ids)
-        sorted_controller_ids = [self.local_controller_name] + remote_controller_ids
+        sorted_controller_ids = [self.presenter.local_controller['id']] + remote_controller_ids
         
         for controller_id in sorted_controller_ids:
             self.controller_to_list_row[controller_id] = next_row_idx

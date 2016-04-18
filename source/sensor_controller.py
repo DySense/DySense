@@ -16,7 +16,7 @@ from sensor_connection import SensorConnection
 from sensor_creation import SensorDriverFactory, SensorCloseTimeout
 from csv_log import CSVLog
 from controller_data_sources import *
-from utility import pretty
+from utility import pretty, format_id
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
 
@@ -52,7 +52,7 @@ class SensorController(object):
         self._position_sources = []
         self._orientation_sources = []
         
-        self.controller_id = controller_id.strip().replace(' ', '_')
+        self.controller_id = format_id(controller_id) 
         
         self.settings = {'base_out_directory': '',
                          'operator_name': '',
@@ -417,11 +417,11 @@ class SensorController(object):
         # Get metadata that was stored with this controller.
         metadata = self.sensor_metadata[sensor_info['sensor_type']]
         
-        sensor_name = sensor_info['sensor_id'].strip().replace(' ', '_')
+        sensor_name = format_id(sensor_info['sensor_id'])
         sensor_type = sensor_info['sensor_type'].strip()
         position_offsets = sensor_info.get('position_offsets', [0, 0, 0])
         orientation_offsets = sensor_info.get('orientation_offsets', [0, 0, 0])
-        instrument_id = sensor_info.get('instrument_id', 'none').strip().replace(' ', '_')
+        instrument_id = format_id(sensor_info.get('instrument_id', 'none'))
         
         settings = {}
         for setting_metadata in metadata['settings']:
@@ -551,7 +551,7 @@ class SensorController(object):
             pass
         
         if info_name == 'instrument_id':
-            value = str(value).strip().replace(' ', '_')
+            value = format_id(str(value))
             if value != '':
                 sensor.update_instrument_id(value)
             else:
@@ -1072,12 +1072,12 @@ class SensorController(object):
         
         while sensor_name in existing_sensor_names:
             try:
-                name_parts = sensor_name.split('_')
+                name_parts = sensor_name.split('-')
                 i = int(name_parts[-1])
                 i += 1
-                sensor_name = '_'.join(name_parts[:-1] + [str(i)])
+                sensor_name = '-'.join(name_parts[:-1] + [str(i)])
             except (ValueError, IndexError):
-                sensor_name = '{}_{}'.format(original_sensor_name, 1)
+                sensor_name = '{}-{}'.format(original_sensor_name, 1)
                 
         return sensor_name
     

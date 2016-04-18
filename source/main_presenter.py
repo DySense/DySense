@@ -217,6 +217,14 @@ class MainPresenter(QObject):
         
         self.view.show_user_message('New controller name will take effect once application is restarted.', logging.INFO)
         
+    @property
+    def local_controller(self):
+        try:
+            # TODO update for multiple controllers
+            return self.controllers.values()[0]
+        except IndexError:
+            return None 
+        
     def change_controller_info(self, info_name, info_value):
         
         self._send_message_to_active_controller('change_controller_info', (info_name, info_value))

@@ -12,7 +12,10 @@ def get_from_list(lst, idx):
         return None
     
 def pretty(text):
-    return text.replace('_',' ').title()
+    return text.replace('_',' ').replace('-',' ').title()
+
+def format_id(id_str):
+    return id_str.strip().replace(' ', '-').replace('_','-')
 
 def validate_setting(value, setting_metadata):
     
