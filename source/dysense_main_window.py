@@ -525,7 +525,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def append_sensor_message(self, controller_id, sensor_id, text):
 
         sensor_view = self.sensor_to_widget[(controller_id, sensor_id)]  
-        sensor_view.display_message(unicode(text).strip('[]').replace(',', ',\n'), True)  
+        sensor_view.display_message(unicode(text).strip('[]'), True)
         
     def show_user_message(self, message, level):
         

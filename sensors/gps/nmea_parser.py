@@ -149,36 +149,29 @@ parse_maps = {
 
 def parse_nmea_sentence(nmea_sentence):
         
-    # Check for standard GPS sentence.
-    is_gps_sentence = re.match('^\$GP.*\*[0-9A-Fa-f]{2}$', nmea_sentence)
-        
-    # Need to handle trimble proprietary sentences that begin with the field PTNL.
-    if is_gps_sentence:
-        is_trimble_sentence = False
-    else:
-        is_trimble_sentence = re.match('^\$PTNL.*\*[0-9A-Fa-f]{2}$', nmea_sentence)
-    
-    # Check for a valid nmea sentence
-    if not (is_gps_sentence or is_trimble_sentence):
-        raise ValueError
-    
     fields = [field.strip(',') for field in nmea_sentence.split(',')]
 
-    # The regex probably checks for this, but I can't understand it well enough
-    # so I'm putting this here to be safe.
     if len(fields) < 2:
         raise ValueError
     
+    message_id = fields[0]
+    if not message_id.startswith('$'):
+        raise ValueError
+    
+    message_id = message_id.strip('$')
+    
+    is_trimble_sentence = (message_id == 'PTNL')
+        
     # Remove checksum from last field since it's already been checked.
     fields[-1] = (fields[-1].split('*')[0]).strip()
 
-    if is_gps_sentence:
-        # Ignore $ and GP
-        sentence_type = fields[0][3:]
-    elif is_trimble_sentence:
+    if is_trimble_sentence:
         # The actual sentence type is the second field.
         sentence_type = fields[1]
-
+    else: # assume it's a normal GPS sentence.
+        # This removes the 2 character talker ID
+        sentence_type = message_id[2:]
+  
     if not sentence_type in parse_maps:
         raise ValueError
 

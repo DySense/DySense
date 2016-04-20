@@ -60,6 +60,9 @@ class GpsNmea(SensorBase):
         
         # Last result returned from handle_gga_message() 
         self.last_gga_handle_result = 'normal'
+        
+        # List of message types that have been received, but not processed.
+        self.unhandled_message_types = []
               
     def process_nmea_message(self, nmea_string, message_read_sys_time, utc_override=None):
         
@@ -68,7 +71,7 @@ class GpsNmea(SensorBase):
         if not check_nmea_checksum(nmea_string):
             if self.num_messages_processed > 1:
                 # Only send message if wasn't first message because sometimes first message isn't complete.
-                self.send_text("Invalid checksum. Sentence was: {}".format(nmea_string))
+                self.send_text("Invalid checksum.")
             return 'error'
         
         try:
@@ -89,11 +92,20 @@ class GpsNmea(SensorBase):
             processed_successfully = self.handle_gst_message(parsed_sentence)
             if not processed_successfully:
                 current_state = 'error'
+                
+        else: # not processing this message type so treat it as if we never got any data.
+            
+            if sentence_type not in self.unhandled_message_types:
+                self.unhandled_message_types.append(sentence_type)
+                self.send_text('Parsed {} message which isnt being handled.'.format(sentence_type))
+            
+        if self.gga_count == 0:
+            current_state = 'timed_out'
                                       
         # Make sure GST messages are being received if the user's trying to monitor fix accuracy.    
-        if self.monitor_latlon_error and (self.gga_count % 100 == 0) and self.gst_count == 0:
+        if self.monitor_latlon_error and (self.gga_count > 0) and (self.gga_count % 100 == 0) and self.gst_count == 0:
             self.send_text('Received {} GGA messages without receiving a GST message'.format(self.gga_count))
-                                          
+
         return current_state
                                                         
     def handle_gga_message(self, data, message_read_sys_time, utc_override):
