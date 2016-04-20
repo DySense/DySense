@@ -386,6 +386,10 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             return # User didn't select a config file.
 
         self.last_loaded_config_file_path = config_file_path
+        
+        # Also set this as the last saved so that when the user goes to save any updates
+        # it defaults to this one.
+        self.last_saved_config_file_path = config_file_path
 
         self.config_line_edit.setText(config_file_path)
         
@@ -404,6 +408,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             return # User doesn't want to save the file.
         
         self.last_saved_config_file_path = config_file_path
+        
+        # Also set this as the last loaded so that when user opens the app again this will be default.
+        self.last_loaded_config_file_path = config_file_path
         
         self.presenter.try_save_config(config_file_path)
              
