@@ -222,7 +222,7 @@ class SensorBase(object):
                 
         except Exception as e:
             self.state = 'error'
-            self.send_text("{}".format(repr(e)))
+            self.send_text(u"{}".format(unicode(repr(e))))
         finally:
             if self.health != 'bad':
                 # The closed state is only for when things closed down on request... not because an error occurred.
