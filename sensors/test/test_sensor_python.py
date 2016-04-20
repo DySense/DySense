@@ -93,6 +93,10 @@ class TestSensor(SensorBase):
         if command == 'time_test':
             self.send_time_test_events = not self.send_time_test_events
         
+    def driver_handle_new_setting(self, setting_name, setting_value):
+        
+        self.send_text("Setting name {} - value {}".format(setting_name, setting_value))
+        
 if __name__ == '__main__':
 
     import argparse

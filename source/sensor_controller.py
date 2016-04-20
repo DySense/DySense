@@ -501,12 +501,22 @@ class SensorController(object):
 
         sensor = self.find_sensor(sensor_id)
         
+        setting_name, new_value = change
+        
+        # Check if setting is allowed to change once driver is up and running.
+        has_changeable_tag = False
+        for sensor_setting in sensor.metadata['settings']:
+            if sensor_setting['name'] == setting_name:
+                if 'changeable' in sensor_setting.get('tags',[]):
+                    has_changeable_tag = True
+                    break
+  
         # Make sure value is allowed to be changed.
         value_can_change = True
         if self.session_active:
             self.log_message('Cannot change setting while session is active.', logging.ERROR, manager)
             value_can_change = False
-        elif not sensor.is_closed():
+        elif not sensor.is_closed() and not has_changeable_tag:
             self.log_message('Cannot change setting until sensor is closed.', logging.ERROR, manager)
             value_can_change = False
         
@@ -514,11 +524,10 @@ class SensorController(object):
             self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
             return 
         
-        setting_name, new_value = change
-
         try:
             new_value = str(new_value).strip()
             sensor.update_setting(setting_name, new_value)
+            self._send_sensor_message(sensor.sensor_id, 'change_setting', (setting_name, new_value))
         except ValueError as e:
             self.log_message(str(e), logging.ERROR, manager)
             self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
@@ -902,6 +911,11 @@ class SensorController(object):
         
         self.log_message("Session started.")
 
+        # Go through and tell every sensor where to save it's data files.
+        data_files_path = os.path.join(self.session_path, 'data_files/')
+        for sensor in self.sensors:
+            self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', data_files_path))
+
         data_logs_path = os.path.join(self.session_path, 'data_logs/')
         
         if not os.path.exists(data_logs_path):
@@ -950,6 +964,10 @@ class SensorController(object):
         
         for sensor in self.sensors:
             sensor.output_file.terminate()
+            
+        # Go through and tell every sensor to stop saving data files to the current session.
+        for sensor in self.sensors:
+            self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', None))
         
         self.close_session_logging()
         self.session_active = False

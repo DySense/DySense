@@ -26,6 +26,7 @@ sensors:
           type: bool
           description: Either true or false.
           default_value: true
+          tags: [changeable]
       tags: [roll, pitch, yaw]
       data:
         - name: counter

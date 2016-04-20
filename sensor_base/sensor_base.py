@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import time
 import zmq
 import json
@@ -71,10 +72,22 @@ class SensorBase(object):
         self._last_received_sys_time = 0
         self._last_received_utc_time = 0
         
+        # Where the controller wants 
+        self.override_data_file_directory = None
+        
+        # If set to false then any directory specified by controller will be ignored.  
+        # Sensor driver can assign directory to this field.
+        self.override_data_file_directory_allowed = True
+        
+        # Default location to store data files if one isn't set by controller.  Sensor driver
+        # can assign directly to this field.
+        self.default_data_file_directory = None
+        
         # Associate callback methods with different message types.
         self.message_table = { 'command': self.handle_command, 
                                'time': self.handle_new_time,
-                               'heartbeat': self.handle_new_heartbeat }
+                               'heartbeat': self.handle_new_heartbeat,
+                               'change_setting': self.handle_change_setting }
         
         # ZMQ socket for communicating with sensor controller.
         self.socket = None
@@ -159,7 +172,17 @@ class SensorBase(object):
             return # don't keep sending out new status updates
         self._paused = new_value
         self.send_status_update()
-
+        
+    @property
+    def current_data_file_directory(self):
+        
+        if self.override_data_file_directory and self.override_data_file_directory_allowed:
+            data_file_directory = self.override_data_file_directory
+        else:
+            data_file_directory = self.default_data_file_directory
+            
+        return data_file_directory
+        
     def run(self):
         '''Set everything up, collect data and then close everything down when finished.'''
         try:
@@ -264,6 +287,10 @@ class SensorBase(object):
     
     def handle_special_command(self, command):
         '''Override to handle sensor specified commands (e.g. trigger)'''
+        return
+    
+    def driver_handle_new_setting(self, setting_name, setting_value):
+        '''Override to allow certain settings to be changed as driver is open.'''
         return
     
     def should_have_new_reading(self):
@@ -381,6 +408,16 @@ class SensorBase(object):
     def handle_new_heartbeat(self, unused):
         # Don't need to do anything since all messages are treated as heartbeats.
         pass
+    
+    def handle_change_setting(self, setting):
+        setting_name, setting_value = setting
+        
+        # All drivers need to support setting a data file directory so handle that here in base class.
+        if setting_name == 'data_file_directory':
+            self.override_data_file_directory = setting_value
+        
+        # Allow driver a chance to deal with setting.
+        self.driver_handle_new_setting(setting_name, setting_value)
             
     def client_timed_out(self):
         '''Return true if it's been too long since we've received a new message from controller.'''

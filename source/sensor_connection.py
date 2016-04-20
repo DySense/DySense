@@ -2,6 +2,7 @@
 
 import time
 from source.utility import validate_setting, validate_type, pretty
+from sensor_creation import SensorCloseTimeout
 
 class SensorConnection(object):
     
@@ -219,9 +220,12 @@ class SensorConnection(object):
         # Mark that sensor is closing so it doesn't try to re-open when new messages arrive.
         self.closing = True
         
-        if self.sensor_driver:
-            self.sensor_driver.close(timeout=3) # TODO allow sensor driver to specify timeout
-            self.sensor_driver = None
+        try:
+            if self.sensor_driver:
+                self.sensor_driver.close(timeout=3) # TODO allow sensor driver to specify timeout
+                self.sensor_driver = None
+        except SensorCloseTimeout:
+            pass # TODO notify that sensor didn't close down in required time
             
         self.update_connection_state('closed')
         

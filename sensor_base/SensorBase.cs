@@ -81,6 +81,17 @@ namespace DySense
         double lastReceivedSysTime = 0;
         double lastReceivedUTCTime = 0;
 
+        // Where the controller wants 
+        protected string overrideDataFileDirectory = String.Empty;
+        
+        // If set to false then any directory specified by controller will be ignored.  
+        // Sensor driver can assign directory to this field.
+        protected bool overrideDataFileDirectoryAllowed = true;
+        
+        // Default location to store data files if one isn't set by controller.  Sensor driver
+        // can assign directly to this field.
+        protected string defaultDataFileDirectory = String.Empty;
+
         // ZMQ socket for talking to sensor controller.
         ZContext context;
         ZSocket socket;
@@ -141,6 +152,7 @@ namespace DySense
                 { "command", HandleCommand }, 
                 { "time", HandleNewTime },
                 { "heartbeat", HandleNewHeartbeat },
+                { "change_setting", HandleChangeSetting },
             };
         }
 
@@ -202,6 +214,22 @@ namespace DySense
                 {
                     this._paused = value;
                     SendStatusUpdate(); 
+                }
+            }
+        }
+
+        // Return where data files should currently be saved to.
+        public string CurrentDataFileDirectory
+        {
+            get
+            { 
+                if (!String.IsNullOrWhiteSpace(overrideDataFileDirectory) && overrideDataFileDirectoryAllowed)
+                {
+                    return overrideDataFileDirectory;
+                }
+                else
+                {
+                    return defaultDataFileDirectory;
                 }
             }
         }
@@ -330,6 +358,9 @@ namespace DySense
 
         // Override to handle sensor specified commands (e.g. trigger)
         protected virtual void HandleSpecialCommand(string command) { return; }
+
+        // Override to allow certain settings to be changed as driver is open.
+        protected virtual void DriverHandleNewSetting(string settingName, object settingValue) { return; }
 
         // Return true if enough time has elapsed that the sensor should have returned a new reading.
         private bool ShouldHaveNewReading()
@@ -483,6 +514,25 @@ namespace DySense
         private bool HandleNewHeartbeat(object body)
         {
             // Don't need to do anything since all messages are treated as heartbeats.
+            return true;
+        }
+
+        private bool HandleChangeSetting(object body)
+        {
+            var array = (Newtonsoft.Json.Linq.JArray)body;
+            Newtonsoft.Json.Linq.JToken jSettingName = array[0];
+            Newtonsoft.Json.Linq.JToken jSettingValue = array[1];
+
+            string settingName = jSettingName.ToString();
+            object settingValue = jSettingValue.ToObject<object>();
+
+            if (settingName == "data_file_directory")
+            {
+                this.overrideDataFileDirectory = (string)settingValue;
+            }
+
+            this.DriverHandleNewSetting(settingName, settingValue);
+
             return true;
         }
 
