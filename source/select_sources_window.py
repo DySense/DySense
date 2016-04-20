@@ -14,6 +14,9 @@ class SelectSourcesWindow(QDialog):
         
         self.presenter = presenter
         
+        self.dialog_font = QtGui.QFont()
+        self.dialog_font.setPointSize(14)
+        
         # Used to associate sensor info with checkbox.
         self.checkbox_to_position_sensor = {}
         self.position_sensor_to_checkbox = {}
@@ -45,7 +48,9 @@ class SelectSourcesWindow(QDialog):
         self.time_group_box = QGroupBox("time")
         self.time_group_box.setTitle("Time")
         self.time_group_box.setAlignment(Qt.AlignHCenter)
+        self.time_group_box.setFont(self.dialog_font)
         self.time_selector = QComboBox(self.time_group_box)
+        self.time_selector.setFont(self.dialog_font)
         self.time_gb_layout = QVBoxLayout()
         self.time_gb_layout.addWidget(self.time_selector)
         self.time_group_box.setLayout(self.time_gb_layout)
@@ -68,22 +73,29 @@ class SelectSourcesWindow(QDialog):
         self.orientation_group_box = QGroupBox("orientation")
         self.orientation_group_box.setTitle("Orientation")
         self.orientation_group_box.setAlignment(Qt.AlignHCenter)
+        self.orientation_group_box.setFont(self.dialog_font)
         
         self.roll_selector = QComboBox(self.orientation_group_box)
         self.roll_label = QLabel("Roll:")
         self.roll_selector.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
         self.roll_label.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred))
+        self.roll_selector.setFont(self.dialog_font)
+        self.roll_label.setFont(self.dialog_font)
         
         self.pitch_selector = QComboBox(self.orientation_group_box)
         self.pitch_label = QLabel("Pitch:")
         self.pitch_selector.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
         self.pitch_label.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred))
+        self.pitch_selector.setFont(self.dialog_font)
+        self.pitch_label.setFont(self.dialog_font)
         
         self.yaw_selector = QComboBox(self.orientation_group_box)
         self.yaw_label = QLabel("Yaw:")
         self.yaw_selector.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
         self.yaw_label.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred))
-                        
+        self.yaw_selector.setFont(self.dialog_font)
+        self.yaw_label.setFont(self.dialog_font)
+                     
         def populate_selector(selector, angle_tag, current_orientation_source):
             
             selector.addItem('N/A')
@@ -134,6 +146,7 @@ class SelectSourcesWindow(QDialog):
         self.position_group_box = QGroupBox("position")
         self.position_group_box.setTitle("Position")
         self.position_group_box.setAlignment(Qt.AlignHCenter)
+        self.position_group_box.setFont(self.dialog_font)
         
         self.position_gb_layout = QVBoxLayout()
         
@@ -141,6 +154,7 @@ class SelectSourcesWindow(QDialog):
         for sensor_info in possible_position_sensors:
             checkbox = QCheckBox()
             checkbox.setText(sensor_info['sensor_id'])
+            checkbox.setFont(self.dialog_font)
             
             self.position_sensor_to_checkbox[sensor_info['sensor_id']] = checkbox
             self.checkbox_to_position_sensor[checkbox] = sensor_info
@@ -158,6 +172,8 @@ class SelectSourcesWindow(QDialog):
         
         self.ok_button = QPushButton("OK")
         self.cancel_button = QPushButton("Cancel")
+        self.ok_button.setFont(self.dialog_font)
+        self.cancel_button.setFont(self.dialog_font)
         self.ok_button.clicked.connect(self.ok_button_clicked)
         self.cancel_button.clicked.connect(self.cancel_button_clicked)
         self.button_layout = QHBoxLayout()
