@@ -1,3 +1,6 @@
+import os
+import sys
+import subprocess
 
 def find_last_index(list_to_search, element):
     try:
@@ -58,3 +61,19 @@ def validate_type(value, expected_type):
         raise ValueError("Invalid type {}".format(expected_type))
 
     return value
+
+def open_directory_in_viewer(out_directory):
+    
+    if not os.path.exists(out_directory):
+        return 
+    
+    if sys.platform == 'win32':
+        os.startfile(out_directory)
+    elif sys.platform == 'darwin':
+        subprocess.Popen(['open', out_directory])
+    else:
+        try:
+            subprocess.Popen(['xdg-open', out_directory])
+        except OSError:
+            pass # can't open
+

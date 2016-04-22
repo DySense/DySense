@@ -14,7 +14,7 @@ from PyQt4.QtCore import QMetaObject, QObject, QEvent, Qt, Q_ARG
 from PyQt4.QtGui import *
 from dysense_main_window_designer import Ui_MainWindow
 from sensor_view_widget import SensorViewWidget
-from utility import pretty
+from utility import pretty, open_directory_in_viewer
 
 class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     
@@ -38,6 +38,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         main_logo = QtGui.QPixmap('../resources/horizontal_logo.png')
         main_logo = main_logo.scaled(140,40)      
         self.logo_label.setPixmap(main_logo)
+        
+        # Add a feature that when the logo is double clicked it brings up the most recent session directory.
+        self.logo_label.mouseDoubleClickEvent = self.logo_double_clicked
         
         # Maintains list widget background and text color when focus is lost
         self.setStyleSheet( """QListWidget:item:selected:!disabled 
@@ -418,8 +421,6 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.main_message_center_text_edit.append(message)
         
     def update_all_controller_info(self, controller_id, controller_info):
-        self.controller_info = controller_info # TESTING
-        self.presenter.controllers[controller_id] = controller_info
 
         for info_name, value in controller_info.iteritems():
             
@@ -561,5 +562,11 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         popup.setWindowIcon(popup.style().standardIcon(icon))
         
         popup.exec_()
+        
+    def logo_double_clicked(self, arg):
+        
+        if self.presenter.local_controller:
+            session_path = self.presenter.local_controller['session_path']
+            open_directory_in_viewer(session_path)
 
         

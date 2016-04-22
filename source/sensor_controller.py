@@ -43,7 +43,7 @@ class SensorController(object):
         
         self._session_active = False
         self._session_name = 'N/A'
-        self.session_path = "None"
+        self._session_path = "None"
         self.session_notes = None
         
         self.text_messages = []
@@ -138,6 +138,7 @@ class SensorController(object):
                 'session_state': self.session_state,
                 'session_active': self.session_active,
                 'session_name': self.session_name,
+                'session_path': self.session_path,
                 'time_source': None if not self.time_source else self.time_source.public_info,
                 'position_sources': [source.public_info for source in self.position_sources],
                 'orientation_sources': [source.public_info for source in self.orientation_sources],
@@ -166,6 +167,14 @@ class SensorController(object):
     @session_name.setter
     def session_name(self, new_value):
         self._session_name = new_value
+        self.send_entire_controller_info()
+        
+    @property
+    def session_path(self):
+        return self._session_path
+    @session_path.setter
+    def session_path(self, new_value):
+        self._session_path = new_value
         self.send_entire_controller_info()
         
     @property
@@ -985,6 +994,7 @@ class SensorController(object):
             new_session_path = os.path.join(self.settings['base_out_directory'], 'invalid_' + self.session_name)
             try:
                 os.rename(original_session_path, new_session_path)
+                self.session_path = new_session_path
             except OSError:
                 self.log_message("Session path couldn't be renamed.")
 
