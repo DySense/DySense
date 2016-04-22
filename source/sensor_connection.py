@@ -224,6 +224,12 @@ class SensorConnection(object):
             if self.sensor_driver:
                 self.sensor_driver.close(timeout=3) # TODO allow sensor driver to specify timeout
                 self.sensor_driver = None
+            else:
+                # There's no driver to close down.  Most likely this is the user hitting close after there's been an error
+                # so just reset the driver state since the user is essentially 'acknowledging' they say what was wrong.
+                self.update_sensor_state('closed')
+                self.update_sensor_health('neutral')
+                self.update_sensor_paused(True)
         except SensorCloseTimeout:
             pass # TODO notify that sensor didn't close down in required time
             
