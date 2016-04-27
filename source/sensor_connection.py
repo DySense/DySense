@@ -158,6 +158,20 @@ class SensorConnection(object):
             self.overall_health = 'neutral'
         self.observer.notify_sensor_changed(self.sensor_id, 'overall_health', self.overall_health)
         
+        # Make sure an issue is active if the health is bad.
+        if self.overall_health == 'bad':
+            if self.connection_health == 'bad' and self.sensor_health == 'bad':
+                issue_reason = "Bad driver state '{}' and bad sensor state '{}'".format(self.connection_state, self.sensor_state)
+            elif self.connection_health == 'bad':
+                issue_reason = "Bad driver state '{}'".format(self.connection_state)
+            else: # just sensor health is bad
+                issue_reason = "Bad sensor state '{}'".format(self.sensor_state)
+        
+            self.observer.try_create_issue(self.observer.controller_id, self.sensor_id, 'unhealthy_sensor', issue_reason, 'error')
+        else:
+            # Resolve any possible old issues dealing with sensor health.
+            self.observer.try_resolve_issue(self.sensor_id, 'unhealthy_sensor')
+        
     def update_position_offsets(self, new_value):
         
         validated_offsets = []

@@ -16,6 +16,7 @@ from sensor_connection import SensorConnection
 from sensor_creation import SensorDriverFactory, SensorCloseTimeout
 from csv_log import CSVLog
 from controller_data_sources import *
+from issue import Issue
 from utility import pretty, format_id
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
@@ -53,6 +54,9 @@ class SensorController(object):
         self._orientation_sources = []
         
         self.controller_id = format_id(controller_id) 
+        
+        self.active_issues = []
+        self.resolved_issues = []        
         
         self.settings = {'base_out_directory': '',
                          'operator_name': '',
@@ -309,6 +313,28 @@ class SensorController(object):
                         if sensor.num_messages_received > 0 and not sensor.closing:
                             sensor.update_connection_state('opened')
 
+                for issue in self.active_issues[:]:
+                    if issue.expired:
+                        self.active_issues.remove(issue)
+                        self.resolved_issues.append(issue)
+                        self.send_entire_controller_info()
+
+                if self.session_active:
+                    if self.time_source and not self.time_source.receiving:
+                        self.try_create_issue(self.controller_id, self.time_source.sensor_id, 'lost_time_source', 'Not receiving data from time source.', 'critical')
+                    elif self.time_source:
+                        self.try_resolve_issue(self.time_source.sensor_id, 'lost_time_source')
+                    for source in self.position_sources:
+                        if not source.receiving:
+                            self.try_create_issue(self.controller_id, source.sensor_id, 'lost_position_source', 'Not receiving data from position source.', 'critical')
+                        else:
+                            self.try_resolve_issue(source.sensor_id, 'lost_position_source')
+                    for source in self.orientation_sources:
+                        if not source.receiving:
+                            self.try_create_issue(self.controller_id, source.sensor_id, 'lost_orientation_source', 'Not receiving data from orientation source.', 'critical')
+                        else:
+                            self.try_resolve_issue(source.sensor_id, 'lost_orientation_source')
+                            
                 self.update_session_state()
                 
                 next_update_loop_time = current_time + update_loop_interval
@@ -491,6 +517,7 @@ class SensorController(object):
             
             self.log_message("Removed {}".format(sensor.sensor_id))
             
+            # Remove any data sources that match up with the removed sensor.
             if self.time_source and self.time_source.matches(sensor.sensor_id, self.controller_id):
                 self.time_source = None
             for source in self.position_sources[:]:
@@ -499,6 +526,11 @@ class SensorController(object):
             for source in self.orientation_sources[:]:
                 if source.matches(sensor.sensor_id, sensor.controller_id):
                     self.orientation_sources.remove(source)
+                    
+            # Remove any active issues that match up with the removed sensors.
+            for issue in self.active_issues:
+                if issue.id == self.controller_id and issue.sub_id == sensor.sensor_id:
+                    issue.expire(force_expire=True)
 
     def handle_request_sensor(self, manager, sensor_id):
         
@@ -805,7 +837,7 @@ class SensorController(object):
         
         if self.time_source is None:
             self.log_message("Can't start session without a selected time source.", logging.ERROR, manager)
-            return
+            return False
         
         # Make sure all sensors are setup and then that data sources are initially started. 
         for sensor in self.sensors:
@@ -862,31 +894,28 @@ class SensorController(object):
             self.session_state = 'started'
             
         if self.session_state == 'started':
-            if self.time_source and not self.time_source.receiving:
-                self.session_state = 'suspended'
-            for source in self.position_sources:
-                if not source.receiving:
+            for issue in self.active_issues:
+                if issue.level == 'critical':
                     self.session_state = 'suspended'
-            for source in self.orientation_sources:
-                if not source.receiving:
-                    self.session_state = 'suspended'
-                    
+
         if self.session_state == 'suspended':
-            all_receiving = True
-            for source in self.position_sources + self.orientation_sources + ([self.time_source] if self.time_source else []):
-                if not source.receiving:
-                    all_receiving = False
-            if all_receiving:
+            
+            still_have_critical_issue = False
+            for issue in self.active_issues:
+                if issue.level == 'critical':
+                    still_have_critical_issue = True 
+                    break
+
+            if still_have_critical_issue:        
+                # Make sure all sensors aren't saving data files because data isn't being logged.
+                for sensor in self.sensors:
+                    self._send_sensor_message(sensor.sensor_id, 'command', 'pause')
+            else: 
                 self.session_state = 'started'
                 # Make sure all sensors are started.
                 for sensor in self.sensors:
                     self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
-            else: 
-                # Make sure all sensors aren't saving data files because data isn't being logged.
-                for sensor in self.sensors:
-                    self._send_sensor_message(sensor.sensor_id, 'command', 'pause')
-
-
+                    
     def verify_controller_settings(self, manager):
         
         # Need to make sure settings are valid before starting a session.
@@ -1067,6 +1096,43 @@ class SensorController(object):
                 return sensor
             
         raise ValueError("Sensor {} not in list of sensor IDs {}".format(sensor_id, [s.sensor_id for s in self.sensors]))
+    
+    def try_create_issue(self, main_id, sub_id, issue_type, reason, level):
+        
+        issue_info = {'id': main_id, 'sub_id': sub_id, 'type': issue_type, 'reason': reason, 'level': level}
+        
+        existing_issue = None
+        for issue in self.active_issues:
+            if issue.matches(issue_info):
+                existing_issue = issue
+                break
+            
+        for data_source in [self.time_source] + self.position_sources + self.orientation_sources:
+            if data_source and data_source.matches(sensor_id=sub_id, controller_id=main_id):
+                level = 'critical'
+                break
+            
+        if existing_issue:
+            existing_issue.renew()
+            if reason != existing_issue.reason:
+                existing_issue.reason = reason
+                self.send_entire_controller_info()
+            if level != existing_issue.level:
+                existing_issue.level = level
+                self.send_entire_controller_info()
+        else:
+            new_issue = Issue(**issue_info)
+            self.active_issues.append(new_issue)
+            self.send_entire_controller_info()
+    
+    def try_resolve_issue(self, sub_id, issue_type):
+        
+        issue_info = {'id': self.controller_id, 'sub_id': sub_id, 'type': issue_type}
+        
+        for issue in self.active_issues:
+            if issue.matches(issue_info):
+                issue.expire()
+                break
     
     def _send_manager_message(self, manager_id, message_type, message_body):
         
