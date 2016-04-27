@@ -297,9 +297,9 @@
                   </widget>
                  </item>
                  <item row="5" column="0">
-                  <widget class="QLabel" name="field_id_label">
+                  <widget class="QLabel" name="experiment_id_label">
                    <property name="text">
-                    <string>Field ID</string>
+                    <string>Experiment ID</string>
                    </property>
                   </widget>
                  </item>
@@ -311,7 +311,7 @@
                   </widget>
                  </item>
                  <item row="5" column="1">
-                  <widget class="QLineEdit" name="field_id_line_edit"/>
+                  <widget class="QLineEdit" name="experiment_id_line_edit"/>
                  </item>
                  <item row="3" column="1">
                   <widget class="QLineEdit" name="platform_name_line_edit"/>
@@ -727,7 +727,7 @@
   <tabstop>operator_name_line_edit</tabstop>
   <tabstop>platform_name_line_edit</tabstop>
   <tabstop>platform_id_line_edit</tabstop>
-  <tabstop>field_id_line_edit</tabstop>
+  <tabstop>experiment_id_line_edit</tabstop>
   <tabstop>surveyed_check_box</tabstop>
   <tabstop>setup_sensors_button</tabstop>
   <tabstop>start_session_button</tabstop>

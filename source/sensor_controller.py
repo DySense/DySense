@@ -62,7 +62,7 @@ class SensorController(object):
                          'operator_name': '',
                          'platform_name': '',
                          'platform_id': '',
-                         'field_id': '',
+                         'experiment_id': '',
                          'surveyed': True}
         
         # Vehicle position/orientation files. New ones created for each session.

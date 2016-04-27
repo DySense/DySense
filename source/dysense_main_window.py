@@ -78,7 +78,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                                         'operator_name': self.operator_name_line_edit,
                                         'platform_name': self.platform_name_line_edit,
                                         'platform_id': self.platform_id_line_edit,
-                                        'field_id': self.field_id_line_edit,
+                                        'experiment_id': self.experiment_id_line_edit,
                                         'surveyed': self.surveyed_check_box                                     
                                         }   
             
@@ -111,7 +111,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.operator_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.platform_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.platform_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
-        self.field_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.experiment_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.surveyed_check_box.clicked.connect(self.controller_setting_changed_by_user)
         
         # Connect output directory file dialog button

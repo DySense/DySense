@@ -40,7 +40,7 @@ class EndSessionDialog(QDialog):
                                ('Operator:', controller_settings['operator_name']),
                                ('Platform:', controller_settings['platform_name']),
                                ('Platform ID:', controller_settings['platform_id']),
-                               ('Field ID:', controller_settings['field_id']),
+                               ('Experiment ID:', controller_settings['experiment_id']),
                                ('Surveyed:', controller_settings['surveyed']),
                                ]
         
