@@ -90,7 +90,7 @@ class EndSessionDialog(QDialog):
         
     def invalidate_button_clicked(self):
         
-        question = "Are you sure you want to invalidate the current session?  This will end the session and prefix 'invalid_' to the session directory. No data will be lost."
+        question = "Are you sure you want to invalidate the current session?  This will add an 'invalidated.txt' file to the output directory. No data will be lost."
         reply = QtGui.QMessageBox.question(self, 'Message',  question, QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
         if reply != QtGui.QMessageBox.Yes:
             return

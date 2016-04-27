@@ -1017,15 +1017,11 @@ class SensorController(object):
         self.write_version_file()
         
         if self.session_invalidated:
-            self.session_invalidated = False
-            # Rename session directory to show it was invalidated.
-            original_session_path = self.session_path
-            new_session_path = os.path.join(self.settings['base_out_directory'], 'invalid_' + self.session_name)
-            try:
-                os.rename(original_session_path, new_session_path)
-                self.session_path = new_session_path
-            except OSError:
-                self.log_message("Session path couldn't be renamed.")
+            # Create file to show that session is invalid.  Can't rename directory because sometimes we don't have permission to because
+            # other files in the directory are still closing down, or the user has the directory open in an explorer window.
+            invalidated_file_path = os.path.join(self.session_path, 'invalidated.txt')
+            with open(invalidated_file_path, 'w') as invalidated_file:
+                invalidated_file.write('The existence of this file in a session directory means this session should not be uploaded to the database.')
 
         self.session_notes = None
 
