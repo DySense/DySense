@@ -14,6 +14,7 @@ from PyQt4.QtCore import QMetaObject, QObject, QEvent, Qt, Q_ARG
 from PyQt4.QtGui import *
 from dysense_main_window_designer import Ui_MainWindow
 from sensor_view_widget import SensorViewWidget
+from new_issue_popup import NewIssuePopupWindow
 from utility import pretty, open_directory_in_viewer
 
 class DysenseMainWindow(QMainWindow, Ui_MainWindow):
@@ -52,8 +53,6 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         issue_table_font.setPointSize(12)
         self.current_issues_table.setFont(issue_table_font)
         self.current_issues_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        #self.current_issues_table.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
-        self.current_issues_table.horizontalHeader().setStretchLastSection(True)
         self.current_issues_table.cellClicked.connect(self.current_issue_clicked_on)
         
         # Local controller name at program startup.  Set only once when property is first accessed.
@@ -611,10 +610,18 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                     table_item.setBackground(QtGui.QColor(194,248,255))
                 
         self.current_issues_table.resizeColumnsToContents()
+        #self.current_issues_table.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+        self.current_issues_table.horizontalHeader().setStretchLastSection(True)
                 
     def current_issue_clicked_on(self, row_idx, column_idx):
         
         self.presenter.acknowledge_issue_by_index(row_idx)
+                
+    def notify_new_issue(self, issue_info):
+                
+        self.new_issue_popup = NewIssuePopupWindow()
+        #self.new_issue_popup.setModal(True)
+        self.new_issue_popup.show()
                 
     def logo_double_clicked(self, arg):
         

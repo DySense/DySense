@@ -390,6 +390,9 @@ class MainPresenter(QObject):
         
         if event_type == 'new_active_issue':
             self.current_issues.append(Issue(**issue_info))
+            # TODO support multiple controllers
+            if self.local_controller['session_active']:
+                self.view.notify_new_issue(issue_info)
         
         if event_type == 'issue_resolved':
             for issue in self.current_issues[:]:
