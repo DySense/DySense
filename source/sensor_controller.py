@@ -60,8 +60,8 @@ class SensorController(object):
         
         self.settings = {'base_out_directory': '',
                          'operator_name': '',
-                         'platform_name': '',
-                         'platform_id': '',
+                         'platform_type': '',
+                         'platform_id_tag': '',
                          'experiment_id': '',
                          'surveyed': True}
         
@@ -955,8 +955,8 @@ class SensorController(object):
         
         formatted_time = datetime.datetime.fromtimestamp(utc_time).strftime("%Y%m%d_%H%M%S")
         
-        self.session_name = "{}_{}_{}".format(self.settings['platform_name'],
-                                              self.settings['platform_id'],
+        self.session_name = "{}_{}_{}".format(self.settings['platform_type'],
+                                              self.settings['platform_id_tag'],
                                               formatted_time)
         
         self.session_path = os.path.join(self.settings['base_out_directory'], self.session_name)

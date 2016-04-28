@@ -280,9 +280,9 @@
                   </widget>
                  </item>
                  <item row="3" column="0">
-                  <widget class="QLabel" name="platform_name_label">
+                  <widget class="QLabel" name="platform_type_label">
                    <property name="text">
-                    <string>Platform Name</string>
+                    <string>Platform Type</string>
                    </property>
                   </widget>
                  </item>
@@ -292,7 +292,7 @@
                  <item row="4" column="0">
                   <widget class="QLabel" name="platform_id_label">
                    <property name="text">
-                    <string>Platform ID</string>
+                    <string>Platform ID Tag</string>
                    </property>
                   </widget>
                  </item>
@@ -312,9 +312,6 @@
                  </item>
                  <item row="5" column="1">
                   <widget class="QLineEdit" name="experiment_id_line_edit"/>
-                 </item>
-                 <item row="3" column="1">
-                  <widget class="QLineEdit" name="platform_name_line_edit"/>
                  </item>
                  <item row="2" column="0">
                   <widget class="QLabel" name="operator_name_label">
@@ -349,6 +346,9 @@
                  </item>
                  <item row="0" column="1">
                   <widget class="QLineEdit" name="controller_name_line_edit"/>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QLineEdit" name="platform_type_line_edit"/>
                  </item>
                 </layout>
                </widget>
@@ -752,7 +752,7 @@
  </widget>
  <tabstops>
   <tabstop>operator_name_line_edit</tabstop>
-  <tabstop>platform_name_line_edit</tabstop>
+  <tabstop>platform_type_line_edit</tabstop>
   <tabstop>platform_id_line_edit</tabstop>
   <tabstop>experiment_id_line_edit</tabstop>
   <tabstop>surveyed_check_box</tabstop>

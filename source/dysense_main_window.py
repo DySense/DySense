@@ -84,8 +84,8 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.settings_name_to_object = {
                                         'base_out_directory': self.output_directory_line_edit,
                                         'operator_name': self.operator_name_line_edit,
-                                        'platform_name': self.platform_name_line_edit,
-                                        'platform_id': self.platform_id_line_edit,
+                                        'platform_type': self.platform_type_line_edit,
+                                        'platform_id_tag': self.platform_id_line_edit,
                                         'experiment_id': self.experiment_id_line_edit,
                                         'surveyed': self.surveyed_check_box                                     
                                         }   
@@ -115,7 +115,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         self.controller_name_line_edit.editingFinished.connect(self.controller_name_changed)
         self.output_directory_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.operator_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
-        self.platform_name_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
+        self.platform_type_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.platform_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.experiment_id_line_edit.editingFinished.connect(self.controller_setting_changed_by_user)
         self.surveyed_check_box.clicked.connect(self.controller_setting_changed_by_user)
