@@ -2,6 +2,7 @@ version: "1.0"
 sensors:
     test_sensor_python:
       version: "1.0"
+      type: TEST
       settings:
         - name: output_rate
           type: float
@@ -53,6 +54,7 @@ sensors:
         
     test_sensor_csharp:
       version: "1.0"
+      type: TEST
       settings:
         - name: output_rate
           type: float
@@ -84,6 +86,7 @@ sensors:
         
     kinectv2_msdk:
       version: "1.0"
+      type: KIN
       settings:
         - name: out_directory
           type: string
@@ -123,6 +126,7 @@ sensors:
           
     irt_ue:
       version: "1.0"
+      type: IRT
       settings:    
         - name: port
           type: string
@@ -145,10 +149,11 @@ sensors:
       data:
         - name: temperature
           type: float
-          units: celcius
+          units: celsius
           
     greenseeker:
       version: "1.0"
+      type: GSK
       settings:    
         - name: port
           type: string
@@ -179,6 +184,7 @@ sensors:
   
     gps_nmea_serial:
       version: "1.0"
+      type: GNSS
       settings:
         - name: port
           type: string
@@ -237,6 +243,7 @@ sensors:
   
     gps_nmea_test:
       version: "1.0"
+      type: GNSS
       settings:
         - name: test_file_path
           type: string
@@ -290,6 +297,7 @@ sensors:
           
     canon_edsdk:
       version: "1.0"
+      type: CAM
       settings:
         - name: out_directory
           type: string
@@ -323,6 +331,7 @@ sensors:
           
     lidar_lite:
       version: "1.0"
+      type: LAS
       settings:    
         - name: port
           type: string
@@ -342,6 +351,7 @@ sensors:
         
     sonar_banner_qe:
       version: "1.0"
+      type: USC
       settings:    
         - name: port
           type: string

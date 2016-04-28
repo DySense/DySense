@@ -16,7 +16,7 @@ class SensorConnection(object):
                        }
     
     def __init__(self, version, sensor_id, controller_id, sensor_type, heartbeat_period, settings,
-                 position_offsets, orientation_offsets, instrument_id, metadata, observer, driver_factory):
+                 position_offsets, orientation_offsets, instrument_type, instrument_tag, metadata, observer, driver_factory):
         '''Constructor'''
         
         self.version = version
@@ -43,7 +43,8 @@ class SensorConnection(object):
         self.orientation_offsets = orientation_offsets # Roll pitch yaw - degrees
         
         # ID of the sensor itself, not the one assigned by the program.
-        self.instrument_id = instrument_id
+        self.instrument_type = instrument_type
+        self.instrument_tag = instrument_tag
         
         # Set to true when the sensor reports that it's closing down.
         self.closing = False
@@ -98,8 +99,13 @@ class SensorConnection(object):
                 'text_messages': self.text_messages,
                 'position_offsets': self.position_offsets,
                 'orientation_offsets': self.orientation_offsets,
-                'instrument_id': self.instrument_id,
+                'instrument_type': self.instrument_type,
+                'instrument_tag': self.instrument_tag,
                 'metadata': self.metadata}
+        
+    @property
+    def instrument_id(self):
+        return '{}_{}'.format(self.instrument_type, self.instrument_tag)
         
     def update_sensor_type(self, new_value):
         self.sensor_type = new_value
@@ -190,9 +196,13 @@ class SensorConnection(object):
         self.orientation_offsets = validated_offsets
         self.observer.notify_sensor_changed(self.sensor_id, 'orientation_offsets', self.orientation_offsets)
         
-    def update_instrument_id(self, new_value):
-        self.instrument_id = new_value
-        self.observer.notify_sensor_changed(self.sensor_id, 'instrument_id', self.instrument_id)
+    def update_instrument_type(self, new_value):
+        self.instrument_type = new_value
+        self.observer.notify_sensor_changed(self.sensor_id, 'instrument_type', self.instrument_type)
+        
+    def update_instrument_tag(self, new_value):
+        self.instrument_tag = new_value
+        self.observer.notify_sensor_changed(self.sensor_id, 'instrument_tag', self.instrument_tag)
         
     def reset(self):
         '''Reset all fields that may have changed last time sensor was setup/running.'''

@@ -217,7 +217,7 @@
            <string/>
           </property>
           <property name="text">
-           <string>ID</string>
+           <string>Sensor Tag</string>
           </property>
          </widget>
         </item>

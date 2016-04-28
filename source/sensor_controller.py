@@ -61,7 +61,7 @@ class SensorController(object):
         self.settings = {'base_out_directory': '',
                          'operator_name': '',
                          'platform_type': '',
-                         'platform_id_tag': '',
+                         'platform_tag': '',
                          'experiment_id': '',
                          'surveyed': True}
         
@@ -472,7 +472,8 @@ class SensorController(object):
         sensor_type = sensor_info['sensor_type'].strip()
         position_offsets = sensor_info.get('position_offsets', [0, 0, 0])
         orientation_offsets = sensor_info.get('orientation_offsets', [0, 0, 0])
-        instrument_id = format_id(sensor_info.get('instrument_id', 'none'))
+        instrument_type = sensor_info.get('instrument_type', 'NONE')
+        instrument_tag = sensor_info.get('instrument_tag', '123')
         
         settings = {}
         for setting_metadata in metadata['settings']:
@@ -492,8 +493,8 @@ class SensorController(object):
             self.log_message("Need to provide a non-empty sensor name.", logging.ERROR, manager)
             return
         
-        if instrument_id == '':
-            self.log_message("Need to provide a non-empty instrument ID.", logging.ERROR, manager)
+        if instrument_tag == '':
+            self.log_message("Need to provide a non-empty instrument tag (ID).", logging.ERROR, manager)
             return
         
         if sensor_name != self._make_sensor_name_unique(sensor_name):
@@ -502,7 +503,7 @@ class SensorController(object):
             
         new_sensor = SensorConnection(metadata['version'], sensor_name, self.controller_id, sensor_type,
                                       SENSOR_HEARTBEAT_PERIOD, settings, position_offsets, orientation_offsets,
-                                      instrument_id, metadata, self, self.sensor_driver_factory)
+                                      instrument_type, instrument_tag, metadata, self, self.sensor_driver_factory)
         
         self.sensors.append(new_sensor)
         
@@ -616,12 +617,12 @@ class SensorController(object):
         except AttributeError:
             pass
         
-        if info_name == 'instrument_id':
+        if info_name == 'instrument_tag':
             value = format_id(str(value))
             if value != '':
-                sensor.update_instrument_id(value)
+                sensor.update_instrument_tag(value)
             else:
-                self.log_message("Instrument ID can't be empty.", logging.ERROR, manager)
+                self.log_message("Instrument tag can't be empty.", logging.ERROR, manager)
                 self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
             
         elif info_name == 'position_offsets':
@@ -956,7 +957,7 @@ class SensorController(object):
         formatted_time = datetime.datetime.fromtimestamp(utc_time).strftime("%Y%m%d_%H%M%S")
         
         self.session_name = "{}_{}_{}".format(self.settings['platform_type'],
-                                              self.settings['platform_id_tag'],
+                                              self.settings['platform_tag'],
                                               formatted_time)
         
         self.session_path = os.path.join(self.settings['base_out_directory'], self.session_name)
@@ -979,9 +980,10 @@ class SensorController(object):
 
         for sensor in self.sensors:
             
-            sensor_csv_file_name = "{}_{}_{}.csv".format(sensor.sensor_id,
-                                                         sensor.instrument_id,
-                                                         formatted_time)
+            sensor_csv_file_name = "{}_{}_{}_{}.csv".format(sensor.sensor_id,
+                                                            sensor.instrument_type,
+                                                            sensor.instrument_tag,
+                                                            formatted_time)
             
             sensor_csv_file_path = os.path.join(data_logs_path, sensor_csv_file_name)
             
@@ -1072,9 +1074,9 @@ class SensorController(object):
         with open(file_path, 'wb') as outfile:
             writer = csv.writer(outfile)
             
-            writer.writerow(['#sensor_name', 'sensor_id', 'x', 'y', 'z', 'roll', 'pitch', 'yaw'])
+            writer.writerow(['#sensor_name', 'sensor_type', 'sensor_tag', 'x', 'y', 'z', 'roll', 'pitch', 'yaw'])
             for sensor in self.sensors:
-                writer.writerow([sensor.sensor_id, sensor.instrument_id] + sensor.position_offsets + sensor.orientation_offsets)
+                writer.writerow([sensor.sensor_id, sensor.instrument_type, sensor.instrument_tag] + sensor.position_offsets + sensor.orientation_offsets)
 
     def write_sensor_info_files(self):
         
@@ -1085,13 +1087,13 @@ class SensorController(object):
         
         for sensor in self.sensors:
             
-            file_path = os.path.join(info_directory, '{}_{}.yaml'.format(sensor.sensor_id, sensor.instrument_id))
+            file_path = os.path.join(info_directory, '{}_{}_{}.yaml'.format(sensor.sensor_id, sensor.instrument_type, sensor.instrument_tag))
             
             with open(file_path, 'w') as outfile:
                 outdata = []
                 for key, value in sorted(sensor.public_info.items()):
                     if key in ['sensor_type', 'sensor_id', 'settings', 'parameters', 'text_messages',
-                                'position_offsets', 'orientation_offsets', 'instrument_id', 'metadata']:
+                                'position_offsets', 'orientation_offsets', 'instrument_type', 'instrument_tag', 'metadata']:
                         outdata.append([key, value])
                 outfile.write(yaml.dump(outdata, default_flow_style=False))
 

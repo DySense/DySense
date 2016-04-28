@@ -421,7 +421,7 @@ class Ui_MainWindow(object):
         self.settings_group_box.setTitle(_translate("MainWindow", "Settings", None))
         self.label.setText(_translate("MainWindow", "Output Directory", None))
         self.platform_type_label.setText(_translate("MainWindow", "Platform Type", None))
-        self.platform_id_label.setText(_translate("MainWindow", "Platform ID Tag", None))
+        self.platform_id_label.setText(_translate("MainWindow", "Platform Tag", None))
         self.experiment_id_label.setText(_translate("MainWindow", "Experiment ID", None))
         self.surveyed_check_box.setText(_translate("MainWindow", "Surveyed", None))
         self.operator_name_label.setText(_translate("MainWindow", "Operator Name", None))

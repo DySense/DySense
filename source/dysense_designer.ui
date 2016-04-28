@@ -292,7 +292,7 @@
                  <item row="4" column="0">
                   <widget class="QLabel" name="platform_id_label">
                    <property name="text">
-                    <string>Platform ID Tag</string>
+                    <string>Platform Tag</string>
                    </property>
                   </widget>
                  </item>

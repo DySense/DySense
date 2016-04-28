@@ -115,7 +115,7 @@ class MainPresenter(QObject):
             # TODO save sensors underneath controllers?
             useful_info = {}
             for info_name, info_value in sensor_info.iteritems():
-                if info_name in ['sensor_type', 'sensor_id', 'settings', 'position_offsets', 'orientation_offsets', 'instrument_id']:
+                if info_name in ['sensor_type', 'sensor_id', 'settings', 'position_offsets', 'orientation_offsets', 'instrument_type', 'instrument_tag']:
                     useful_info[info_name] = info_value
             sensors.append(useful_info)
         data['sensors'] = sensors
@@ -205,8 +205,9 @@ class MainPresenter(QObject):
     def add_sensor_requested(self):
         
         possible_sensor_types = sorted(self.sensor_metadata.keys())
+        sensor_id_types = [self.sensor_metadata[sensor_type]['type'] for sensor_type in possible_sensor_types]
         
-        self.add_sensor_window = AddSensorWindow(self, possible_sensor_types)
+        self.add_sensor_window = AddSensorWindow(self, possible_sensor_types, sensor_id_types)
         self.add_sensor_window.setModal(True)
         self.add_sensor_window.show()
         

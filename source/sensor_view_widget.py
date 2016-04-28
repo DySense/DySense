@@ -33,7 +33,7 @@ class SensorViewWidget(QWidget,Ui_Form):
                                'sensor_type': self.sensor_type_line_edit,
                                'sensor_id': self.sensor_name_line_edit,                                      
 
-                               'instrument_id': self.sensor_id_line_edit,
+                               'instrument_tag': self.sensor_id_line_edit,
                                'position_offsets': [self.forward_position_line_edit,
                                                     self.left_position_line_edit,
                                                     self.up_position_line_edit],
@@ -314,7 +314,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         
         if self.sender().isModified():
             new_value = str(self.sensor_id_line_edit.text())
-            self.presenter.change_sensor_info('instrument_id', new_value)
+            self.presenter.change_sensor_info('instrument_tag', new_value)
             self.sender().setModified(False)
              
     def position_offset_changed(self):    

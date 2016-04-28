@@ -85,7 +85,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                                         'base_out_directory': self.output_directory_line_edit,
                                         'operator_name': self.operator_name_line_edit,
                                         'platform_type': self.platform_type_line_edit,
-                                        'platform_id_tag': self.platform_id_line_edit,
+                                        'platform_tag': self.platform_id_line_edit,
                                         'experiment_id': self.experiment_id_line_edit,
                                         'surveyed': self.surveyed_check_box                                     
                                         }   

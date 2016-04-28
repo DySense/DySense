@@ -342,7 +342,7 @@ class Ui_Form(object):
         self.sensor_info_group_box.setTitle(_translate("Form", "Common Settings", None))
         self.sensor_name_label.setText(_translate("Form", "Sensor Name", None))
         self.sensor_type_label.setText(_translate("Form", "Sensor Type", None))
-        self.sensor_id_label.setText(_translate("Form", "ID", None))
+        self.sensor_id_label.setText(_translate("Form", "Sensor Tag", None))
         self.settings_group_box.setTitle(_translate("Form", "Settings", None))
         self.position_group_box.setTitle(_translate("Form", "Position Offsets (meters)", None))
         self.forward_position_label.setText(_translate("Form", "Forward:", None))

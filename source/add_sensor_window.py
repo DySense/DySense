@@ -6,10 +6,11 @@ from PyQt4 import QtGui
 
 class AddSensorWindow(QDialog):
     
-    def __init__(self, presenter, possible_sensor_types, *args):
+    def __init__(self, presenter, possible_sensor_types, possible_sensor_id_types, *args):
         QDialog.__init__(self, *args)
         
         self.presenter = presenter
+        self.possible_sensor_id_types = possible_sensor_id_types
         
         self.setWindowTitle('Add Sensor')
         self.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
@@ -37,8 +38,16 @@ class AddSensorWindow(QDialog):
         self.sensor_name_line_edit = QLineEdit()
         self.sensor_name_line_edit.setFont(self.dialog_font)
         
-        self.sensor_id_line_edit = QLineEdit()
-        self.sensor_id_line_edit.setFont(self.dialog_font)
+        self.sensor_id_type_line_edit = QLineEdit()
+        self.sensor_id_type_line_edit.setFont(self.dialog_font)
+        self.sensor_id_type_line_edit.setReadOnly(True)
+        self.sensor_id_type_line_edit.setMaximumWidth(60)
+        self.sensor_id_type_line_edit.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        self.sensor_id_tag_line_edit = QLineEdit()
+        self.sensor_id_tag_line_edit.setFont(self.dialog_font)
+        self.sensor_id_layout = QHBoxLayout()
+        self.sensor_id_layout.addWidget(self.sensor_id_type_line_edit)
+        self.sensor_id_layout.addWidget(self.sensor_id_tag_line_edit)
         
         self.setup_buttons()
         
@@ -47,11 +56,11 @@ class AddSensorWindow(QDialog):
         self.central_layout.addWidget(self.name_label, 1, 0)
         self.central_layout.addWidget(self.sensor_name_line_edit, 1, 1)
         self.central_layout.addWidget(self.id_label, 2, 0)
-        self.central_layout.addWidget(self.sensor_id_line_edit, 2, 1)
+        self.central_layout.addLayout(self.sensor_id_layout, 2, 1, 1, 1)
         self.central_layout.addWidget(self.heads_up_label, 3, 1)
         self.central_layout.addLayout(self.button_layout, 4, 0, 1, 2)
         
-        self.sensor_name_line_edit.setFocus()
+        self.sensor_type_selected()
         self.add_button.setDefault(True)
 
     def setup_buttons(self):
@@ -68,12 +77,18 @@ class AddSensorWindow(QDialog):
 
     def sensor_type_selected(self):
         self.sensor_name_line_edit.setFocus()
+        try:
+            sensor_id_type = self.possible_sensor_id_types[self.sensor_type_combo_box.currentIndex()]
+            self.sensor_id_type_line_edit.setText(sensor_id_type)
+        except IndexError:
+            pass
 
     def add_button_clicked(self):
 
         new_sensor_info =  {'sensor_type': str(self.sensor_type_combo_box.currentText()).strip(), 
                             'sensor_id': str(self.sensor_name_line_edit.text()).strip(),
-                            'instrument_id': str(self.sensor_id_line_edit.text()).strip()}
+                            'instrument_type': str(self.sensor_id_type_line_edit.text()).strip(),
+                            'instrument_tag': str(self.sensor_id_tag_line_edit.text()).strip()}
         
         self.presenter.add_sensor(new_sensor_info)
         
