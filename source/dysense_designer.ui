@@ -676,12 +676,19 @@
               </property>
              </spacer>
             </item>
-            <item row="11" column="1">
+            <item row="13" column="1">
              <layout class="QHBoxLayout" name="horizontalLayout_8">
               <item>
                <widget class="QPushButton" name="clear_main_message_center_button">
                 <property name="text">
                  <string>Clear Message Center</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="ack_all_issues_button">
+                <property name="text">
+                 <string>Acknowledge All Issues</string>
                 </property>
                </widget>
               </item>
@@ -699,6 +706,26 @@
                </spacer>
               </item>
              </layout>
+            </item>
+            <item row="12" column="1">
+             <widget class="QTableWidget" name="current_issues_table"/>
+            </item>
+            <item row="11" column="1">
+             <widget class="QLabel" name="issues_label">
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Current Issues</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
             </item>
            </layout>
           </widget>

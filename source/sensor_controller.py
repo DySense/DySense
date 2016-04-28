@@ -147,7 +147,10 @@ class SensorController(object):
                 'position_sources': [source.public_info for source in self.position_sources],
                 'orientation_sources': [source.public_info for source in self.orientation_sources],
                 'settings': self.settings,
-                'text_messages': self.text_messages}
+                'text_messages': self.text_messages,
+                'active_issues': [source.public_info for source in self.active_issues],
+                'resolved_issues': [source.public_info for source in self.resolved_issues],
+                }
         
     @property
     def session_state(self):
@@ -317,8 +320,9 @@ class SensorController(object):
                     if issue.expired:
                         self.active_issues.remove(issue)
                         self.resolved_issues.append(issue)
-                        self.send_entire_controller_info()
+                        self.send_controller_issue_event('issue_resolved', issue)
 
+                # TODO make this more efficient when receiving sources were not constantly trying to resolve issues that don't exist.
                 if self.session_active:
                     if self.time_source and not self.time_source.receiving:
                         self.try_create_issue(self.controller_id, self.time_source.sensor_id, 'lost_time_source', 'Not receiving data from time source.', 'critical')
@@ -334,6 +338,14 @@ class SensorController(object):
                             self.try_create_issue(self.controller_id, source.sensor_id, 'lost_orientation_source', 'Not receiving data from orientation source.', 'critical')
                         else:
                             self.try_resolve_issue(source.sensor_id, 'lost_orientation_source')
+                else: 
+                    # TODO make this more efficient when receiving sources were not constantly trying to resolve issues that don't exist. 
+                    if self.time_source:
+                        self.try_resolve_issue(self.time_source.sensor_id, 'lost_time_source')
+                    for source in self.position_sources:
+                        self.try_resolve_issue(source.sensor_id, 'lost_position_source')
+                    for source in self.orientation_sources:
+                        self.try_resolve_issue(source.sensor_id, 'lost_orientation_source')
                             
                 self.update_session_state()
                 
@@ -426,6 +438,10 @@ class SensorController(object):
     def send_entire_controller_info(self):
     
         self._send_manager_message('all', 'entire_controller_update', self.public_info)
+        
+    def send_controller_issue_event(self, event_type, issue):
+    
+        self._send_manager_message('all', 'controller_issue_event', (event_type, issue.public_info))
         
     def send_entire_sensor_info(self, manager_id, sensor):
     
@@ -1095,6 +1111,13 @@ class SensorController(object):
     
     def try_create_issue(self, main_id, sub_id, issue_type, reason, level):
         
+        # First see if we need to promote the level to critical if this is a data source. 
+        # Need to do this before constructing 'sensor_info' below.
+        for data_source in [self.time_source] + self.position_sources + self.orientation_sources:
+            if data_source and data_source.matches(sensor_id=sub_id, controller_id=main_id):
+                level = 'critical'
+                break
+        
         issue_info = {'id': main_id, 'sub_id': sub_id, 'type': issue_type, 'reason': reason, 'level': level}
         
         existing_issue = None
@@ -1103,23 +1126,18 @@ class SensorController(object):
                 existing_issue = issue
                 break
             
-        for data_source in [self.time_source] + self.position_sources + self.orientation_sources:
-            if data_source and data_source.matches(sensor_id=sub_id, controller_id=main_id):
-                level = 'critical'
-                break
-            
         if existing_issue:
             existing_issue.renew()
             if reason != existing_issue.reason:
                 existing_issue.reason = reason
-                self.send_entire_controller_info()
+                self.send_controller_issue_event('issue_changed', existing_issue)
             if level != existing_issue.level:
                 existing_issue.level = level
-                self.send_entire_controller_info()
+                self.send_controller_issue_event('issue_changed', existing_issue)
         else:
             new_issue = Issue(**issue_info)
             self.active_issues.append(new_issue)
-            self.send_entire_controller_info()
+            self.send_controller_issue_event('new_active_issue', new_issue)
     
     def try_resolve_issue(self, sub_id, issue_type):
         

@@ -51,6 +51,7 @@ class ControllerManager(object):
 
                                    # From Controllers
                                   'entire_controller_update': self.handle_entire_controller_update,
+                                  'controller_issue_event': self.handle_controller_issue_event,
                                   'entire_sensor_update': self.handle_entire_sensor_update,
                                   'sensor_changed': self.handle_sensor_changed,
                                   'sensor_removed': self.handle_sensor_removed,
@@ -163,6 +164,10 @@ class ControllerManager(object):
     def handle_entire_controller_update(self, controller, controller_info):
 
         self._send_message_to_presenter('entire_controller_update', controller_info)
+
+    def handle_controller_issue_event(self, controller, event_type, issue_info):
+
+        self._send_message_to_presenter('controller_issue_event', (controller.id, event_type, issue_info))
 
     def handle_entire_sensor_update(self, controller, sensor_info):
         self._send_message_to_presenter('entire_sensor_update', (controller.id, sensor_info))

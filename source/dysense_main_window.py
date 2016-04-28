@@ -47,6 +47,15 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                             {  background: blue; color: white;}"""
                             )        
         
+        # Setup current issue table.
+        issue_table_font = QtGui.QFont()
+        issue_table_font.setPointSize(12)
+        self.current_issues_table.setFont(issue_table_font)
+        self.current_issues_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        #self.current_issues_table.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+        self.current_issues_table.horizontalHeader().setStretchLastSection(True)
+        self.current_issues_table.cellClicked.connect(self.current_issue_clicked_on)
+        
         # Local controller name at program startup.  Set only once when property is first accessed.
         self.initial_stored_controller_name = None
         
@@ -81,8 +90,6 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                                         'experiment_id': self.experiment_id_line_edit,
                                         'surveyed': self.surveyed_check_box                                     
                                         }   
-            
-
         
         #Lookup table of sensor views in the stacked widget
         #key - (controller_id, sensor id)
@@ -124,6 +131,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         #Connect main command buttons
         self.menu_button.clicked.connect(self.menu_button_clicked)
         self.clear_main_message_center_button.clicked.connect(self.clear_main_message_center_button_clicked)
+        self.ack_all_issues_button.clicked.connect(self.ack_all_issues_button_clicked)
         
         #Connect sensor control buttons
         self.setup_sensors_button.clicked.connect(self.setup_sensors_button_clicked)
@@ -372,7 +380,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
     def clear_main_message_center_button_clicked(self):
         self.main_message_center_text_edit.clear()
-    
+        
+    def ack_all_issues_button_clicked(self):
+        self.presenter.acknowledge_issue({}, ack_all_issues=True)
     
     def output_directory_tool_button_clicked(self):
         output_directory = QFileDialog.getExistingDirectory(self, "Select Directory")
@@ -563,6 +573,49 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         
         popup.exec_()
         
+    def refresh_current_issues(self, current_issues):
+        
+        # Remove all rows so we can re-add everything.
+        self.current_issues_table.setRowCount(0)
+        
+        if len(current_issues) == 0:
+            self.current_issues_table.setColumnCount(0)
+            return # no issues to show in table
+        
+        self.issue_table_headers = ['Controller ID', 'Sub ID', 'Issue Type', 'Level', 'Reason', 'Acknowledged', 'Resolved', 'Duration']
+        self.current_issues_table.setColumnCount(len(self.issue_table_headers))
+        self.current_issues_table.setHorizontalHeaderLabels(self.issue_table_headers)
+  
+        for row_idx, issue in enumerate(current_issues):
+            acked = 'Yes' if issue.acked else 'No'
+            resolved = 'Yes' if issue.resolved else 'No'
+            duration = issue.expiration_time - issue.start_time
+            if duration < 0:
+                duration = '' # issue doesn't have an end time yet.
+            else:
+                duration = '{:.2f}'.format(duration)
+                
+            table_values = [issue.id, issue.sub_id, pretty(issue.issue_type), pretty(issue.level),
+                             issue.reason, acked, resolved, duration]
+            
+            self.current_issues_table.insertRow(row_idx)
+            
+            for column_idx, table_value in enumerate(table_values):
+                
+                table_item = QTableWidgetItem(table_value)
+                table_item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+                
+                self.current_issues_table.setItem(row_idx, column_idx, table_item)
+                
+                if issue.resolved:
+                    table_item.setBackground(QtGui.QColor(194,248,255))
+                
+        self.current_issues_table.resizeColumnsToContents()
+                
+    def current_issue_clicked_on(self, row_idx, column_idx):
+        
+        self.presenter.acknowledge_issue_by_index(row_idx)
+                
     def logo_double_clicked(self, arg):
         
         if self.presenter.local_controller:

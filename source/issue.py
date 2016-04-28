@@ -11,10 +11,13 @@ class Issue(object):
         self._issue_type = kargs['type']
         self._reason = kargs.get('reason', '')
         self._level = kargs.get('level', 'error')
-        
+    
         self.start_time = kargs.get('start_time', time.time())
-        self.end_time = kargs.get('end_time', 0)
         self.expiration_time = kargs.get('expiration_time', 0)
+        
+        # Right now these are only used by presenter.  Should consider storing these outside of class.
+        self.acked = False
+        self.resolved = False
     
     @property
     def public_info(self):
@@ -24,7 +27,7 @@ class Issue(object):
                 'reason': self._reason,
                 'level': self._level,
                 'start_time': self.start_time,
-                'end_time': self.end_time,
+                'end_time': self.expiration_time,
                 }
         
     @property

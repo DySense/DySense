@@ -12,6 +12,7 @@ from PyQt4.QtCore import QObject, QTimer
 from select_sources_window import SelectSourcesWindow
 from add_sensor_window import AddSensorWindow
 from end_session_dialog import EndSessionDialog
+from source.issue import Issue
 
 RECEIVE_TIMER_INTERVAL = 0.1 # seconds
 
@@ -33,7 +34,10 @@ class MainPresenter(QObject):
         self.active_controller_id = None
         self.active_sensor_id = None
         
-
+        # Issues corresponding to local controller. Old issues are ones that have been acked and resolved.
+        self.current_issues = []
+        self.old_issues = []
+        
         # Lookup table of controller information.
         # key - controller id 
         # value - dictionary of controller info.
@@ -44,8 +48,6 @@ class MainPresenter(QObject):
         # value - dictionary of sensor info.
         self.sensors = {}        
         
-        
-        
         self.message_callbacks = { # From Manager
                                   'entire_sensor_update': self.handle_entire_sensor_update,
                                   'sensor_changed': self.handle_sensor_changed,
@@ -53,6 +55,7 @@ class MainPresenter(QObject):
                                   'new_sensor_data': self.handle_new_sensor_data,
                                   'new_sensor_text': self.handle_new_sensor_text,
                                   'entire_controller_update': self.handle_entire_controller_update,
+                                  'controller_issue_event': self.handle_controller_issue_event,
                                   'controller_removed': self.handle_controller_removed,
                                   'error_message': self.handle_error_message,
                                   'new_controller_text': self.handle_new_controller_text,
@@ -294,6 +297,23 @@ class MainPresenter(QObject):
         
         self._send_message_to_active_controller('change_controller_setting', (setting_name, value))
         
+    def acknowledge_issue_by_index(self, issue_idx):
+        try:
+            issue_info = self.current_issues[issue_idx].public_info
+            self.acknowledge_issue(issue_info)
+        except IndexError:
+            pass
+        
+    def acknowledge_issue(self, issue_info, ack_all_issues=False):
+        for issue in self.current_issues[:]:
+            if ack_all_issues or issue.matches(issue_info):
+                issue.acked = True
+                if issue.resolved:
+                    self.current_issues.remove(issue)
+                    self.old_issues.append(issue)
+                    
+        self.view.refresh_current_issues(self.current_issues)
+        
     def send_controller_command(self, command_name, command_args=None, send_to_all_controllers=False):
         
         if send_to_all_controllers:
@@ -358,8 +378,37 @@ class MainPresenter(QObject):
         
         if is_new_controller:
             self.view.add_new_controller(controller_id, controller_info)
-            
+            for issue_info in controller_info['active_issues']:
+                self.current_issues.append(Issue(**issue_info))
+            for issue_info in controller_info['resolved_issues']:
+                self.old_issues.append(Issue(**issue_info))
+            self.view.refresh_current_issues(self.current_issues)
+                    
         self.view.update_all_controller_info(controller_info['id'], controller_info)
+
+    def handle_controller_issue_event(self, controller_id, event_type, issue_info):
+        
+        if event_type == 'new_active_issue':
+            self.current_issues.append(Issue(**issue_info))
+        
+        if event_type == 'issue_resolved':
+            for issue in self.current_issues[:]:
+                if not issue.resolved and issue.matches(issue_info):
+                    issue.resolved = True
+                    issue.expiration_time = issue_info['end_time']
+                    
+                    if issue.acked:
+                        self.current_issues.remove(issue)
+                        self.old_issues.append(issue)
+                    
+                    
+        if event_type == 'issue_changed':
+            for issue in self.current_issues:
+                if not issue.resolved and issue.matches(issue_info):
+                    issue.level = issue_info['level']
+                    issue.reason = issue_info['reason']
+        
+        self.view.refresh_current_issues(self.current_issues)
         
     def handle_controller_removed(self, controller_id):
         self.view.remove_sensor(controller_id)
