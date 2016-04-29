@@ -856,23 +856,15 @@ class SensorController(object):
             self.log_message("Can't start session without a selected time source.", logging.ERROR, manager)
             return False
         
-        # Make sure all sensors are setup and then that data sources are initially started. 
-        for sensor in self.sensors:
-            sensor.setup()
-
-        time_sensor = self.find_sensor(self.time_source.sensor_id)
-        position_sensors = [self.find_sensor(s.sensor_id) for s in self.position_sources]
-        orientation_sensors = []
-        for s in self.orientation_sources:
-            if s.sensor_id not in ['none', 'derived']:
-                orientation_sensors.append(self.find_sensor(s.sensor_id))
-            
-        for sensor in [time_sensor] + position_sensors + orientation_sensors:
-            if sensor.num_messages_received == 0:
-                self.log_message("Can't startup session until all data sources are setup.", logging.ERROR, manager)
+        for source in [self.time_source] + self.position_sources + self.orientation_sources:
+            if (source.controller_id.lower() != 'none') and source.controller_id != self.controller_id:
+                self.log_message("Can't start session because source '{}' is part of a controller '{}' that's not connected.".format(source.sensor_id, source.controller_id), logging.ERROR, manager)
                 return False
-            # Sensor is setup so can start it.
-            self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
+                
+        for sensor in self.sensors:
+            if sensor.is_closed() or sensor.num_messages_received == 0:
+                self.log_message("Can't start session until sensor '{}' is setup.".format(sensor.sensor_id), logging.ERROR, manager)
+                return False
             
         self.log_message("Initial startup successful.")
         self.session_state = 'waiting_for_time'
