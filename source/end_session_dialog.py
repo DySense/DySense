@@ -1,8 +1,11 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import sys
 from PyQt4.Qt import *
 from PyQt4 import QtGui
+from utility import make_unicode
 
 class EndSessionDialog(QDialog):
     
@@ -48,7 +51,7 @@ class EndSessionDialog(QDialog):
         self.settings_box_layout = QGridLayout(self.settings_box)
         for i, (text, value) in enumerate(controller_settings):
             text_label = QLabel(text)
-            value_label = QLabel(str(value))
+            value_label = QLabel(make_unicode(value))
             text_label.setFont(self.dialog_font)
             value_label.setFont(self.dialog_font)
             self.settings_box_layout.addWidget(text_label, i, 0)
@@ -78,7 +81,7 @@ class EndSessionDialog(QDialog):
 
     def confirm_button_clicked(self):
 
-        notes = str(self.session_notes.toPlainText()).strip()
+        notes = make_unicode(self.session_notes.toPlainText()).strip()
         
         self.presenter.send_controller_command('stop_session', notes, send_to_all_controllers=False)
         
@@ -95,7 +98,7 @@ class EndSessionDialog(QDialog):
         if reply != QtGui.QMessageBox.Yes:
             return
 
-        notes = str(self.session_notes.toPlainText()).strip()
+        notes = make_unicode(self.session_notes.toPlainText()).strip()
 
         self.presenter.send_controller_command('invalidate_session', send_to_all_controllers=False)
         self.presenter.send_controller_command('stop_session', notes, send_to_all_controllers=False)

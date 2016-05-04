@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 """
 Sensor Name:    ThermoMETER CT-SF02-C1 
@@ -11,6 +13,7 @@ import serial
 import struct
 
 from sensor_base.sensor_base import SensorBase
+from source.utility import make_unicode
 
 class IRT_UE(SensorBase):
     '''Request and convert data from ThermoMETER-CT IRT sensor.'''
@@ -34,7 +37,7 @@ class IRT_UE(SensorBase):
         SensorBase.__init__(self, sensor_id, instrument_id, context, connect_endpoint)
 
         try:
-            self.port = str(settings['port'])
+            self.port = make_unicode(settings['port'])
             self.baud = int(settings['baud'])
             self.sample_period = 1.0 / float(settings['sample_rate'])
         except (KeyError, ValueError, ZeroDivisionError) as e:

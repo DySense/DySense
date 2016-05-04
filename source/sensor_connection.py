@@ -1,7 +1,8 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import time
-from source.utility import validate_setting, validate_type, pretty
+from utility import validate_setting, validate_type, pretty, make_unicode
 from sensor_creation import SensorCloseTimeout
 
 class SensorConnection(object):
@@ -20,8 +21,8 @@ class SensorConnection(object):
         '''Constructor'''
         
         self.version = version
-        self.sensor_id = str(sensor_id) # same as sensor name
-        self.controller_id = str(controller_id)
+        self.sensor_id = sensor_id # same as sensor name
+        self.controller_id = controller_id
         self.sensor_type = sensor_type
         self.settings = settings
         self.metadata = metadata

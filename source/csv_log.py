@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#from __future__ import unicode_literals
 
 import csv
 from _ctypes import ArgumentError
+from utility import make_utf8
 
 class CSVLog:
     '''
@@ -29,12 +32,16 @@ class CSVLog:
                 
         if (data is None) or (len(data) == 0):
             # Create blank one element tuple so it's obvious in log that no data was received.
-            raise Exception("Data can't be empty.")
+            raise Exception(u"Data can't be empty.")
             
-        # Convert all values using built in representation function.  This avoids loss of precision
-        # on floating point numbers due to the way floats are printed in python.
+
         for i, val in enumerate(data):
-            data[i] = str(repr(val))
+            if type(data[i]) == float:
+                # Convert all floats using built in representation function.  This avoids loss of precision
+                #  due to the way floats are printed in python.
+                val = repr(val)
+            # Make sure all data is encoded as utf8.
+            data[i] = make_utf8(val)
         
         # Check if all we need to do is buffer data.
         if self.buffer_size > 1:
@@ -61,9 +68,9 @@ class CSVLog:
     def handle_metadata(self, sensor_type, sensor_id, metadata): 
         '''Store metadata in buffer to be written out the first time handle_data is called.'''
         if len(metadata) == 0:
-            raise ArgumentError('Metadata must contain at least one element')
+            raise ArgumentError(u'Metadata must contain at least one element')
         
-        metadata[0] = '#' + str(metadata[0])
+        metadata[0] = u'#' + make_utf8(metadata[0])
         self.buffer.append(metadata)
         
     def terminate(self):

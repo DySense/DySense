@@ -1,8 +1,9 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import serial
-
 from gps_nmea import GpsNmea
+from source.utility import make_unicode
 
 class GpsNmeaSerial(GpsNmea):
     '''Receive and process data from GPS using NMEA format.'''
@@ -24,10 +25,10 @@ class GpsNmeaSerial(GpsNmea):
             ValueError - if not all settings are provided or not in correct format.
         '''
         try:
-            self.port = str(settings['port'])
+            self.port = make_unicode(settings['port'])
             self.baud = int(settings['baud'])
             self.message_period = 1.0 / float(settings['message_rate'])
-            self.required_fix = str(settings['required_fix'])
+            self.required_fix = make_unicode(settings['required_fix'])
             self.required_latlon_error = float(settings['required_error'])
             self.min_sats = int(settings['min_sats'])
         except (KeyError, ValueError, ZeroDivisionError) as e:

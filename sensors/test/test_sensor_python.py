@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 """
 Sensor Name:    Test Sensor
@@ -10,6 +12,7 @@ import time
 import random
 
 from sensor_base.sensor_base import SensorBase
+from source.utility import make_unicode
 
 class TestSensor(SensorBase):
     ''''''
@@ -38,7 +41,7 @@ class TestSensor(SensorBase):
             self.output_rate = float(settings['output_rate'])
             self.test_float = float(settings['test_float'])
             self.test_int = int(settings['test_int'])
-            self.test_string = str(settings['test_string'])
+            self.test_string = make_unicode(settings['test_string'])
             self.test_bool = bool(settings['test_bool'])
             self.output_period = 1.0 / self.output_rate
         except (KeyError, ValueError, ZeroDivisionError) as e:
@@ -72,7 +75,7 @@ class TestSensor(SensorBase):
         '''Generate new data to output and return current read state.'''
         
         new_data = [str(self.counter), random.randint(0, 100), random.random(), self.sys_time]
-        
+
         self.handle_data(self.utc_time, self.sys_time, new_data, self.data_quality_ok)
         
         self.counter += 1
@@ -85,7 +88,8 @@ class TestSensor(SensorBase):
     def handle_special_command(self, command):
         
         if command == 'crash':
-            raise Exception("Intentional crash for testing.")
+            from source.utility import make_utf8
+            raise Exception(make_utf8("Intentional crash for testing."))
         
         if command == 'toggle_quality':
             self.data_quality_ok = not self.data_quality_ok

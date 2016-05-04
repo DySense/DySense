@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 """
 Sensor Name:    LidarLite
@@ -9,7 +11,7 @@ Other notes:    Added MCU with i2c to get data over serial port.
 
 import serial
 import struct
-from source.utility import find_last_index
+from source.utility import find_last_index, make_unicode
 
 from sensor_base.sensor_base import SensorBase
 
@@ -34,7 +36,7 @@ class LidarLite(SensorBase):
         SensorBase.__init__(self, sensor_id, instrument_id, context, connect_endpoint, throttle_sensor_read=False)
 
         try:
-            self.port = str(settings['port'])
+            self.port = make_unicode(settings['port'])
             self.baud = int(settings['baud'])
         except (KeyError, ValueError, ZeroDivisionError) as e:
             raise ValueError("Bad sensor setting.  Exception {}".format(e))

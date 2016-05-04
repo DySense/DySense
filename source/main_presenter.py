@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import time
 import zmq
@@ -12,7 +13,8 @@ from PyQt4.QtCore import QObject, QTimer
 from select_sources_window import SelectSourcesWindow
 from add_sensor_window import AddSensorWindow
 from end_session_dialog import EndSessionDialog
-from source.issue import Issue
+from issue import Issue
+from utility import json_dumps_unicode, make_unicode, make_utf8
 
 RECEIVE_TIMER_INTERVAL = 0.1 # seconds
 
@@ -121,7 +123,7 @@ class MainPresenter(QObject):
         data['sensors'] = sensors
     
         with open(file_path, 'w') as outfile:
-            outfile.write(yaml.dump(data, default_flow_style=False))
+            outfile.write(yaml.safe_dump(data, allow_unicode=True, default_flow_style=False))
         
     def try_load_config(self, file_path):
         try:
@@ -173,7 +175,7 @@ class MainPresenter(QObject):
     #called when user changes field in sensor view
     def sensor_view_field_changed(self, info_name, value, sensor_id):
     
-        self.change_sensor_info(info_name, str(value))
+        self.change_sensor_info(info_name, make_unicode(value))
 
     def connect_endpoint(self, manager_endpoint):
         
@@ -464,7 +466,7 @@ class MainPresenter(QObject):
 
     def _send_message(self, message_type, message_body):
 
-        self.manager_socket.send(json.dumps({'type': message_type, 'body': message_body}))
+        self.manager_socket.send(json_dumps_unicode({'type': message_type, 'body': message_body}))
 
     def process_new_messages(self):
         

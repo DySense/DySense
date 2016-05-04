@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import os
 import sys
@@ -6,15 +7,16 @@ from datetime import datetime
 import calendar as cal
 
 from gps_nmea import GpsNmea
+from source.utility import make_unicode
 
 class GpsNmeaTest(GpsNmea):
 
     def __init__(self, sensor_id, instrument_id, settings, context, connect_endpoint):
         
         try:
-            self.test_file_path = str(settings['test_file_path'])
-            self.output_rate = str(settings['output_rate'])
-            self.required_fix = str(settings['required_fix'])
+            self.test_file_path = make_unicode(settings['test_file_path'])
+            self.output_rate = make_unicode(settings['output_rate'])
+            self.required_fix = make_unicode(settings['required_fix'])
             self.required_latlon_error = float(settings['required_error'])
             self.min_sats = int(settings['min_sats'])
             self.output_rate = float(settings['output_rate'])

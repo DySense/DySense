@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import os
 import time
@@ -8,16 +9,16 @@ import threading
 import datetime
 import sys
 import logging
-import csv
 import yaml
 from logging import getLogger
+import csv
 
 from sensor_connection import SensorConnection
 from sensor_creation import SensorDriverFactory, SensorCloseTimeout
 from csv_log import CSVLog
 from controller_data_sources import *
 from issue import Issue
-from utility import pretty, format_id
+from utility import format_id, json_dumps_unicode, utf_8_encoder, make_unicode, make_utf8
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
 
@@ -25,7 +26,7 @@ class ManagerConnection(object):
     
     def __init__(self, router_id, is_on_different_computer):
 
-        self.id = router_id
+        self.router_id = router_id
         self.is_on_different_computer = is_on_different_computer
 
 class SensorController(object):
@@ -250,13 +251,16 @@ class SensorController(object):
         
     def log_message(self, msg, level=logging.INFO, manager=None):
         
+        # Sanity check that message is unicode like it should be.
+        msg = make_unicode(msg)
+        
         getLogger('dysense').log(level, msg)
         
         if self.session_active:
             getLogger('session').log(level, msg)
         
         if manager is not None and level >= logging.ERROR:
-            self._send_manager_message(manager.id, 'error_message', (msg, level))
+            self._send_manager_message(manager.router_id, 'error_message', (msg, level))
             
         self.text_messages.append(msg)
         self._send_manager_message('all', 'new_controller_text', msg)
@@ -388,14 +392,12 @@ class SensorController(object):
         
         router_id, message = self.sensor_socket.recv_multipart()
         message = json.loads(message)
-        sensor_id = str(message['sensor_id'])
+        sensor_id = message['sensor_id']
         self.sensor_router_ids[sensor_id] = router_id 
         try:
             sensor = self.find_sensor(sensor_id)
         except ValueError:
-            # TODO
-            print "Couldn't handle message from sensor {} since it doesn't exist.".format(sensor_id)
-            return
+            return # sensor doesn't exist, it was likely recently removed.
         
         message_callback = self.message_callbacks[message['type']]
         message_body = message['body']
@@ -452,7 +454,7 @@ class SensorController(object):
         self.send_entire_controller_info()
         
         for sensor in self.sensors:
-            self.send_entire_sensor_info(manager.id, sensor)
+            self.send_entire_sensor_info(manager.router_id, sensor)
         
     def handle_add_sensor(self, manager, sensor_info):
         '''Validate that sensor name is unique and adds to list of sensors.'''
@@ -468,18 +470,18 @@ class SensorController(object):
         # Get metadata that was stored with this controller.
         metadata = self.sensor_metadata[sensor_info['sensor_type']]
         
-        sensor_name = format_id(sensor_info['sensor_id'])
-        sensor_type = sensor_info['sensor_type'].strip()
+        sensor_name = format_id(make_unicode(sensor_info['sensor_id']))
+        sensor_type = make_unicode(sensor_info['sensor_type']).strip()
         position_offsets = sensor_info.get('position_offsets', [0, 0, 0])
         orientation_offsets = sensor_info.get('orientation_offsets', [0, 0, 0])
-        instrument_type = sensor_info.get('instrument_type', 'NONE')
-        instrument_tag = sensor_info.get('instrument_tag', '123')
+        instrument_type = make_unicode(sensor_info.get('instrument_type', 'NONE'))
+        instrument_tag = make_unicode(sensor_info.get('instrument_tag', '123'))
         
         settings = {}
         for setting_metadata in metadata['settings']:
             setting_name = setting_metadata['name']
             try:
-                settings_value = sensor_info['settings'][setting_name]
+                settings_value = make_unicode(sensor_info['settings'][setting_name])
             except KeyError:
                 # User didn't provide this setting so try to use the default value.
                 try:
@@ -553,7 +555,7 @@ class SensorController(object):
         
         sensor = self.find_sensor(sensor_id)
         
-        self.send_entire_sensor_info(manager.id, sensor)
+        self.send_entire_sensor_info(manager.router_id, sensor)
         
     def handle_change_sensor_setting(self, manager, sensor_id, change):
 
@@ -579,19 +581,19 @@ class SensorController(object):
             value_can_change = False
         
         if not value_can_change:
-            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+            self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
             return 
         
         try:
-            new_value = str(new_value).strip()
+            new_value = make_unicode(new_value).strip()
             sensor.update_setting(setting_name, new_value)
             self._send_sensor_message(sensor.sensor_id, 'change_setting', (setting_name, new_value))
         except ValueError as e:
-            self.log_message(str(e), logging.ERROR, manager)
-            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+            self.log_message(make_unicode(e), logging.ERROR, manager)
+            self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
         except KeyError:
             self.log_message("Can't change sensor setting {} because it does not exist.".format(setting_name), logging.ERROR, manager)
-            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+            self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
         
     def handle_change_sensor_info(self, manager, sensor_id, change):
 
@@ -607,7 +609,7 @@ class SensorController(object):
             value_can_change = False
         
         if not value_can_change:
-            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+            self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
             return 
         
         info_name, value = change
@@ -618,28 +620,28 @@ class SensorController(object):
             pass
         
         if info_name == 'instrument_tag':
-            value = format_id(str(value))
+            value = format_id(make_unicode(value))
             if value != '':
                 sensor.update_instrument_tag(value)
             else:
                 self.log_message("Instrument tag can't be empty.", logging.ERROR, manager)
-                self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+                self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
             
         elif info_name == 'position_offsets':
             try:
                 sensor.update_position_offsets(value)
             except ValueError:
                 self.log_message('Invalid position offset.', logging.ERROR, manager)
-                self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+                self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
         elif info_name == 'orientation_offsets':
             try:
                 sensor.update_orientation_offsets(value)
             except ValueError:
                 self.log_message('Invalid orientation offset.', logging.ERROR, manager)
-                self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+                self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
         else:
             self.log_message("The info {} cannot be changed externally.".format(info_name), logging.ERROR, manager)
-            self.send_entire_sensor_info(manager.id, sensor) # so user can be notified setting didn't change.
+            self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
             
     def handle_send_sensor_command(self, manager, sensor_id, command):
 
@@ -1043,22 +1045,22 @@ class SensorController(object):
         with open(file_path, 'wb') as outfile:
             writer = csv.writer(outfile)
             
-            writer.writerow(['start_utc', self.session_start_utc])
+            writer.writerow(utf_8_encoder(['start_utc', self.session_start_utc]))
             formatted_start_time = datetime.datetime.fromtimestamp(self.session_start_utc).strftime("%Y/%m/%d %H:%M:%S")
-            writer.writerow(['start_utc_human', formatted_start_time])
+            writer.writerow(utf_8_encoder(['start_utc_human', formatted_start_time]))
             
-            writer.writerow(['end_utc', self.last_utc_time])
+            writer.writerow(utf_8_encoder(['end_utc', self.last_utc_time]))
             formatted_end_time = datetime.datetime.fromtimestamp(self.last_utc_time).strftime("%Y/%m/%d %H:%M:%S")
-            writer.writerow(['end_utc_human', formatted_end_time])
+            writer.writerow(utf_8_encoder(['end_utc_human', formatted_end_time]))
             
-            writer.writerow(['start_sys_time', self.session_start_sys_time])
-            writer.writerow(['end_sys_time', self.last_sys_time_update])
+            writer.writerow(utf_8_encoder(['start_sys_time', self.session_start_sys_time]))
+            writer.writerow(utf_8_encoder(['end_sys_time', self.last_sys_time_update]))
             
             for key, value in sorted(self.settings.items()):
-                writer.writerow([key, value])
+                writer.writerow(utf_8_encoder([key, value]))
                 
             if self.session_notes is not None:
-                writer.writerow(['notes', self.session_notes])
+                writer.writerow(utf_8_encoder(['notes', self.session_notes]))
                     
     def write_offsets_file(self):
         
@@ -1066,9 +1068,10 @@ class SensorController(object):
         with open(file_path, 'wb') as outfile:
             writer = csv.writer(outfile)
             
-            writer.writerow(['#sensor_name', 'sensor_type', 'sensor_tag', 'x', 'y', 'z', 'roll', 'pitch', 'yaw'])
+            writer.writerow(utf_8_encoder(['#sensor_name', 'sensor_type', 'sensor_tag', 'x', 'y', 'z', 'roll', 'pitch', 'yaw']))
             for sensor in self.sensors:
-                writer.writerow([sensor.sensor_id, sensor.instrument_type, sensor.instrument_tag] + sensor.position_offsets + sensor.orientation_offsets)
+                writer.writerow(utf_8_encoder([sensor.sensor_id, sensor.instrument_type, sensor.instrument_tag] +
+                                               sensor.position_offsets + sensor.orientation_offsets))
 
     def write_sensor_info_files(self):
         
@@ -1087,7 +1090,7 @@ class SensorController(object):
                     if key in ['sensor_type', 'sensor_id', 'settings', 'parameters', 'text_messages',
                                 'position_offsets', 'orientation_offsets', 'instrument_type', 'instrument_tag', 'metadata']:
                         outdata.append([key, value])
-                outfile.write(yaml.dump(outdata, default_flow_style=False))
+                outfile.write(yaml.safe_dump(outdata, allow_unicode=True, default_flow_style=False))
 
     def write_version_file(self):
         
@@ -1098,7 +1101,7 @@ class SensorController(object):
     def find_sensor(self, sensor_id):
         
         for sensor in self.sensors:
-            if sensor.sensor_id == str(sensor_id):
+            if sensor.sensor_id == sensor_id:
                 return sensor
             
         raise ValueError("Sensor {} not in list of sensor IDs {}".format(sensor_id, [s.sensor_id for s in self.sensors]))
@@ -1142,16 +1145,15 @@ class SensorController(object):
                 issue.expire()
                 break
     
-    def _send_manager_message(self, manager_id, message_type, message_body):
+    def _send_manager_message(self, router_id, message_type, message_body):
         
         message = {'id': self.controller_id, 'type': message_type, 'body': message_body}
         
-        if manager_id == 'all':  # send to all managers
+        if router_id == b'all':  # send to all managers
             for router_id in self.managers.keys():
-                self.manager_socket.send_multipart([router_id, json.dumps(message)])
+                self.manager_socket.send_multipart([router_id, json_dumps_unicode(message)])
         else:  # just send to a single manager
-            router_id = manager_id
-            self.manager_socket.send_multipart([router_id, json.dumps(message)])
+            self.manager_socket.send_multipart([router_id, json_dumps_unicode(message)])
 
     def _send_sensor_message(self, sensor_id, message_type, message_body):
         
@@ -1159,11 +1161,11 @@ class SensorController(object):
 
         if sensor_id == 'all':  # send to all sensors
             for router_id in self.sensor_router_ids.values():
-                self.sensor_socket.send_multipart([router_id, json.dumps(message)])
+                self.sensor_socket.send_multipart([router_id, json_dumps_unicode(message)])
         else:  # just send to single sensor
             try:
                 router_id = self.sensor_router_ids[sensor_id]
-                self.sensor_socket.send_multipart([router_id, json.dumps(message)])
+                self.sensor_socket.send_multipart([router_id, json_dumps_unicode(message)])
             except KeyError:
                 pass  # haven't received message from sensor yet so don't know how to address it.
 
@@ -1177,7 +1179,7 @@ class SensorController(object):
                 name_parts = sensor_name.split('-')
                 i = int(name_parts[-1])
                 i += 1
-                sensor_name = '-'.join(name_parts[:-1] + [str(i)])
+                sensor_name = '-'.join(name_parts[:-1] + [make_unicode(i)])
             except (ValueError, IndexError):
                 sensor_name = '{}-{}'.format(original_sensor_name, 1)
                 

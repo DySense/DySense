@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 # Update python code to match designer file.
 #Capable of updating main window and sensor view widget depending on which line is commented out

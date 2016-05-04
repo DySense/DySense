@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 """
 Sensor Name:    GreenSeeker
@@ -9,6 +11,7 @@ Sensor Type:    NVDI
 import serial
 
 from sensor_base.sensor_base import SensorBase
+from source.utility import make_unicode
 
 class GreenSeeker(SensorBase):
     '''Receive data from GreenSeeker sensor.'''
@@ -32,7 +35,7 @@ class GreenSeeker(SensorBase):
         SensorBase.__init__(self, sensor_id, instrument_id, context, connect_endpoint)
 
         try:
-            self.port = str(settings['port'])
+            self.port = make_unicode(settings['port'])
             self.baud = int(settings['baud'])
             self.output_period = float(settings['output_period'])
         except (KeyError, ValueError, ZeroDivisionError) as e:

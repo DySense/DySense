@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 from ui_settings import ui_version
 import time
 import sys
@@ -5,6 +8,7 @@ import traceback
 import cStringIO
 from PyQt4 import QtGui
 from PyQt4.QtGui import QStyle
+from utility import utf_8_encoder, make_unicode
 
 def excepthook(excection_type, excection_value, traceback_object):
     """Callback for any unhandled exceptions. To use set sys.excepthook = excepthook"""
@@ -20,10 +24,11 @@ def excepthook(excection_type, excection_value, traceback_object):
     traceback_file.seek(0)
     traceback_info = traceback_file.read()
     
-    error_message = '{}: \n{}'.format(excection_type, excection_value)
+    error_message = '{}: \n{}'.format(excection_type, make_unicode(excection_value))
     sections = [body_text, separator, version_info, current_time, separator,
                 error_message, separator, traceback_info]
-    dialog_message = '\n'.join(sections)
+    unicode_sections = [make_unicode(s) for s in sections]
+    dialog_message = '\n'.join(unicode_sections)
 
     popup = QtGui.QMessageBox()
     popup.setText(dialog_message)

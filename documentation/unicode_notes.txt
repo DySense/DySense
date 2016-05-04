@@ -1,0 +1,51 @@
+All these notes apply to Python 2.7.  In Python 3+ 'str' is what 'unicode' was in 2.7 and 'bytes' is what 'str' was in 2.7.
+字字
+Things that are stored as str's (bytes)
+ - any kind of router ID from zmq.  These should always be referred to as some variation of router_id in the code.
+ - data passed back from sensors should be bytestrings (encoded as utf8 or ascii).
+ - exception messages are stored as bytestrings so they need to be encoded as UTF8 before an exception is raised.
+ 
+If you have an ascii string you can decode that to unicode as if it were utf8 since utf8 is an "ascii-based encoding"
+ 
+It's usually a bad idea to mix str and unicode and string operations such as join() or format().  If the base string ''.format() is unicode then all strings should be unicode.  If it's a bytestring then all arguments should be bytestrings.
+
+with the logging module need to give it unicode, not utf8.
+ 
+Bytestring -> Unicode (ie Decoding)
+unicode(bytestr, 'utf8') is same as
+bytestr.decode('utf8')
+if you just do unicode(bytestr) it will convert to ascii first and then decoded using system default codec.
+can also pass parameter errors='replace' or 'ignore' to override default of 'strict' 
+
+Unicode -> Bytestring (ie Encoding)
+unistr.encode('utf8')
+
+Integer or Double -> Unicode (ie Decoding)
+unicode(1) is same as below except it uses default system codec instead of utf8. 
+unicode(str(1), 'utf8')
+
+a byte string for as long as it only contained ASCII characters could be upgraded to a unicode string implicitly. If however it was not ASCII safe it would have caused some form of UnicodeError. Either a UnicodeEncodeErrror or a UnicodeDecodeError depending on when it failed.
+
+can force a literal with either a prefixed 'u' or 'b'
+
+in pyqt4 if sip is set to API 2 instead of 1 then anywhere QString is expected HAS to be a unicode, not utf8.
+
+With %-formatting, if the format string is a str while one of the replacements is a unicode the result will be unicode:
+>>> "Hello %s" %(u"world", )
+u'Hello world'
+
+However, .format will always return the same type of string (str or unicode) as the format string:
+>>> "Hello {}".format(u"world")
+'Hello world'
+
+# -*- coding: utf-8 -*-  sets the default encoding for a file as far as the python interpreter is concerned. So when it gets to a string literal (that's not unicode) it will interpret it as utf-8 instead of default system codec. 
+
+from __future__ import unicode_literals at the top of a file globally replaces all literals with unicode literals which is the default in python 3.
+
+If you're not sure if what type something is you should use make_unicode() or make_utf8()
+
+When data is 'dumped' using json it will convert to everything to utf8, then sent over zmq as utf8 and when it's loaded back json will convert everything back to unicode.  
+
+http://www.joelonsoftware.com/articles/Unicode.html
+
+http://stackoverflow.com/questions/700187/unicode-utf-ascii-ansi-format-differences

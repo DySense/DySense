@@ -1,12 +1,11 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import time
 import yaml
 import sys
 import logging
 import os
-# Use default python types instead of QVariant
-import sip
-sip.setapi('QVariant', 2)
 
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import QMetaObject, QObject, QEvent, Qt, Q_ARG
@@ -15,7 +14,7 @@ from PyQt4.QtGui import *
 from dysense_main_window_designer import Ui_MainWindow
 from sensor_view_widget import SensorViewWidget
 from new_issue_popup import NewIssuePopupWindow
-from utility import pretty, open_directory_in_viewer
+from utility import pretty, open_directory_in_viewer, make_unicode
 
 class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     
@@ -158,20 +157,20 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         file_path = self.qt_settings.value("last_saved_config_file_path")
         if file_path is None:
             file_path = os.path.join(os.path.expanduser('~'), 'dysense_config.yaml')
-        return str(file_path)
+        return make_unicode(file_path)
         
     @last_saved_config_file_path.setter
     def last_saved_config_file_path(self, new_value):
-        self.qt_settings.setValue("last_saved_config_file_path", new_value)
+        self.qt_settings.setValue("last_saved_config_file_path", make_unicode(new_value))
       
     @property
     def last_loaded_config_file_path(self):
         file_path = self.qt_settings.value("last_loaded_config_file_path")
-        return str(file_path)
+        return make_unicode(file_path)
         
     @last_loaded_config_file_path.setter
     def last_loaded_config_file_path(self, new_value):
-        self.qt_settings.setValue("last_loaded_config_file_path", new_value)
+        self.qt_settings.setValue("last_loaded_config_file_path", make_unicode(new_value))
         
     @property
     def local_controller_name(self):
@@ -184,11 +183,11 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         if self.initial_stored_controller_name is None:
             self.initial_stored_controller_name = stored_controller_name
             
-        return str(self.initial_stored_controller_name)
+        return make_unicode(self.initial_stored_controller_name)
         
     @local_controller_name.setter
     def local_controller_name(self, new_value):
-        self.qt_settings.setValue("local_controller_name", new_value)
+        self.qt_settings.setValue("local_controller_name", make_unicode(new_value))
       
     def setup_sensors_button_clicked(self):
         self.presenter.setup_all_sensors(only_on_active_controller=True)
@@ -385,14 +384,17 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     
     def output_directory_tool_button_clicked(self):
         output_directory = QFileDialog.getExistingDirectory(self, "Select Directory")
+        
+        if not output_directory:
+            return # User didn't select a directory.
+        
         self.output_directory_line_edit.setText(output_directory)
         self.output_directory_line_edit.setModified(True)
         self.output_directory_line_edit.editingFinished.emit()
         
     def select_config_tool_button_clicked(self):
         
-        config_file_path = QtGui.QFileDialog.getOpenFileName(self, 'Load Config', self.last_loaded_config_file_path,
-                                                             selectedFilter='*.yaml')
+        config_file_path = QtGui.QFileDialog.getOpenFileName(self, 'Load Config', self.last_loaded_config_file_path, '*.yaml')
 
         if not config_file_path:
             return # User didn't select a config file.
@@ -413,8 +415,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
  
     def save_config_button_clicked(self):
 
-        config_file_path = QtGui.QFileDialog.getSaveFileName(self, 'Save Config', self.last_saved_config_file_path,
-                                                      selectedFilter='*.yaml')
+        config_file_path = QtGui.QFileDialog.getSaveFileName(self, 'Save Config', self.last_saved_config_file_path, '*.yaml')
 
         if not config_file_path:
             return # User doesn't want to save the file.
@@ -435,23 +436,23 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
             
             if info_name in self.name_to_object:
                 obj = self.name_to_object[info_name]
-                obj.setText(value)
+                obj.setText(make_unicode(value))
                 
             if info_name == 'id':
                 self.controller_name_line_edit.setText(value)
                 
             if info_name == 'session_active':
-                self.session_value_label.setText(str('Active' if value else 'Not Started'))
+                self.session_value_label.setText('Active' if value else 'Not Started')
                 
             if info_name == 'session_state':
-                self.main_status_value_label.setText(pretty(value))
+                self.main_status_value_label.setText(make_unicode(pretty(value)))
             
             if info_name == 'settings':
                 settings = value 
                 for settings_name, settings_value in settings.iteritems():               
                                     
                     if settings_name == 'surveyed':
-                        if str(settings_value).lower() == 'true':
+                        if make_unicode(settings_value).lower() == 'true':
                             self.surveyed_check_box.setChecked(True)
                         else:
                             self.surveyed_check_box.setChecked(False)
@@ -459,12 +460,12 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                     
                     if settings_name in self.settings_name_to_object:
                         obj = self.settings_name_to_object[settings_name]
-                        obj.setText(str(settings_value))
+                        obj.setText(make_unicode(settings_value))
             
     def controller_name_changed(self):
         
         if self.sender().isModified():
-            self.presenter.controller_name_changed(str(self.controller_name_line_edit.text()))
+            self.presenter.controller_name_changed(self.controller_name_line_edit.text())
             self.sender().setModified(False)
             
     def controller_setting_changed_by_user(self):
@@ -477,34 +478,23 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
                 obj_ref.setModified(False)
         
         #the new value will be the text in the line edits, except when it is the surveyed checkbox. 
-        new_value = str(self.sender().text())        
+        new_value = self.sender().text()      
         
         for key in self.settings_name_to_object:
             if self.settings_name_to_object[key] == obj_ref:  
                 setting_name = key
-                
                                 
                 if setting_name == 'surveyed':
                     state = self.surveyed_check_box.isChecked()
-                    new_value = str(state).lower()
-                    
-                
+                    new_value = make_unicode(state).lower()
                         
         self.presenter.change_controller_setting(setting_name, new_value)
-         
-                     
-   
+
     def remove_controller(self, controller_id):
         pass # TODO
         
     def update_all_sensor_info(self, controller_id, sensor_id, sensor_info):        
-        # TODO handle messages that should be appended vs clearing message center and set.
-        # clear sensor message center and set new text messages when all sensor info is updated
-        #  messages = sensor_info.get('text_messages', '')        
-#         sensor_view = sensor_info['widget']
-#         sensor_view.display_message(str(messages).strip('[]').replace(',', ',\n'), False)
-                
-        #loop through key and value pairs and call update_sensor_info for each one
+
         for key in sensor_info:        
             self.update_sensor_info(controller_id, sensor_id, key, sensor_info[key])   
          
@@ -542,7 +532,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     def append_sensor_message(self, controller_id, sensor_id, text):
 
         sensor_view = self.sensor_to_widget[(controller_id, sensor_id)]  
-        sensor_view.display_message(unicode(text).strip('[]'), True)
+        sensor_view.display_message(make_unicode(text).strip('[]'), True)
         
     def show_user_message(self, message, level):
         
@@ -566,7 +556,7 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         else:
             return # not a level we need to show
             
-        popup.setText(message)
+        popup.setText(make_unicode(message))
         popup.setWindowTitle('{}'.format(level_text))
         popup.setWindowIcon(popup.style().standardIcon(icon))
         

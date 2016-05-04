@@ -1,15 +1,12 @@
-# Use default python types instead of QVariant
-import sip
-sip.setapi('QVariant', 2)
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 from PyQt4.QtGui import *
 from sensor_view_widget_designer import Ui_Form
 from PyQt4 import QtGui
 from decimal import *
 import yaml
-from utility import pretty
-
-
+from utility import pretty, make_unicode
 
 class SensorViewWidget(QWidget,Ui_Form):
            
@@ -155,7 +152,7 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.settings_group_box_layout.addWidget(self.units_label, n, 2)
             
             self.name_label.setText(pretty(name))   
-            self.line_edit.setText(str(settings[name]))
+            self.line_edit.setText(make_unicode(settings[name]))
             self.units_label.setText(pretty(units))
             
             # Connect the line edit signal
@@ -217,7 +214,7 @@ class SensorViewWidget(QWidget,Ui_Form):
             special_commands_layout.addWidget(b)
             
             # store the button object reference 
-            obj_ref = str(b).split()[3]
+            obj_ref = make_unicode(b).split()[3]
             self.special_commands_references[obj_ref] = command  
             
             b.clicked.connect(self.special_command_clicked)
@@ -231,19 +228,19 @@ class SensorViewWidget(QWidget,Ui_Form):
                          
                     desired_length = self.dec_places[n] # = False if not specified
                     
-                    current_length = abs(Decimal(str(data[n])).as_tuple().exponent)
+                    current_length = abs(Decimal(data[n]).as_tuple().exponent)
                     
                     if desired_length: # set number of decimal places to desired length if given
-                        line_edit.setText(str('{:.{prec}f}'.format(data[n], prec=desired_length)))
+                        line_edit.setText('{:.{prec}f}'.format(data[n], prec=desired_length))
                         
                     elif current_length > 5: # if float has more than 5 dec places, cap it at 5
-                        line_edit.setText(str("{0:.5f}".format(data[n])))           
+                        line_edit.setText("{0:.5f}".format(data[n]))    
                         
                     else:
-                        line_edit.setText(str(data[n]))       
+                        line_edit.setText(make_unicode(data[n]))     
                                         
                 else:
-                    line_edit.setText(str(data[n]))
+                    line_edit.setText(make_unicode(data[n]))
                         
                         
             except IndexError:
@@ -251,7 +248,7 @@ class SensorViewWidget(QWidget,Ui_Form):
                   
     def special_command_clicked(self):
                 
-        obj_ref = str(self.sender()).split()[3]    # TODO get rid of split, here and in setup_special_commands
+        obj_ref = make_unicode(self.sender()).split()[3]    # TODO get rid of split, here and in setup_special_commands
         command = self.special_commands_references[obj_ref]
         
         self.presenter.send_sensor_command(command)       
@@ -262,7 +259,7 @@ class SensorViewWidget(QWidget,Ui_Form):
             return
         self.sender().setModified(False)
         
-        new_value = str(self.sender().text())
+        new_value = self.sender().text()
         
         obj_ref = self.sender()  
         setting_name = self.object_to_setting_name[obj_ref]        
@@ -275,17 +272,17 @@ class SensorViewWidget(QWidget,Ui_Form):
         # Update all screen objects that correspond to the specified sensor info name. 
         matching_obj = self.info_name_to_object.get(info_name, [])
         if not isinstance(matching_obj, list):
-            matching_obj.setText(str(value))
+            matching_obj.setText(make_unicode(value))
         else:
             for i, obj in enumerate(matching_obj):
-                obj.setText(str(value[i]))
+                obj.setText(make_unicode(value[i]))
         
         if info_name == 'settings':
             settings = value
             for setting_name, setting_value in settings.iteritems():
                 if setting_name in self.setting_name_to_object:
                     obj = self.setting_name_to_object[setting_name]
-                    obj.setText(str(setting_value))
+                    obj.setText(make_unicode(setting_value))
                    
         if info_name == 'overall_health':
             self.overall_sensor_health_update(value)                        
@@ -313,25 +310,25 @@ class SensorViewWidget(QWidget,Ui_Form):
     def instrument_id_changed(self):    
         
         if self.sender().isModified():
-            new_value = str(self.sensor_id_line_edit.text())
+            new_value = self.sensor_id_line_edit.text()
             self.presenter.change_sensor_info('instrument_tag', new_value)
             self.sender().setModified(False)
              
     def position_offset_changed(self):    
         
         if self.sender().isModified():
-            forward = str(self.forward_position_line_edit.text())
-            left = str(self.left_position_line_edit.text())
-            up = str(self.up_position_line_edit.text())
+            forward = self.forward_position_line_edit.text()
+            left = self.left_position_line_edit.text()
+            up = self.up_position_line_edit.text()
             self.presenter.change_sensor_info('position_offsets', [forward, left, up])
             self.sender().setModified(False)
      
     def orientation_offset_changed(self):    
         
         if self.sender().isModified():
-            roll = str(self.roll_orientation_line_edit.text())
-            pitch = str(self.pitch_orientation_line_edit.text())
-            yaw = str(self.yaw_orientation_line_edit.text())
+            roll = self.roll_orientation_line_edit.text()
+            pitch = self.pitch_orientation_line_edit.text()
+            yaw = self.yaw_orientation_line_edit.text()
             self.presenter.change_sensor_info('orientation_offsets', [roll, pitch, yaw])
             self.sender().setModified(False)
     
@@ -339,12 +336,10 @@ class SensorViewWidget(QWidget,Ui_Form):
     def display_message(self, message, append):
         
         if append == True:
-            self.sensor_message_center_text_edit.append(message)
+            self.sensor_message_center_text_edit.append(make_unicode(message))
         else:
-            self.sensor_message_center_text_edit.setText(message)
-         
+            self.sensor_message_center_text_edit.setText(make_unicode(message))
 
-    
     def overall_sensor_health_update(self, health):
         # call method to update change list widget item color for corresponding health
         self.view.update_list_widget_color(health, self.controller_id, self.sensor_id)

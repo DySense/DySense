@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import threading
 import zmq
@@ -6,11 +8,19 @@ import sys
 import yaml
 import os
 
-from dysense_main_window import DysenseMainWindow #for use with new main window
+# Automatically convert QString to unicode (in python 2.7)
+# and use default python types instead of QVariant.
+# This will change API for entire app.
+import sip
+sip.setapi('QString', 2)
+sip.setapi('QVariant', 2)
+
+from dysense_main_window import DysenseMainWindow
 from main_presenter import MainPresenter
 from controller_manager import ControllerManager
 from sensor_controller import SensorController
 from except_hook import excepthook
+from utility import yaml_load_unicode, make_unicode
 from PyQt4 import QtGui
 
 if __name__ == '__main__':
@@ -20,20 +30,20 @@ if __name__ == '__main__':
     app.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
     
     # Tell system to call our custom function when an unhandled exception occurs
-    sys.excepthook = excepthook    
+    sys.excepthook = excepthook
 
     if os.name == 'nt':
         # If running on windows then need to unassociate process from python so that
         # the OS will show the correct icon in the taskbar.
         import ctypes
-        myappid = u'dysense.ui.1'
+        myappid = 'dysense.ui.1'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)        
 
     zmq_context = zmq.Context()
 
     # Load metadata before adding any controllers so can verify version.
     with open("../metadata/sensor_metadata.yaml", 'r') as stream:
-        sensor_metadata = yaml.load(stream)
+        sensor_metadata = yaml_load_unicode(stream)
         
     # Configure system.
     controller_manager = ControllerManager(zmq_context)

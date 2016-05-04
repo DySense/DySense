@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import time
 import os
@@ -6,7 +7,7 @@ import logging
 import sys
 import threading
 import subprocess
-import json
+from utility import json_dumps_unicode, make_utf8
 
 class SensorCloseTimeout(Exception): pass
 
@@ -35,7 +36,7 @@ class SensorDriverFactory(object):
         if sensor_type == 'test_sensor_python':
             from sensors.test.test_sensor_python import TestSensor
             sensor = SensorDriverThread(TestSensor, local_startup_args)
-            #sensor = SensorDriverProcess('../sensors/test.py', remote_startup_args, language='python')
+            #sensor = SensorDriverProcess('../sensors/test/test_sensor_python.py', remote_startup_args, language='python')
         if sensor_type == 'test_sensor_csharp':
             sensor = SensorDriverProcess('../sensors/test/test_sensor_csharp/DySenseTestSensorCS.exe', remote_startup_args, language='csharp')
         if sensor_type == 'kinectv2_msdk':
@@ -108,11 +109,13 @@ class SensorDriverProcess(object):
 
     def _run_process(self, relative_path, startup_args, language):
         
-        startup_args[0] = str(startup_args[0]) # make sure sensor ID is a string.
-        startup_args[1] = str(startup_args[1]) # make sure instrument ID is a string.
-        startup_args[2] = json.dumps(startup_args[2]) # serialize sensor settings
+        startup_args[0] = make_utf8(startup_args[0]) # make sure sensor ID is a string.
+        startup_args[1] = make_utf8(startup_args[1]) # make sure instrument ID is a string.
+        startup_args[2] = json_dumps_unicode(startup_args[2]) # serialize sensor settings
+        startup_args[3] = make_utf8(startup_args[3]) # make sure connect endpoint is encoded.
     
         absolute_path = os.path.join(os.path.abspath(sys.path[0]), relative_path)
+        absolute_path =  make_utf8(absolute_path)
         try:
             if language == 'python':
                 # Need to include sys.executable when executing a python script.

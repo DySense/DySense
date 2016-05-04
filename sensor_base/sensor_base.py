@@ -1,9 +1,11 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import os
 import time
 import zmq
 import json
+from source.utility import make_unicode
 
 class SensorBase(object):
     '''
@@ -36,10 +38,10 @@ class SensorBase(object):
             heartbeat_period - How often (in seconds) we should receive a new message from controller and
                                  how often we should send one back.
         '''
-        self.sensor_id = str(sensor_id)
-        self.instrument_id = str(instrument_id)
+        self.sensor_id = make_unicode(sensor_id)
+        self.instrument_id = make_unicode(instrument_id)
         self.context = context
-        self.connect_endpoint = connect_endpoint
+        self.connect_endpoint = make_unicode(connect_endpoint)
         self.desired_read_period = max(0, desired_read_period)
         self.max_closing_time = max(0.1, max_closing_time)
         self.heartbeat_period = max(0.1, heartbeat_period)
@@ -245,7 +247,9 @@ class SensorBase(object):
                 
         except Exception as e:
             self.state = 'error'
-            self.send_text(u"{}".format(unicode(repr(e))))
+            self.send_text("------------")
+            self.send_text("{} - {}".format(type(e).__name__, make_unicode(e)))
+            self.send_text("------------")
         finally:
             if self.health != 'bad':
                 # The closed state is only for when things closed down on request... not because an error occurred.
@@ -348,9 +352,9 @@ class SensorBase(object):
             message_body - tuple or simple type.  All elements must be JSON serializable.
         '''
         try:
-            self.socket.send(json.dumps({'sensor_id': self.sensor_id,
-                                         'type': message_type,
-                                         'body': message_body}))
+            msg = {'sensor_id': self.sensor_id, 'type': message_type, 'body': message_body }
+            msg_json = json.dumps(msg, ensure_ascii=False).encode('utf8')
+            self.socket.send(msg_json)
         except AttributeError:
             pass # socket isn't created so can't send message
     

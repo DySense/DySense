@@ -1,8 +1,11 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import sys
 from PyQt4.Qt import *
 from PyQt4 import QtGui
+from utility import make_unicode
 
 class AddSensorWindow(QDialog):
     
@@ -79,16 +82,16 @@ class AddSensorWindow(QDialog):
         self.sensor_name_line_edit.setFocus()
         try:
             sensor_id_type = self.possible_sensor_id_types[self.sensor_type_combo_box.currentIndex()]
-            self.sensor_id_type_line_edit.setText(sensor_id_type)
+            self.sensor_id_type_line_edit.setText(make_unicode(sensor_id_type))
         except IndexError:
             pass
 
     def add_button_clicked(self):
 
-        new_sensor_info =  {'sensor_type': str(self.sensor_type_combo_box.currentText()).strip(), 
-                            'sensor_id': str(self.sensor_name_line_edit.text()).strip(),
-                            'instrument_type': str(self.sensor_id_type_line_edit.text()).strip(),
-                            'instrument_tag': str(self.sensor_id_tag_line_edit.text()).strip()}
+        new_sensor_info =  {'sensor_type': self.sensor_type_combo_box.currentText().strip(), 
+                            'sensor_id': self.sensor_name_line_edit.text().strip(),
+                            'instrument_type': self.sensor_id_type_line_edit.text().strip(),
+                            'instrument_tag': self.sensor_id_tag_line_edit.text().strip()}
         
         self.presenter.add_sensor(new_sensor_info)
         

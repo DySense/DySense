@@ -1,9 +1,12 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import time
 import zmq
 import threading
 import json
+from utility import json_dumps_unicode
 
 class ControllerConnection(object):
     
@@ -205,7 +208,7 @@ class ControllerManager(object):
         message = {'type': message_type, 'body': message_body}
         
         router_id = self.presenter_router_ids[self.presenter_id]
-        self.presenter_socket.send_multipart([router_id, json.dumps(message)])
+        self.presenter_socket.send_multipart([router_id, json_dumps_unicode(message)])
         
     def _send_message_to_controller_by_id(self, message_type, message_body, controller_id):
 
@@ -213,15 +216,15 @@ class ControllerManager(object):
 
         if controller_id == 'all':  # send to all controllers
             for controller in self.controllers:
-                controller.socket.send(json.dumps(message))
+                controller.socket.send(json_dumps_unicode(message))
         else:  # just send to single controller
             controller = self.find_controller(controller_id)
-            controller.socket.send(json.dumps(message))
+            controller.socket.send(json_dumps_unicode(message))
             
     def _send_message_to_controller(self, message_type, message_body, controller):
 
         message = {'type': message_type, 'body': message_body}
-        controller.socket.send(json.dumps(message))
+        controller.socket.send(json_dumps_unicode(message))
         
     def find_controller(self, controller_id):
     
