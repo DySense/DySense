@@ -859,7 +859,7 @@ class SensorController(object):
             return False
         
         for source in [self.time_source] + self.position_sources + self.orientation_sources:
-            if (source.controller_id.lower() != 'none') and source.controller_id != self.controller_id:
+            if (source.controller_id.lower() not in ['none', 'derived']) and source.controller_id != self.controller_id:
                 self.log_message("Can't start session because source '{}' is part of a controller '{}' that's not connected.".format(source.sensor_id, source.controller_id), logging.ERROR, manager)
                 return False
                 

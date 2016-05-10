@@ -27,7 +27,9 @@ class SelectSourcesWindow(QDialog):
         self.possible_time_sensors = []
         
         # Used to associated sensor info with orientation index in combo box.
-        self.orientation_selector_infos = []
+        self.roll_selector_infos = []
+        self.pitch_selector_infos = []
+        self.yaw_selector_infos = []
         
         self.setWindowTitle('Select Sources')
         self.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
@@ -98,18 +100,18 @@ class SelectSourcesWindow(QDialog):
         self.yaw_selector.setFont(self.dialog_font)
         self.yaw_label.setFont(self.dialog_font)
                      
-        def populate_selector(selector, angle_tag, current_orientation_source):
+        def populate_selector(selector, angle_tag, current_orientation_source, selector_infos):
             
             selector.addItem('N/A')
-            self.orientation_selector_infos.append({'sensor_id': 'none', 'controller_id': 'none'})
+            selector_infos.append({'sensor_id': 'none', 'controller_id': 'none'})
             
             selector.addItem('Derived')
-            self.orientation_selector_infos.append({'sensor_id': 'derived', 'controller_id': 'derived'})
+            selector_infos.append({'sensor_id': 'derived', 'controller_id': 'derived'})
             
-            possible_sensors = self.find_sensors_with_tag(sensors, angle_tag)
+            possible_sensors = self.find_sensors_with_tag(sensors, angle_tag, tag_in_data=True)
             for sensor_info in possible_sensors:
                 selector.addItem(sensor_info['sensor_id'])
-                self.orientation_selector_infos.append(sensor_info)
+                selector_infos.append(sensor_info)
         
             if current_orientation_source is not None:
                 if current_orientation_source['sensor_id'].lower() == 'none':
@@ -120,7 +122,7 @@ class SelectSourcesWindow(QDialog):
                     for sensor_info in possible_sensors:
                         # TODO update for multiple controllers
                         if current_orientation_source['sensor_id'] == sensor_info['sensor_id']:
-                            for idx, selector_info in enumerate(self.orientation_selector_infos):
+                            for idx, selector_info in enumerate(selector_infos):
                                 if selector_info['sensor_id'] == current_orientation_source['sensor_id']:
                                     selector.setCurrentIndex(idx)
                                     break
@@ -129,9 +131,9 @@ class SelectSourcesWindow(QDialog):
         current_pitch_source = get_from_list(controller_info['orientation_sources'], 1)
         current_yaw_source = get_from_list(controller_info['orientation_sources'], 2)
         
-        populate_selector(self.roll_selector, 'roll', current_roll_source)
-        populate_selector(self.pitch_selector, 'pitch', current_pitch_source)
-        populate_selector(self.yaw_selector, 'yaw', current_yaw_source)
+        populate_selector(self.roll_selector, 'roll', current_roll_source, self.roll_selector_infos)
+        populate_selector(self.pitch_selector, 'pitch', current_pitch_source, self.pitch_selector_infos)
+        populate_selector(self.yaw_selector, 'yaw', current_yaw_source, self.yaw_selector_infos)
         
         self.orientation_gb_layout = QGridLayout()
         self.orientation_gb_layout.addWidget(self.roll_label, 0, 1)
@@ -184,13 +186,21 @@ class SelectSourcesWindow(QDialog):
         
         self.ok_button.setDefault(True)
 
-    def find_sensors_with_tag(self, sensors, tag):
+    def find_sensors_with_tag(self, sensors, tag, tag_in_data=False):
         
         sensor_info_with_tag = []
         for sensor_info in sensors.values():
             metadata = sensor_info['metadata']
-            if tag in [t.lower() for t in metadata.get('tags', [])]:
-                sensor_info_with_tag.append(sensor_info)
+            
+            if tag_in_data:
+                # Look through tags on specified pieces of output data.
+                for sensor_data in metadata['data']:
+                    if tag in [t.lower() for t in sensor_data.get('tags', [])]:
+                        sensor_info_with_tag.append(sensor_info)
+            else: 
+                # Look through tags associated with general sensor metadata.
+                if tag in [t.lower() for t in metadata.get('tags', [])]:
+                    sensor_info_with_tag.append(sensor_info)
         
         return sensor_info_with_tag
     
@@ -206,9 +216,9 @@ class SelectSourcesWindow(QDialog):
             if checkbox.isChecked():
                 position_sources.append(sensor_info)
         
-        roll_source = self.orientation_selector_infos[self.roll_selector.currentIndex()]
-        pitch_source = self.orientation_selector_infos[self.pitch_selector.currentIndex()]
-        yaw_source = self.orientation_selector_infos[self.yaw_selector.currentIndex()]
+        roll_source = self.roll_selector_infos[self.roll_selector.currentIndex()]
+        pitch_source = self.pitch_selector_infos[self.pitch_selector.currentIndex()]
+        yaw_source = self.yaw_selector_infos[self.yaw_selector.currentIndex()]
         
         orientation_sources = [roll_source, pitch_source, yaw_source]
         
