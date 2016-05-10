@@ -55,7 +55,13 @@ class SensorDriverFactory(object):
         if sensor_type == 'sonar_banner_qe':
             from sensors.distance.sonar_banner_qe import SonarBannerQE
             sensor = SensorDriverThread(SonarBannerQE, local_startup_args)
-        
+        if sensor_type == 'gps_trmb_serial':
+            from sensors.gps.gps_trmb_serial import GpsTrimbleSerial
+            sensor = SensorDriverThread(GpsTrimbleSerial, local_startup_args)
+        if sensor_type == 'gps_trmb_test':
+            from sensors.gps.gps_trmb_test import GpsTrimbleTest
+            sensor = SensorDriverThread(GpsTrimbleTest, local_startup_args)
+            
         sensor.run()
         
         return sensor

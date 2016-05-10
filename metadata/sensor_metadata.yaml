@@ -28,7 +28,7 @@ sensors:
           description: Either true or false.
           default_value: true
           tags: [changeable]
-      tags: [roll, pitch, yaw]
+      tags: []
       data:
         - name: counter
           type: str
@@ -385,4 +385,113 @@ sensors:
         - name: distance
           type: float
           uints: centimeters
+        
+    gps_trmb_test:
+      version: "1.0"
+      type: TRMB
+      settings:
+        - name: test_file_path
+          type: string
+          description: Absolute path to text file with GGK and AVR messages.
+          default_value: None
+        - name: output_rate
+          type: float
+          description: How fast to read new messages from test file.
+          units: Hz
+          default_value: 10
+          min_value: 0
+          max_value: 1000000
+        - name: required_fix
+          type: string
+          description: GGK fix ID that must be maintained. 'none' to disable monitoring.
+          default_value: none
+        - name: min_sats
+          type: int
+          description: Minimum number of satellites that must be maintained.
+          default_value: 0
+      tags: [time, position]
+      data:
+        - name: latitude
+          type: float
+          units: degrees
+          tags: [position_x]
+          decimal_places: 7
+        - name: longitude
+          type: float
+          units: degrees
+          tags: [position_y]
+          decimal_places: 7
+        - name: altitude
+          type: float
+          units: meters
+          tags: [position_z]
+          decimal_places: 3
+        - name: yaw
+          type: float
+          units: degrees
+          tags: [yaw]
+          decimal_places: 1
+        - name: num_sats
+          type: float
+        - name: dop
+          type: float
+          decimal_places: 1
+
+    gps_trmb_serial:
+      version: "1.0"
+      type: TRMB
+      settings:
+        - name: port
+          type: string
+          description: Serial port (e.g. COM2 or /dev/ttyS2)
+          default_value: COM1
+        - name: baud
+          type: int
+          description: How fast that the device is sending data.
+          units: bits/sec
+          default_value: 38400
+          min_value: 1
+          max_value: 10000000
+        - name: message_rate
+          type: float
+          description: How fast GPS is setup to output messages.  If different types of messages then this should be the fastest rate.
+          units: Hz
+          default_value: 10
+          min_value: 0.0000001
+          max_value: 100000000
+        - name: required_fix
+          type: string
+          description: GGK fix ID that must be maintained. 'none' to disable monitoring.
+          default_value: none
+        - name: min_sats
+          type: int
+          description: Minimum number of satellites that must be maintained.
+          default_value: 0
+      tags: [time, position]
+      data:
+        - name: latitude
+          type: float
+          units: degrees
+          tags: [position_x]
+          decimal_places: 7
+        - name: longitude
+          type: float
+          units: degrees
+          tags: [position_y]
+          decimal_places: 7
+        - name: altitude
+          type: float
+          units: meters
+          tags: [position_z]
+          decimal_places: 3
+        - name: yaw
+          type: float
+          units: degrees
+          tags: [yaw]
+          decimal_places: 1
+        - name: num_sats
+          type: float
+        - name: dop
+          type: float
+          decimal_places: 1
         

@@ -84,7 +84,7 @@ class GpsNmea(SensorBase):
             return 'error'
 
         # Set below based on which message is processed.  Default to last GGA result since that's really the
-        # message we can about.      
+        # message we care about.      
         current_state = self.last_gga_handle_result
         
         if 'GGA' == sentence_type:

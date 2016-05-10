@@ -98,8 +98,9 @@ class TestSensor(SensorBase):
             self.send_time_test_events = not self.send_time_test_events
         
     def driver_handle_new_setting(self, setting_name, setting_value):
-        
-        self.send_text("Setting name {} - value {}".format(setting_name, setting_value))
+        pass
+        # Send text to know that a setting name was changed.  Just used for testing.
+        #self.send_text("Setting name {} - value {}".format(setting_name, setting_value))
         
 if __name__ == '__main__':
 
