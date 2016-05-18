@@ -81,7 +81,7 @@ class GreenSeeker(SensorBase):
             return 'timed_out'
                 
         # Split the message into the individual fields to make sure they're all there.                 
-        parsed_data = [x.strip() for x in new_message.split(',')]
+        parsed_data = [x.strip() for x in new_message.split(b',')]
         
         if len(parsed_data) != 5:
             if self.last_received_data_time == 0:

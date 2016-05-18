@@ -103,18 +103,18 @@ class LidarLite(SensorBase):
         '''
         self.byte_buffer += new_bytes
         
-        start_index = find_last_index(self.byte_buffer, '$')
+        start_index = find_last_index(self.byte_buffer, b'$')
         if start_index < 0:
             return None
         elif start_index > 0:
             # Throw away any old data before start character.
             self.byte_buffer = self.byte_buffer[start_index:]
         
-        end_index = find_last_index(self.byte_buffer, '#')
+        end_index = find_last_index(self.byte_buffer, b'#')
         if end_index < 0:
             return None 
             
-        distance = ''.join(self.byte_buffer[start_index+1 : end_index])
+        distance = b''.join(self.byte_buffer[start_index+1 : end_index])
 
         # Throw away the distance we just read in.
         self.byte_buffer = self.byte_buffer[end_index+1:]

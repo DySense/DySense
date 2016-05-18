@@ -89,7 +89,7 @@ class IRT_UE(SensorBase):
         self.sys_time_of_request = self.sys_time
         
         # Request a new reading from the sensor.
-        self.connection.write("\x01")
+        self.connection.write(b"\x01")
         
     def read_new_data(self):
         '''Read in new data from sensor.'''
