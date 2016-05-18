@@ -98,6 +98,8 @@ class IRT_UE(SensorBase):
         raw_data = self.connection.read(self.bytes_to_read)
         
         if len(raw_data) < self.bytes_to_read:
+            if self.seconds_since_sensor_setup < 1.5:
+                return 'normal' # give sensor time to start up
             return 'timed_out'
     
         # Convert data into a temperature value.

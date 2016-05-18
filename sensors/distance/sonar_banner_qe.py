@@ -99,6 +99,8 @@ class SonarBannerQE(SensorBase):
         new_distance = self.parse_distance(new_bytes) 
                 
         if new_distance is None:
+            if self.seconds_since_sensor_setup < 1.5:
+                return 'normal' # give sensor time to start up
             return 'timed_out'
         
         try:

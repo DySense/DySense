@@ -75,7 +75,9 @@ class GreenSeeker(SensorBase):
         # Block until we get data or the timeout occurs.
         new_message = self.connection.readline()            
         
-        if len(new_message) == 0: 
+        if len(new_message) == 0:
+            if self.seconds_since_sensor_setup < 1.5:
+                return 'normal' # give sensor time to start up
             return 'timed_out'
                 
         # Split the message into the individual fields to make sure they're all there.                 

@@ -125,6 +125,9 @@ class SensorBase(object):
         # How many message 'data' messages have been sent to controller.
         self.num_data_messages_sent = 0
         
+        # System time when sensor was setup.
+        self.sensor_setup_sys_time = 0
+        
     @property
     def utc_time(self):
         '''Return current UTC time or 0 if haven't received a time yet.'''
@@ -184,6 +187,10 @@ class SensorBase(object):
             data_file_directory = self.default_data_file_directory
             
         return data_file_directory
+    
+    @property
+    def seconds_since_sensor_setup(self):
+        return self.sys_time - self.sensor_setup_sys_time
         
     def run(self):
         '''Set everything up, collect data and then close everything down when finished.'''
@@ -191,6 +198,7 @@ class SensorBase(object):
             # Setup ZMQ sockets and then give sensor driver a chance to set itself up.
             self.setup_interface()
             self.setup()
+            self.sensor_setup_sys_time = self.sys_time
     
             while True:
                 

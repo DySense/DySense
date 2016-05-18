@@ -124,8 +124,14 @@ namespace DySense
         // How many message have been received from controller.
         int numMessageReceived = 0;
 
+        // System time when sensor was setup.
+        double sensorSetupSysTime = 0;
+
         // How many message 'data' messages have been sent to controller.
         protected int NumDataMessageSent { get; private set; }
+
+        // How much time has elapsed since sensor was setup.
+        protected double SecondSinceSensorSetup { get { return SysTime - sensorSetupSysTime; } }
 
         // Associate callback methods with different message types.
         Dictionary<string, Func<object, bool>> messageTable;
@@ -242,6 +248,7 @@ namespace DySense
                 // Setup ZMQ sockets and then give sensor driver a chance to set itself up.
 		        SetupInterface();
                 Setup();
+                sensorSetupSysTime = SysTime;
 
                 while (true)
                 {

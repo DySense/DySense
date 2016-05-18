@@ -73,6 +73,8 @@ class GpsNmeaSerial(GpsNmea):
         nmea_string = self.connection.readline().strip()
         
         if len(nmea_string) == 0:
+            if self.seconds_since_sensor_setup < 1.5:
+                return 'normal' # give sensor time to start up
             return 'timed_out'
     
         current_state = self.process_nmea_message(nmea_string, self.sys_time)
