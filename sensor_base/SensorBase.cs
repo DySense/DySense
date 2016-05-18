@@ -293,7 +293,7 @@ namespace DySense
                             else
                             {
                                 // Didn't actually time out.. just returned to process new controller messages.
-                                reportedState = "normal";
+                                reportedState = this.State;
                                 stillWaitingForData = true;
                             }
                         }

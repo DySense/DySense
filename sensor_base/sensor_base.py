@@ -228,7 +228,7 @@ class SensorBase(object):
                             self.still_waiting_for_data = False
                         else:
                             # Didn't actually time out.. just returned to process new controller messages.
-                            reported_state = 'normal'
+                            reported_state = self.state
                             self.still_waiting_for_data = True
                         
                     # If sensor is ok then override state if we're still waiting for a valid time.
