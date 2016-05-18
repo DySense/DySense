@@ -150,6 +150,7 @@ sensors:
         - name: temperature
           type: float
           units: celsius
+          decimal_places: 1
           
     greenseeker:
       version: "1.0"
@@ -176,7 +177,7 @@ sensors:
       data:
         - name: internal_time
           type: int
-          uints: milliseconds
+          units: milliseconds
         - name: nvdi
           type: float
         - name: extra_vi
@@ -328,6 +329,9 @@ sensors:
         - name: system_time
           type: float
           units: seconds
+          decimal_places: 3
+        - name: cam_number
+          type: int
           
     lidar_lite:
       version: "1.0"
@@ -347,7 +351,8 @@ sensors:
       data:
         - name: distance
           type: int
-          uints: centimeters
+          units: centimeters
+          decimal_places: 3
         
     sonar_banner_qe:
       version: "1.0"
@@ -384,7 +389,8 @@ sensors:
       data:
         - name: distance
           type: float
-          uints: centimeters
+          units: centimeters
+          decimal_places: 3
         
     gps_trmb_test:
       version: "1.0"
