@@ -572,11 +572,13 @@ class SensorController(object):
                     break
   
         # Make sure value is allowed to be changed.
+        # KLM - disabled check on session active since it's convenient to be able to change a setting at the beginning of a session
+        # if something isn't setup right.  
         value_can_change = True
-        if self.session_active:
-            self.log_message('Cannot change setting while session is active.', logging.ERROR, manager)
-            value_can_change = False
-        elif not sensor.is_closed() and not has_changeable_tag:
+        #if self.session_active:
+        #    self.log_message('Cannot change setting while session is active.', logging.ERROR, manager)
+        #    value_can_change = False
+        if not sensor.is_closed() and not has_changeable_tag:
             self.log_message('Cannot change setting until sensor is closed.', logging.ERROR, manager)
             value_can_change = False
         
