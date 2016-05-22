@@ -90,7 +90,7 @@ sensors:
       settings:
         - name: out_directory
           type: string
-          description: Where to save output files.
+          description: Where to save output files when session isn't active.
           default_value: " "
         - name: color_period
           type: float
@@ -302,7 +302,7 @@ sensors:
       settings:
         - name: out_directory
           type: string
-          description: Where to save images.
+          description: Where to save images when session isn't active.
           default_value: " "
         - name: trigger_period
           type: float
