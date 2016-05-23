@@ -963,9 +963,13 @@ class SensorController(object):
         self.log_message("Session started.")
 
         # Go through and tell every sensor where to save it's data files.
+        # Need to have each sensor have it's own sub-directory since some sensors (like the canon_edsdk)
+        # won't work when multiple sensors are trying to write to the same directory.
         data_files_path = os.path.join(self.session_path, 'data_files/')
         for sensor in self.sensors:
-            self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', data_files_path))
+            sensor_data_file_directory = "{}_{}_{}".format(sensor.sensor_id, sensor.instrument_type, sensor.instrument_tag)
+            sensor_data_file_path = os.path.join(data_files_path, sensor_data_file_directory)
+            self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', sensor_data_file_path))
 
         data_logs_path = os.path.join(self.session_path, 'data_logs/')
         
