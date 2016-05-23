@@ -18,3 +18,5 @@ CanonEDSDK Special Instructions
    - Close the DySense sensor and copy the serial number to the Serial Number setting in DySense.  
    - Setup the driver again and it should now say "Found matching serial number. Camera connected."
    - You should be able to use the camera display when the DySense driver is open (ie setup).
+   - Make sure the default output directory isn't the same as an other sensor (e.g. another camera or a kinect).  This can cause the driver to crash with the message "Cannot open stream."
+   - The error in latency between the camera images and what's stored in the logs has been experimentally determined to be roughly a normal distribution centered at 0 with a std. dev. of around 20 milliseconds.  This seems to depend slightly on the camera (the t5i seemed more consistent than the 7d) and could change depending camera settings.  For a reference if the camera is moving at 1 meter per second with no change in orientation then 20 milliseconds latency error corresponds to 2 centimeters of error.. or just under an inch.  The worst latency error seen in a log was 100 milliseconds using a 7d.  
