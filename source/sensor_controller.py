@@ -1032,6 +1032,7 @@ class SensorController(object):
         self.write_session_file()
         self.write_offsets_file()
         self.write_sensor_info_files()
+        self.write_data_source_info_files()
         self.write_version_file()
         
         if self.session_invalidated:
@@ -1091,12 +1092,50 @@ class SensorController(object):
             file_path = os.path.join(info_directory, '{}_{}_{}.yaml'.format(sensor.sensor_id, sensor.instrument_type, sensor.instrument_tag))
             
             with open(file_path, 'w') as outfile:
-                outdata = []
-                for key, value in sorted(sensor.public_info.items()):
+                outdata = {}
+                for key, value in sensor.public_info.items():
                     if key in ['sensor_type', 'sensor_id', 'settings', 'parameters', 'text_messages',
                                 'position_offsets', 'orientation_offsets', 'instrument_type', 'instrument_tag', 'metadata']:
-                        outdata.append([key, value])
+                        outdata[key] = value
                 outfile.write(yaml.safe_dump(outdata, allow_unicode=True, default_flow_style=False))
+
+    def write_data_source_info_files(self):
+        
+        info_file_path = os.path.join(self.session_path, 'source_info.yaml')
+        
+        outdata = {}
+
+        if self.time_source is not None:
+            saved_info = {}
+            for key, value in self.time_source.public_info.items():
+                if key in ['controller_id', 'sensor_id', 'metadata']:
+                    saved_info[key] = value
+            outdata['time_source'] = saved_info
+            
+        for position_source in self.position_sources:
+            saved_info = {}
+            for key, value in position_source.public_info.items():
+                if key in ['controller_id', 'sensor_id', 'metadata']:
+                    saved_info[key] = value
+            saved_info['x_index'] = position_source.position_x_idx
+            saved_info['y_index'] = position_source.position_y_idx
+            saved_info['z_index'] = position_source.position_z_idx
+            saved_info['zone_index'] = position_source.position_zone_idx
+            
+            outdata['position_source'] = saved_info    
+            
+        for orientation_source in self.orientation_sources:
+            saved_info = {}
+            for key, value in orientation_source.public_info.items():
+                if key in ['controller_id', 'sensor_id', 'metadata']:
+                    saved_info[key] = value
+            saved_info['orientation_idx'] = orientation_source.orientation_idx
+            
+            source_name = orientation_source.angle_name + '_source'
+            outdata[source_name] = saved_info      
+        
+        with open(info_file_path, 'w') as outfile:
+            outfile.write(yaml.safe_dump(outdata, allow_unicode=True, default_flow_style=False))
 
     def write_version_file(self):
         
