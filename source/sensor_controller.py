@@ -1112,6 +1112,7 @@ class SensorController(object):
                     saved_info[key] = value
             outdata['time_source'] = saved_info
             
+        outdata['position_sources'] = []
         for position_source in self.position_sources:
             saved_info = {}
             for key, value in position_source.public_info.items():
@@ -1122,7 +1123,7 @@ class SensorController(object):
             saved_info['z_index'] = position_source.position_z_idx
             saved_info['zone_index'] = position_source.position_zone_idx
             
-            outdata['position_source'] = saved_info    
+            outdata['position_sources'].append(saved_info)    
             
         for orientation_source in self.orientation_sources:
             saved_info = {}
