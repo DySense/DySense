@@ -7,10 +7,6 @@ import os
 import math
 from PyQt4.Qt import *
 from PyQt4 import QtGui
-from source.utility import get_from_list
-
-#if os.name == 'nt':
-#    import winsound
 
 class NewIssuePopupWindow(QDialog):
     
@@ -41,14 +37,6 @@ class NewIssuePopupWindow(QDialog):
         #self.flash_timer.timeout.connect(self.flash_timer_elapsed)
         #self.flash_timer.start(0.2 * 1000)
         self.flash_timer_elapsed()
-        
-        if os.name == 'nt':
-            try:
-                # TODO http://stackoverflow.com/questions/2748702/how-can-i-make-a-siren-noise-in-python
-                # winsound.PlaySound(sound, flags=winsound.SND_LOOP | winsound.SND_ASYNC)
-                pass
-            except RuntimeError:
-                pass # just don't play the sound
 
     def mouseMoveEvent(self, mouse_event):
         x = mouse_event.pos().x()
@@ -88,3 +76,5 @@ class NewIssuePopupWindow(QDialog):
             self.setVisible(True)
             self.activateWindow()
             QTimer.singleShot(1 * 1000, self.flash_timer_elapsed)
+            
+            sys.stdout.write('\a')  # Cross platform alert noise
