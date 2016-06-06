@@ -5,6 +5,8 @@ import os
 import time
 import zmq
 import json
+import traceback
+import sys
 from source.utility import make_unicode
 
 class SensorBase(object):
@@ -254,9 +256,17 @@ class SensorBase(object):
                     time.sleep(max(0, time_to_wait))
                 
         except Exception as e:
+            # Get information about exception
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            #formatted_exception = repr(traceback.format_exception(exc_type, exc_value, exc_traceback))
+            formatted_lines = traceback.format_exc().splitlines()
+            traceback_lines = formatted_lines[:-1] 
+            
             self.state = 'error'
             self.send_text("------------")
             self.send_text("{} - {}".format(type(e).__name__, make_unicode(e)))
+            for traceback_line in traceback_lines:
+                self.send_text(traceback_line)
             self.send_text("------------")
         finally:
             if self.health != 'bad':
