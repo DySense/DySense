@@ -83,7 +83,7 @@ class ImuNer(SensorBase):
         
         for message in new_messages:
             self.handle_new_message(message['id'], message['instance'], message['body'])
-            self.send_text('{} - {}'.format(message['id'], message['packet_num']))
+            #self.send_text('{} - {}'.format(message['id'], message['packet_num']))
 
         return 'normal' if len(new_messages) > 0 else 'timed_out'
     
