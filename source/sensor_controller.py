@@ -1030,7 +1030,8 @@ class SensorController(object):
         self.session_state = 'closed'
         
         self.write_session_file()
-        self.write_offsets_file()
+        # KLM - removed sensor offset file since offsets are already stored in sensor info and duplicating data is usually bad.
+        #self.write_offsets_file()
         self.write_sensor_info_files()
         self.write_data_source_info_files()
         self.write_version_file()
