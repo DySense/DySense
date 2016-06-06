@@ -33,7 +33,6 @@ class CSVLog:
         if (data is None) or (len(data) == 0):
             # Create blank one element tuple so it's obvious in log that no data was received.
             raise Exception(u"Data can't be empty.")
-            
 
         for i, val in enumerate(data):
             if type(data[i]) == float:

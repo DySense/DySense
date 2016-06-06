@@ -25,13 +25,13 @@ def pretty(text):
 def format_id(id_str):
     return id_str.strip().replace(' ', '-').replace('_','-')
 
-def make_unicode(val):
+def make_unicode(val, errors='replace'):
     '''Return 'val' but as a unicode object. 'val' must be able to be converted to a bytestring (i.e. str).''' 
     if type(val) != unicode:
         # First convert to bytes (str) in case it was an numeric type and
         # then decode it as utf8, which will also work for ascii text.
         # If 'val' is already utf8 then the str() will have no effect and will just decode.
-        return unicode(str(val), 'utf8')
+        return unicode(str(val), 'utf8', errors=errors)
     else:
         return val # already unicode so don't re-decode it.
     

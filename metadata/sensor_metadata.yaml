@@ -500,4 +500,47 @@ sensors:
         - name: dop
           type: float
           decimal_places: 1
+          
+    imu_ner:
+      version: "1.0"
+      type: IMUB
+      settings:    
+        - name: port
+          type: string
+          description: Serial port (e.g. COM2 or /dev/ttyS2)
+          default_value: COM2
+        - name: baud
+          type: int
+          description: How fast that the device is sending data.
+          units: bits/sec
+          default_value: 115200
+          min_value: 1
+          max_value: 10000000
+        - name: receive_rate
+          type: float
+          description: How fast we should be receiving messages from sensor.
+          units: Hz
+          default_value: 10
+          min_value: 0.0000001
+          max_value: 100000000
+      data:
+        - name: roll
+          type: float
+          units: degrees
+          tags: [roll]
+          decimal_places: 1
+        - name: pitch
+          type: float
+          units: degrees
+          tags: [pitch]
+          decimal_places: 1
+        - name: yaw
+          type: float
+          units: degrees
+          tags: [yaw]
+          decimal_places: 1
+        - name: battery
+          type: float
+          units: volts
+          decimal_places: 2
         

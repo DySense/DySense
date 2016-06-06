@@ -61,6 +61,9 @@ class SensorDriverFactory(object):
         if sensor_type == 'gps_trmb_test':
             from sensors.gps.gps_trmb_test import GpsTrimbleTest
             sensor = SensorDriverThread(GpsTrimbleTest, local_startup_args)
+        if sensor_type == 'imu_ner':
+            from sensors.imu.ner.imu_ner import ImuNer
+            sensor = SensorDriverThread(ImuNer, local_startup_args)
             
         sensor.run()
         
