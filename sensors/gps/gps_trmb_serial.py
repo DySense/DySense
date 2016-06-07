@@ -35,10 +35,11 @@ class GpsTrimbleSerial(GpsTrimble):
         
         GpsTrimble.__init__(self, self.required_fix, self.min_sats,
                             sensor_id=sensor_id, instrument_id=instrument_id, 
-                            context=context, connect_endpoint=connect_endpoint)
+                            context=context, connect_endpoint=connect_endpoint,
+                            throttle_sensor_read=False)
         
         # Set base class fields.
-        self.desired_read_period = self.message_period
+        self.desired_read_period = self.message_period + 1
         self.max_closing_time = 3 # seconds
         
         # Serial port connection.
