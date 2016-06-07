@@ -32,7 +32,7 @@ class GreenSeeker(SensorBase):
         Raises:
             ValueError - if not all settings are provided or not in correct format.
         '''
-        SensorBase.__init__(self, sensor_id, instrument_id, context, connect_endpoint)
+        SensorBase.__init__(self, sensor_id, instrument_id, context, connect_endpoint, throttle_sensor_read=False)
 
         try:
             self.port = make_unicode(settings['port'])
