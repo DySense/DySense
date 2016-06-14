@@ -1042,6 +1042,8 @@ class SensorController(object):
             invalidated_file_path = os.path.join(self.session_path, 'invalidated.txt')
             with open(invalidated_file_path, 'w') as invalidated_file:
                 invalidated_file.write('The existence of this file in a session directory means this session should not be uploaded to the database.')
+            # Reset flag for next session.
+            self.session_invalidated = False
 
         self.session_notes = None
 
