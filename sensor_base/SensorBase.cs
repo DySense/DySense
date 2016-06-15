@@ -364,7 +364,7 @@ namespace DySense
         protected virtual void Resume() { return; }
 
         // Override to handle sensor specified commands (e.g. trigger)
-        protected virtual void HandleSpecialCommand(string command) { return; }
+        protected virtual void HandleSpecialCommand(string commandName, object commandArgs) { return; }
 
         // Override to allow certain settings to be changed as driver is open.
         protected virtual void DriverHandleNewSetting(string settingName, object settingValue) { return; }
@@ -477,9 +477,12 @@ namespace DySense
         // If the command isn't a generic one then it will be passed to handleSpecialCommand.
         private bool HandleCommand(object body)
         {
-            string command = (string)(body);
+            //string command = (string)(body);
+            object[] command = ((Newtonsoft.Json.Linq.JArray)body).ToObject<object[]>();
+            string commandName = (string)command[0];
+            object commandArgs = command[1];
 
-            switch (command)
+            switch (commandName)
             {
                 case "close":
                     this.receivedCloseRequest = true;
@@ -493,7 +496,7 @@ namespace DySense
                     Resume();
                     break;
                 default:
-                    HandleSpecialCommand(command);
+                    HandleSpecialCommand(commandName, commandArgs);
                     break;
             }
 
