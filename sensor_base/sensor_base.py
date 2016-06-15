@@ -307,7 +307,7 @@ class SensorBase(object):
         '''Called when resume command is received. Driver can override to notify sensor.'''
         return
     
-    def handle_special_command(self, command):
+    def handle_special_command(self, command, command_args):
         '''Override to handle sensor specified commands (e.g. trigger)'''
         return
     
@@ -399,16 +399,19 @@ class SensorBase(object):
         
         If the command isn't a generic one then it will be passed to handle_special_command.
         '''
-        if command == 'close':
+        
+        command_name, command_args = command
+        
+        if command_name == 'close':
             self.received_close_request = True
-        elif command == 'pause':
+        elif command_name == 'pause':
             self.paused = True
             self.pause()
-        elif command == 'resume':
+        elif command_name == 'resume':
             self.paused = False
             self.resume()
         else:
-            self.handle_special_command(command)
+            self.handle_special_command(command_name, command_args)
             
     def handle_new_time(self, times):
         '''

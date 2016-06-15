@@ -4,10 +4,12 @@ from __future__ import unicode_literals
 import os
 import math
 import utm
+import csv
 
 from nmea_parser import parse_nmea_sentence
 from checksum_utils import check_nmea_checksum
 from sensor_base.sensor_base import SensorBase
+from source.utility import utf_8_encoder
 
 rad2deg = 180.0 / math.pi
 deg2rad = math.pi / 180.0
@@ -77,6 +79,12 @@ class GpsTrimble(SensorBase):
         
         # List of message types that have been received, but not processed.
         self.unhandled_message_types = []
+        
+        # If set to true then will log the next position.
+        self.log_next_position = False
+        
+        # Notes to be saved with next 'logged position'. Reset to None after every log entry.
+        self.next_log_notes = None
               
     def process_nmea_message(self, nmea_string, message_read_sys_time, utc_override=None):
         
@@ -107,6 +115,27 @@ class GpsTrimble(SensorBase):
             processed_successfully = self.handle_ggk_message(parsed_sentence)
             if processed_successfully:
                 current_state = self.combine_position_and_orientation(self.ggk['utc_time'], message_read_sys_time, utc_override)
+                
+                if self.log_next_position:
+                    # Log primary antenna (lat/long) reported by GGK to file.
+                    if not self.current_data_file_directory:
+                        self.send_text("Cannot log position because there's no valid output directory. Start a session first.")
+                    else:
+                        if not os.path.exists(self.current_data_file_directory):
+                            os.makedirs(self.current_data_file_directory)
+                        
+                        log_file_path = os.path.join(self.current_data_file_directory, 'saved_positions.csv')
+                        
+                        with open(log_file_path, 'ab') as outfile:
+                            writer = csv.writer(outfile)
+                            writer.writerow(utf_8_encoder([self.ggk['utc_time'], self.ggk['latitude'], self.ggk['longitude'], self.ggk['altitude'], self.next_log_notes]))
+    
+                        self.send_text("Saved new position with notes {}".format(self.next_log_notes))
+                    
+                    # Reset fields
+                    self.log_next_position = False
+                    self.next_log_notes = None
+            
             else:
                 current_state = 'error'
                 
@@ -252,3 +281,10 @@ class GpsTrimble(SensorBase):
         self.ggk['altitude'] = altitude
 
         return True # processed successfully
+    
+    def log_next_position_with_notes(self, notes):
+        
+        self.log_next_position = True
+        self.next_log_notes = notes
+        
+

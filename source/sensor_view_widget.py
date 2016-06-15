@@ -251,7 +251,16 @@ class SensorViewWidget(QWidget,Ui_Form):
         obj_ref = make_unicode(self.sender()).split()[3]    # TODO get rid of split, here and in setup_special_commands
         command = self.special_commands_references[obj_ref]
         
-        self.presenter.send_sensor_command(command)       
+        # Set command arguments for special commands.
+        command_args = None
+        
+        if command in ['save_primary', 'save_position']:
+            user_notes, ok = QInputDialog.getText(self, 'Text Input Dialog', 'Notes:')
+            if not ok:
+                return # user cancelled so don't send command
+            command_args = user_notes
+        
+        self.presenter.send_sensor_command(command, command_args)       
         
     def setting_changed_by_user(self):
         

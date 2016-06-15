@@ -268,7 +268,7 @@ class MainPresenter(QObject):
         
     def resume_all_sensors(self, only_on_active_controller):
         
-        self._send_message_to_all_sensors('send_sensor_command', 'resume', only_on_active_controller)
+        self.send_sensor_command_to_all_sensors('resume', None, only_on_active_controller)
     
     def pause_sensor(self):
     
@@ -276,22 +276,22 @@ class MainPresenter(QObject):
         
     def pause_all_sensors(self, only_on_active_controller):
         
-        self._send_message_to_all_sensors('send_sensor_command', 'pause', only_on_active_controller)
+        self.send_sensor_command_to_all_sensors('pause', None, only_on_active_controller)
     
     def close_sensor(self):
         
-        self._send_message_to_active_sensor('send_sensor_command', 'close')
+        self.send_sensor_command('close')
     
     def close_all_sensors(self, only_on_active_controller):
         
-        self._send_message_to_all_sensors('send_sensor_command', 'close', only_on_active_controller)
+        self.send_sensor_command_to_all_sensors('close', None, only_on_active_controller)
         
     
     def change_sensor_info(self, info_name, value):
         
         self._send_message_to_active_sensor('change_sensor_info', (info_name, value))
     
-    
+
     def change_sensor_setting(self, setting_name, value):
         
         self._send_message_to_active_sensor('change_sensor_setting', (setting_name, value))
@@ -438,9 +438,13 @@ class MainPresenter(QObject):
             #print "{} {} {} {} {}".format(controller_id, sensor_id, utc_time, sys_time, data)
             pass
     
-    def send_sensor_command(self, command):
+    def send_sensor_command(self, command_name, command_args=None):
     
-        self._send_message_to_active_sensor('send_sensor_command', command)
+        self._send_message_to_active_sensor('send_sensor_command', (command_name, command_args))
+        
+    def send_sensor_command_to_all_sensors(self, command_name, command_args, only_on_active_controller):
+    
+        self._send_message_to_all_sensors('send_sensor_command', (command_name, command_args), only_on_active_controller)
         
     def _send_message_to_active_sensor(self, message_type, message_body):
         self._send_message_to_sensor(message_type, message_body, self.active_sensor_id, self.active_controller_id)

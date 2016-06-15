@@ -241,6 +241,8 @@ sensors:
         - name: hdop
           type: float
           decimal_places: 1
+      special_commands:
+        - save_position
   
     gps_nmea_test:
       version: "1.0"
@@ -295,6 +297,7 @@ sensors:
           decimal_places: 1
       special_commands:
         - latency_test
+        - save_position
           
     canon_edsdk:
       version: "1.0"
@@ -442,6 +445,8 @@ sensors:
         - name: dop
           type: float
           decimal_places: 1
+      special_commands:
+        - save_primary
 
     gps_trmb_serial:
       version: "1.0"
@@ -500,6 +505,8 @@ sensors:
         - name: dop
           type: float
           decimal_places: 1
+      special_commands:
+        - save_primary
           
     imu_ner:
       version: "1.0"

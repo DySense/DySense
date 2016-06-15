@@ -85,7 +85,7 @@ class TestSensor(SensorBase):
         
         return 'normal' if self.data_quality_ok else 'bad_data_quality'
         
-    def handle_special_command(self, command):
+    def handle_special_command(self, command, command_args):
         
         if command == 'crash':
             from source.utility import make_utf8
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
     import argparse
     parser = argparse.ArgumentParser(description='''Test Sensor''')
-    parser.add_argument('sensor_id' )
+    parser.add_argument('sensor_id')
     parser.add_argument('instrument_id' )
     parser.add_argument('settings')
     parser.add_argument('connect_endpoint')

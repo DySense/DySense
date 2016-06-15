@@ -80,7 +80,7 @@ class GpsNmeaTest(GpsNmea):
         
         return current_state
 
-    def handle_special_command(self, command):
+    def handle_special_command(self, command, command_args):
             
         if command == 'latency_test':
             self.latency_test = not self.latency_test
@@ -90,3 +90,6 @@ class GpsNmeaTest(GpsNmea):
             else:
                 # Restore original reading rate.
                 self.desired_read_period = self.output_period
+                
+        if command == 'save_position':
+            self.log_next_position_with_notes(notes = command_args)

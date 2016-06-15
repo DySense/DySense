@@ -63,5 +63,8 @@ class GpsTrimbleTest(GpsTrimble):
         
         return current_state
 
-    def handle_special_command(self, command):
-        pass
+    def handle_special_command(self, command, command_args):
+        
+        if command == 'save_primary':
+            self.log_next_position_with_notes(notes = command_args)
+        

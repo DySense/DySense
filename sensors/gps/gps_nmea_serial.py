@@ -81,4 +81,8 @@ class GpsNmeaSerial(GpsNmea):
         current_state = self.process_nmea_message(nmea_string, self.sys_time)
         
         return current_state
+
+    def handle_special_command(self, command, command_args):
         
+        if command == 'save_position':
+            self.log_next_position_with_notes(notes = command_args)

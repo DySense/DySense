@@ -374,7 +374,7 @@ class SensorController(object):
             
     def close_down_sensor(self, sensor):
         
-        self._send_sensor_message(sensor.sensor_id, 'command', 'close')
+        self.send_command_to_sensor(sensor.sensor_id, 'close')
         try:
             sensor.close()
         except SensorCloseTimeout:
@@ -651,16 +651,18 @@ class SensorController(object):
             
     def handle_send_sensor_command(self, manager, sensor_id, command):
 
+        command_name, command_args = command
+
         if sensor_id == 'all':
             sensors = self.sensors
         else:
             sensors = [self.find_sensor(sensor_id)]
 
         for sensor in sensors:
-            if command == 'close':
+            if command_name == 'close':
                 self.close_down_sensor(sensor)
             else:
-                self._send_sensor_message(sensor.sensor_id, 'command', command)
+                self.send_command_to_sensor(sensor.sensor_id, command_name, command_args)
     
     def handle_change_controller_info(self, manager, info_name, info_value):
 
@@ -926,12 +928,12 @@ class SensorController(object):
             if still_have_critical_issue:        
                 # Make sure all sensors aren't saving data files because data isn't being logged.
                 for sensor in self.sensors:
-                    self._send_sensor_message(sensor.sensor_id, 'command', 'pause')
+                    self.send_command_to_sensor(sensor.sensor_id, 'pause')
             else: 
                 self.session_state = 'started'
                 # Make sure all sensors are started.
                 for sensor in self.sensors:
-                    self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
+                    self.send_command_to_sensor(sensor.sensor_id, 'resume')
                     
     def verify_controller_settings(self, manager):
         
@@ -1004,7 +1006,11 @@ class SensorController(object):
         # Start all other sensors now that session is started.
         self.log_message("Starting all sensors.")
         for sensor in self.sensors:
-            self._send_sensor_message(sensor.sensor_id, 'command', 'resume')
+            self.send_command_to_sensor(sensor.sensor_id, 'resume')
+
+    def send_command_to_sensor(self, sensor_id, command_name, command_args=None):
+        
+        self._send_sensor_message(sensor_id, 'command', (command_name, command_args))
 
     def stop_session(self, manager):
         
@@ -1014,7 +1020,7 @@ class SensorController(object):
             return # already closed
         
         for sensor in self.sensors:
-            self._send_sensor_message(sensor.sensor_id, 'command', 'pause')
+            self.send_command_to_sensor(sensor.sensor_id, 'pause')
         
         # Invalidate time-stamp so we don't use it again.
         self.first_received_utc_time = None

@@ -3,10 +3,12 @@ from __future__ import unicode_literals
 
 import os
 import math
+import csv
 
 from nmea_parser import parse_nmea_sentence
 from checksum_utils import check_nmea_checksum
 from sensor_base.sensor_base import SensorBase
+from source.utility import utf_8_encoder
 
 class GpsNmea(SensorBase):
     
@@ -66,6 +68,12 @@ class GpsNmea(SensorBase):
         
         # List of message types that have been received, but not processed.
         self.unhandled_message_types = []
+        
+        # If set to true then will log the next position.
+        self.log_next_position = False
+        
+        # Notes to be saved with next 'logged position'. Reset to None after every log entry.
+        self.next_log_notes = None
               
     def process_nmea_message(self, nmea_string, message_read_sys_time, utc_override=None):
         
@@ -176,6 +184,26 @@ class GpsNmea(SensorBase):
              
         self.handle_data(utc_time, message_read_sys_time, [latitude, longitude, altitude, num_sats, hdop], data_quality_ok)
         
+        if self.log_next_position:
+            # Log primary antenna (lat/long) reported by message to file.
+            if not self.current_data_file_directory:
+                self.send_text("Cannot log position because there's no valid output directory. Start a session first.")
+            else:
+                if not os.path.exists(self.current_data_file_directory):
+                    os.makedirs(self.current_data_file_directory)
+                
+                log_file_path = os.path.join(self.current_data_file_directory, 'saved_positions.csv')
+                
+                with open(log_file_path, 'ab') as outfile:
+                    writer = csv.writer(outfile)
+                    writer.writerow(utf_8_encoder([utc_time, latitude, longitude, altitude, self.next_log_notes]))
+
+                self.send_text("Saved new position with notes {}".format(self.next_log_notes))
+            
+            # Reset fields
+            self.log_next_position = False
+            self.next_log_notes = None
+        
         return 'normal' if data_quality_ok else 'bad_data_quality'
         
     def handle_gst_message(self, data):
@@ -210,3 +238,8 @@ class GpsNmea(SensorBase):
                 self.last_latlon_error = latlon_error                       
 
         return True # successfully handled
+    
+    def log_next_position_with_notes(self, notes):
+        
+        self.log_next_position = True
+        self.next_log_notes = notes
