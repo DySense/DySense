@@ -317,8 +317,12 @@ class SensorController(object):
                         if sensor.need_to_send_heartbeat():
                             self._send_sensor_message(sensor.sensor_id, 'heartbeat', '')
                             sensor.last_sent_heartbeat_time = time.time()
-                        if sensor.num_messages_received > 0 and not sensor.closing:
+                        if (sensor.connection_state != 'opened') and sensor.num_messages_received > 0 and not sensor.closing:
+                            # Just started receiving sensor messages.
                             sensor.update_connection_state('opened')
+                            if self.session_active:
+                                # Update any session-dependent settings that were lost when sensor was closed.
+                                self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', sensor.data_file_path))
 
                 for issue in self.active_issues[:]:
                     if issue.expired:
@@ -970,6 +974,8 @@ class SensorController(object):
             sensor_data_file_directory = "{}_{}_{}".format(sensor.sensor_id, sensor.instrument_type, sensor.instrument_tag)
             sensor_data_file_path = os.path.join(data_files_path, sensor_data_file_directory)
             self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', sensor_data_file_path))
+            # Save this path in case sensor closes so we can tell it where to save when it re-opens if session is still active.
+            sensor.data_file_path = sensor_data_file_path
 
         data_logs_path = os.path.join(self.session_path, 'data_logs/')
         
@@ -1024,6 +1030,7 @@ class SensorController(object):
         # Go through and tell every sensor to stop saving data files to the current session.
         for sensor in self.sensors:
             self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', None))
+            sensor.data_file_path = None
         
         self.close_session_logging()
         self.session_active = False

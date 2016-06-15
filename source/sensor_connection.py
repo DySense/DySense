@@ -47,6 +47,9 @@ class SensorConnection(object):
         self.instrument_type = instrument_type
         self.instrument_tag = instrument_tag
         
+        # Where to save data files (e.g. images) to. Only valid when session is active.
+        self.data_file_path = None
+        
         # Set to true when the sensor reports that it's closing down.
         self.closing = False
         
