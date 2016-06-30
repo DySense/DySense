@@ -77,10 +77,7 @@ class SensorController(object):
         # Set to true if session is invalidated.
         self.session_invalidated = False
         
-        # Last utc time received from timesource.  Set to None when a session is stopped.
-        self.first_received_utc_time = None
-        
-        # Similar to first received utc time, but doesn't get invalidated after session is stopped.
+        # Start times associated with session, or if a session isn't active then will be from the last session.
         self.session_start_utc = 0.0
         self.session_start_sys_time = 0.0
         
@@ -721,13 +718,22 @@ class SensorController(object):
 
     def handle_new_sensor_data(self, sensor, utc_time, sys_time, data, data_ok):
         
-        # Determine if the sensor is any of our data sources.
+        # TODO manage manager subscriptions
+        # TODO only send to other controllers if not paused
+        self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, utc_time, sys_time, data, data_ok))
+        
+        if not data_ok:
+            # Assume data cant be used (ie time information, etc)
+            return 
+        
+        # Now that we know data is ok determine if the sensor is any of our data sources.
         # TODO - make this more efficient.
         is_time_source = self.time_source and self.time_source.matches(sensor.sensor_id, self.controller_id)
         matching_position_sources = [source for source in self.position_sources if source.matches(sensor.sensor_id, self.controller_id)]
         matching_orientation_sources = [source for source in self.orientation_sources if source.matches(sensor.sensor_id, self.controller_id)]
         
-        need_to_log_data = data_ok and (not sensor.sensor_paused) and self.session_state == 'started'
+        # Check if we should log data. This assumes that data is ok.
+        need_to_log_data = (not sensor.sensor_paused) and self.session_state == 'started'
         
         if is_time_source:
             self.time_source.mark_updated()
@@ -740,12 +746,9 @@ class SensorController(object):
         for source in matching_orientation_sources:
             source.mark_updated()
             self.process_orientation_source_data(source, utc_time, sys_time, data, need_to_log_data)
-        
-        # TODO manage manager subscriptions
-        # TODO only send to other controllers if not paused
-        self._send_manager_message('all', 'new_sensor_data', (sensor.sensor_id, utc_time, sys_time, data, data_ok))
 
         if need_to_log_data:
+            # Write data to corresponding sensor log.
             data.insert(0, utc_time)
             sensor.output_file.write(data)
             
@@ -765,13 +768,6 @@ class SensorController(object):
         
         self.last_utc_time = utc_time
         self.last_sys_time_update = time.time()
-        
-        # Save off utc time in case we need to use it for timestamping a new session.
-        # Only grab the first one since the test GPS relies on that.
-        if not self.first_received_utc_time:
-            self.first_received_utc_time = utc_time
-            self.session_start_utc = utc_time
-            self.session_start_sys_time = time.time()
         
     def process_position_source_data(self, source, utc_time, sys_time, data, need_to_log):
 
@@ -887,7 +883,10 @@ class SensorController(object):
             return
         
         if self.session_state == 'waiting_for_time':
-            if self.first_received_utc_time is not None:
+            seconds_since_last_utc_time = time.time() - self.last_sys_time_update
+            if seconds_since_last_utc_time < 3:
+                self.session_start_sys_time = self.last_sys_time_update
+                self.session_start_utc = self.last_utc_time
                 self.session_state = 'waiting_for_position'
         
         if self.session_state == 'waiting_for_position':
@@ -909,7 +908,7 @@ class SensorController(object):
             if not self.verify_controller_settings(manager=None):
                 self.session_state = 'closed'      
                 return      
-            self.start_session(self.first_received_utc_time)
+            self.start_session(self.session_start_utc)
             self.session_state = 'started'
             
         if self.session_state == 'started':
@@ -1021,9 +1020,6 @@ class SensorController(object):
         
         for sensor in self.sensors:
             self.send_command_to_sensor(sensor.sensor_id, 'pause')
-        
-        # Invalidate time-stamp so we don't use it again.
-        self.first_received_utc_time = None
         
         self.position_source_log.terminate()
         self.orientation_source_log.terminate()
