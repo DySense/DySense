@@ -134,8 +134,9 @@ class GpsNmea(SensorBase):
         if data['longitude_direction'] == 'W':
             longitude = -longitude
              
-        # Altitude is above ellipsoid, so adjust for mean-sea-level
-        altitude = data['altitude'] + data['mean_sea_level']
+        # Altitude is above ellipsoid. Don't adjust for mean-sea-level
+        # since we want altitutde to be referenced from ellipsoid.
+        altitude = data['altitude'] # + data['mean_sea_level']
          
         utc_time = data['utc_time']
         if math.isnan(utc_time):

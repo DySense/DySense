@@ -94,7 +94,7 @@ class GpsTrimble(SensorBase):
             if self.num_messages_processed > 1:
                 # Only send message if wasn't first message because sometimes first message isn't complete.
                 self.send_text("Invalid checksum.")
-                self.send_text(nmea_string)
+                #self.send_text(nmea_string)
             return 'error'
         
         try:
@@ -278,6 +278,7 @@ class GpsTrimble(SensorBase):
         except ValueError:
             return False # not processed successfully.
         
+        # Altitude is above ellipsoid
         self.ggk['altitude'] = altitude
 
         return True # processed successfully
