@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 from setuptools import setup
+from source.version import app_version
 
 def readme():
     with open('README.rst') as f:
@@ -10,10 +11,10 @@ def readme():
 
 if __name__ == "__main__":
     setup(name='dysense',
-          version='1.0',
-          description='Dynamic Sensor Interface',
+          version=app_version,
+          description='Dynamic Sensing Program',
           long_description=readme(),
-          keywords='data sensor htp phenotyping',
+          keywords='data sensors',
           url='TODO',
           author='',
           author_email='',

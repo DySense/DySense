@@ -49,6 +49,8 @@ Thumbs.db
 [Bb]uild/
 [Dd]ist/
 .settings/
+pyinstaller/
+config/
 sensors/camera/canon_edsdk/Dll/
 sensors/camera/canon_edsdk/icc/
 sensors/camera/canon_edsdk/DPP*

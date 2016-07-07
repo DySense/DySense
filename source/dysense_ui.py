@@ -15,12 +15,12 @@ import sip
 sip.setapi('QString', 2)
 sip.setapi('QVariant', 2)
 
-from dysense_main_window import DysenseMainWindow
-from main_presenter import MainPresenter
-from controller_manager import ControllerManager
-from sensor_controller import SensorController
-from except_hook import excepthook
-from utility import yaml_load_unicode, make_unicode
+from source.dysense_main_window import DysenseMainWindow
+from source.main_presenter import MainPresenter
+from source.controller_manager import ControllerManager
+from source.sensor_controller import SensorController
+from source.except_hook import excepthook
+from source.utility import yaml_load_unicode, make_unicode
 from PyQt4 import QtGui
 
 if __name__ == '__main__':
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     zmq_context = zmq.Context()
 
-    # Load metadata before adding any controllers so can verify version.
+    # Load sensor metadata
     with open("../metadata/sensor_metadata.yaml", 'r') as stream:
         sensor_metadata = yaml_load_unicode(stream)
         
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     main_presenter.receive_messages()
     
     try:
-        main_window.show()
+        main_window.showMaximized()
         app.exec_()
     
         # TODO intercept window closing event and if there are any non-closed sensors

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from ui_settings import ui_version
+from version import app_version
 import time
 import sys
 import traceback
@@ -16,7 +16,7 @@ def excepthook(excection_type, excection_value, traceback_object):
     body_text = "An unhandled exception occurred.\nPlease report the problem on github issue tracker.\n" \
                 "(Hit Ctrl+C to copy text from dialog)"
     current_time = time.strftime("%Y-%m-%d, %H:%M:%S")
-    version_info = "GUI Version {}".format(ui_version)
+    version_info = "DySense Version {}".format(app_version)
     
     # Get useful information from traceback object
     traceback_file = cStringIO.StringIO()

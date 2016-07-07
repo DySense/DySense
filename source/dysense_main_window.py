@@ -15,6 +15,7 @@ from dysense_main_window_designer import Ui_MainWindow
 from sensor_view_widget import SensorViewWidget
 from new_issue_popup import NewIssuePopupWindow
 from utility import pretty, open_directory_in_viewer, make_unicode
+from version import app_version
 
 class DysenseMainWindow(QMainWindow, Ui_MainWindow):
     
@@ -57,13 +58,9 @@ class DysenseMainWindow(QMainWindow, Ui_MainWindow):
         # Local controller name at program startup.  Set only once when property is first accessed.
         self.initial_stored_controller_name = None
         
-        #set version number
-        # TODO the version from metadata should be the 'controller' version once
-        # we support multiple of those and the GUI version should come from ui_settings.py
-        # Set version to message center and as window title
-        version = self.sensor_metadata.get('version', 'No Version Number')        
-        QMainWindow.setWindowTitle(self, 'DySense Version ' + version)     
-        self.main_message_center_text_edit.setText('Version ' + version)
+        # Set version to message center and as window title   
+        QMainWindow.setWindowTitle(self, 'DySense ' + app_version)     
+        self.main_message_center_text_edit.setText('Version ' + app_version)
         
         # Associate sensor (controller_id, sensor_id) to its widget.
         self.sensor_to_widget = {}

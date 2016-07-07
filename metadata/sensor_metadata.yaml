@@ -1,4 +1,3 @@
-version: "1.0"
 sensors:
     test_sensor_python:
       version: "1.0"

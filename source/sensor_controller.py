@@ -19,6 +19,7 @@ from csv_log import CSVLog
 from controller_data_sources import *
 from issue import Issue
 from utility import format_id, json_dumps_unicode, utf_8_encoder, make_unicode, make_utf8
+from version import app_version
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
 
@@ -37,7 +38,6 @@ class SensorController(object):
         
         self.context = context
         
-        self.version = metadata['version']
         self.sensor_metadata = metadata['sensors']
         
         self.sensors = []
@@ -136,7 +136,6 @@ class SensorController(object):
     @property
     def public_info(self):
         return {'id': self.controller_id,
-                'version': self.version,
                 'session_state': self.session_state,
                 'session_active': self.session_active,
                 'session_name': self.session_name,
@@ -1043,7 +1042,6 @@ class SensorController(object):
         #self.write_offsets_file()
         self.write_sensor_info_files()
         self.write_data_source_info_files()
-        self.write_version_file()
         
         if self.session_invalidated:
             # Create file to show that session is invalid.  Can't rename directory because sometimes we don't have permission to because
@@ -1074,6 +1072,8 @@ class SensorController(object):
             
             writer.writerow(utf_8_encoder(['start_sys_time', self.session_start_sys_time]))
             writer.writerow(utf_8_encoder(['end_sys_time', self.last_sys_time_update]))
+            
+            writer.writerow(utf_8_encoder(['app_version', app_version]))
             
             for key, value in sorted(self.settings.items()):
                 writer.writerow(utf_8_encoder([key, value]))
@@ -1149,12 +1149,6 @@ class SensorController(object):
         
         with open(info_file_path, 'w') as outfile:
             outfile.write(yaml.safe_dump(outdata, allow_unicode=True, default_flow_style=False))
-
-    def write_version_file(self):
-        
-        file_path = os.path.join(self.session_path, 'version.txt')
-        with open(file_path, 'w') as outfile:
-            outfile.write(self.version)
 
     def find_sensor(self, sensor_id):
         

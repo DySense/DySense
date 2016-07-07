@@ -8,13 +8,13 @@ import json
 import os
 import logging
 import yaml
-from ui_settings import ui_version
 from PyQt4.QtCore import QObject, QTimer
 from select_sources_window import SelectSourcesWindow
 from add_sensor_window import AddSensorWindow
 from end_session_dialog import EndSessionDialog
 from issue import Issue
 from utility import json_dumps_unicode, make_unicode, make_utf8
+from version import *
 
 RECEIVE_TIMER_INTERVAL = 0.1 # seconds
 
@@ -28,7 +28,6 @@ class MainPresenter(QObject):
         
         self.context = context
         self.manager = manager
-        self.version = metadata['version']
         self.sensor_metadata = metadata['sensors']
         if view:
             self.setup_view(view)
@@ -88,7 +87,7 @@ class MainPresenter(QObject):
         handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
         log.addHandler(handler)
      
-        log.info('DySense UI Version {}'.format(ui_version))
+        log.info('DySense Version {}'.format(app_version))
         
     def try_save_config(self, file_path):
         try:
@@ -106,7 +105,7 @@ class MainPresenter(QObject):
             # TODO support multiple controllers
             useful_info = {}
             for info_name, info_value in controller_info.iteritems():
-                if info_name in ['version', 'settings', 'time_source', 'position_sources', 'orientation_sources']:
+                if info_name in ['settings', 'time_source', 'position_sources', 'orientation_sources']:
                     useful_info[info_name] = info_value
             controllers.append(useful_info)
         data['controllers'] = controllers
@@ -121,6 +120,14 @@ class MainPresenter(QObject):
                     useful_info[info_name] = info_value
             sensors.append(useful_info)
         data['sensors'] = sensors
+        
+        app_version = '1.0.0'
+
+        # Save version numbers when config was saved for detecting issues when loading config on a different version.        
+        data['app_version'] = app_version
+        data['m2c_version'] = m2c_version
+        data['s2c_version'] = s2c_version
+        data['p2m_version'] = p2m_version
     
         with open(file_path, 'w') as outfile:
             outfile.write(yaml.safe_dump(data, allow_unicode=True, default_flow_style=False))
