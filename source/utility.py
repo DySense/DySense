@@ -6,6 +6,8 @@ import sys
 import subprocess
 import json
 import csv
+import bisect
+import math
 
 def find_last_index(list_to_search, element):
     try:
@@ -132,3 +134,128 @@ def unicode_csv_reader(unicode_csv_data, dialect=csv.excel, **kwargs):
 def utf_8_encoder(original_data):
     
     return [make_unicode(data).encode('utf8') for data in original_data]
+
+def decode_command_line_arg(arg):
+    '''Convert argument from command line (passed in as str) to unicode.'''
+    return arg.decode(sys.getfilesystemencoding())
+
+def is_list_or_tuple(lst):
+    
+    return isinstance(lst, (list, tuple))
+
+def find_less_than_or_equal(a, x):
+    '''
+    Return rightmost index in list a where the value at a[i] is less than or equal to x.
+    If x is greater than all elements in a then len(a)-1 is returned.
+    If x is smaller than all elements in a then -1 is returned.
+    '''
+    i = bisect.bisect_right(a, x)
+    return i - 1
+
+def closest_value(x_value, x_set, y_set, i1=None, max_x_diff=None):
+    '''
+    Return y corresponding to x_value such that it matches with the closest value in x_set. 
+    If i1 isn't None then it's treated as the rightmost index in x_set where x_set[i1] is less than or equal to x_value.
+    If max_x_diff is specified then if the difference between x_value and the closest value in x_set exceeds this value then
+    return NaN (not a number). Return None on failure.  
+    '''
+    if len(x_set) != len(y_set):
+        return None
+    
+    if i1 is None:
+        # index of element in x_set right before or equal to x_value
+        i1 = find_less_than_or_equal(x_set, x_value)  
+    
+    if i1 < 0:
+        # specified x value occurs before any x's so return first y if it's close enough.
+        if max_x_diff is not None and abs(x_value - x_set[0]) > max_x_diff:
+            return float('nan')
+        else:
+            return y_set[0]
+    
+    if i1 >= (len(x_set) - 1):
+        # specified x value occurs after all x's so return last y if it's close enough.
+        if max_x_diff is not None and abs(x_value - x_set[-1]) > max_x_diff:
+            return float('nan')
+        else:
+            return y_set[-1]
+    
+    # i2 is the index of the element in x_set right after x_value.
+    i2 = i1 + 1
+    
+    # Find the magnitude difference between specified x value and 2 closest values in x set.
+    i1_mag = abs(x_set[i1] - x_value)
+    i2_mag = abs(x_set[i2] - x_value)
+    
+    closest_index = i1 if (i1_mag < i2_mag) else i2
+    
+    # Make sure closest index is close enough to x_value to be reliable.
+    if max_x_diff is not None and abs(x_set[closest_index] - x_value) > max_x_diff:
+        return float('nan')
+    
+    return y_set[closest_index]
+
+def interpolate(x_value, x_set, y_set, i1=None, max_x_diff=None):
+    '''
+    Return y value corresponding to x value.  If outside bounds of x_set then returns closest value.
+    x_set and y_set must have the same amounts of elements. If i1 isn't None then it's treated as the
+    rightmost index in x_set where x_set[i1] is less than or equal to x_value.  If max_x_diff is specified
+    then if abs(x_set[i1] - x_set[i2]) exceeds this value OR if x_value is outside x_set and the closest value 
+    is outside max_x_diff away then NaN (not a number) is returned. Return None on failure.
+    '''
+    if len(x_set) != len(y_set):
+        return None
+    
+    if i1 is None:
+        # index of element in x_set right before or equal to x_value
+        i1 = find_less_than_or_equal(x_set, x_value)  
+    
+    if i1 < 0:
+        # specified x value occurs before any x's so return first y if it's close enough.
+        if max_x_diff is not None and abs(x_value - x_set[0]) > max_x_diff:
+            return float('nan')
+        else:
+            return y_set[0]
+    
+    if i1 >= (len(x_set) - 1):
+        # specified x value occurs after all x's so return last y if it's close enough.
+        if max_x_diff is not None and abs(x_value - x_set[-1]) > max_x_diff:
+            return float('nan')
+        else:
+            return y_set[-1]
+    
+    if x_value == x_set[i1]:
+        # don't need to interpolate since match exactly.
+        return y_set[i1] 
+    
+    # i2 is the index of the element in x_set right after x_value.
+    # at this point x_set[i1] can't be equal to x_set[i2] or else
+    # i2 would have been returned instead of i1 above.
+    i2 = i1 + 1
+    
+    # Check to see if there's too large of separation in x that would make the interpolation unreliable.
+    if max_x_diff is not None and abs(x_set[i1] - x_set[i2]) > max_x_diff:
+        return float('nan')
+    
+    slope = (y_set[i2] - y_set[i1]) / (x_set[i2] - x_set[i1])
+    
+    return y_set[i1] + slope * (x_value - x_set[i1])
+
+def wrap_angle_degrees(angle):
+    
+    while angle <= -180:
+        angle += 360
+    while angle > 180:
+        angle -= 360
+        
+    return angle
+
+def wrap_angle_radians(angle):
+    
+    while angle <= -math.pi:
+        angle += 2*math.pi
+    while angle > math.pi:
+        angle -= 2*math.pi
+        
+    return angle
+    

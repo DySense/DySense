@@ -16,9 +16,9 @@ Note: if you ever get a PermissionDenied error then try running the command agai
 
 4) In the 'added_files' list in the SPEC CHANGES section there are folders specified by ../foldername/ (e.g. ../metadata/).  These need to be one level above dysense_ui.exe.  To do this first select these directories in dist/dysense_ui/, and cut and paste them into dist/ (to move them up one level)
 
-5) Rename dist/ to DySense_<version>/ where <version> matchs the AppVersion in the version.py 
+5) Rename dist/ to DySense-<version>-<OS>-<arch>/ where <version> matches the AppVersion in the version.py.  <OS> is either 'win' 'mac' or 'lin' and <arch> is either 'x86' or 'x64'.  Look at a previous release for an example.
 
-6) Upload to GitHub releases with the change notes.
+6) Upload to GitHub releases with the change notes. 
 
 ---------------------------
 SPEC CHANGES
