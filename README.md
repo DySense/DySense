@@ -1,4 +1,4 @@
-# DySense
+![DySense](dysense/resources/horizontal_logo.png?raw=true "DySense Logo")
 
 The Dynamic Sensing Program (DySense) is a free, open-source data collection program that provides the means to obtain, organize and geo-locate sensor data.
 
