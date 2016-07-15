@@ -3,23 +3,23 @@
 from __future__ import unicode_literals
 
 from setuptools import setup
-from source.version import app_version
+from dysense.core.version import app_version
 
 def readme():
-    with open('README.rst') as f:
+    with open('README.md') as f:
         return f.read()
 
 if __name__ == "__main__":
-    setup(name='dysense',
+    setup(name='DySense',
           version=app_version,
           description='Dynamic Sensing Program',
           long_description=readme(),
-          keywords='data sensors',
+          keywords='data sensors collection',
           url='TODO',
           author='',
           author_email='',
-          license='TODO',
-          packages=['source'],
+          license='See LICENSE.txt',
+          packages=['dysense'],
           install_requires=[
               'pyserial',
 			  'pyyaml',

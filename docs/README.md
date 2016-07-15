@@ -1,0 +1,1 @@
+Currently all docs are stored on Github wiki.  Would like to eventually move to using Sphinx and storing locally in this repository.

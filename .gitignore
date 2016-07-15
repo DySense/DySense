@@ -49,15 +49,15 @@ Thumbs.db
 [Bb]uild/
 [Dd]ist/
 .settings/
-pyinstaller/
+dysense/pyinstaller/
 config/
-sensors/camera/canon_edsdk/Dll/
-sensors/camera/canon_edsdk/icc/
-sensors/camera/canon_edsdk/DPP*
-sensors/camera/canon_edsdk/EDSDK.dll
-sensors/camera/canon_edsdk/EdsImage.dll
-sensors/camera/canon_edsdk/Mlib.dll
-sensors/camera/canon_edsdk/Ucs32P.dll
+dysense/sensors/camera/canon_edsdk/Dll/
+dysense/sensors/camera/canon_edsdk/icc/
+dysense/sensors/camera/canon_edsdk/DPP*
+dysense/sensors/camera/canon_edsdk/EDSDK.dll
+dysense/sensors/camera/canon_edsdk/EdsImage.dll
+dysense/sensors/camera/canon_edsdk/Mlib.dll
+dysense/sensors/camera/canon_edsdk/Ucs32P.dll
 
 *egg-info*
 *.project
