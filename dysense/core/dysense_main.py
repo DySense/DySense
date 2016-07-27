@@ -28,7 +28,7 @@ from dysense.core.utility import yaml_load_unicode, make_unicode
 def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=False):
         
     app = QtGui.QApplication(sys.argv)
-    app.setStyle('plastique')
+    #app.setStyle('plastique')
     app.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
     
     # Tell system to call our custom function when an unhandled exception occurs
@@ -38,7 +38,7 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
         # If running on windows then need to unassociate process from python so that
         # the OS will show the correct icon in the taskbar.
         import ctypes
-        myappid = 'dysense.ui.1'
+        myappid = 'dysense.main.1'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)        
 
     zmq_context = zmq.Context()
@@ -49,8 +49,8 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     
     # Configure system.
     controller_manager = ControllerManager(zmq_context)
-    gui_presenter = GUIPresenter(zmq_context, controller_manager, sensor_metadata)    
-    main_window = DysenseMainWindow(gui_presenter)   
+    gui_presenter = GUIPresenter(zmq_context, controller_manager, sensor_metadata)
+    main_window = DysenseMainWindow(gui_presenter, sensor_metadata['sensors'])   
     sensor_controller = SensorController(zmq_context, sensor_metadata, main_window.local_controller_name)
     
     gui_presenter.setup_view(main_window)
@@ -69,7 +69,8 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     gui_presenter.receive_messages()
     
     try:
-        main_window.showMaximized()
+        #main_window.showMaximized()
+        main_window.show()
         app.exec_()
     
         # TODO intercept window closing event and if there are any non-closed sensors

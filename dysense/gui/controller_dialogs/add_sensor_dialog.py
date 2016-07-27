@@ -8,13 +8,17 @@ from PyQt4 import QtGui
 
 from dysense.core.utility import make_unicode
 
-class AddSensorWindow(QDialog):
+class AddSensorDialog(QDialog):
     
     def __init__(self, presenter, possible_sensor_types, possible_sensor_id_types, *args):
         QDialog.__init__(self, *args)
         
         self.presenter = presenter
         self.possible_sensor_id_types = possible_sensor_id_types
+        
+        self.setup_ui(possible_sensor_types)
+
+    def setup_ui(self, possible_sensor_types):
         
         self.setWindowTitle('Add Sensor')
         self.setWindowIcon(QtGui.QIcon('../resources/dysense_logo_no_text.png'))
@@ -38,22 +42,33 @@ class AddSensorWindow(QDialog):
         self.sensor_type_combo_box.setFont(self.dialog_font)
         self.sensor_type_combo_box.addItems(possible_sensor_types)
         self.sensor_type_combo_box.currentIndexChanged.connect(self.sensor_type_selected)
+        self.sensor_type_combo_box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         
         self.sensor_name_line_edit = QLineEdit()
         self.sensor_name_line_edit.setFont(self.dialog_font)
+        self.sensor_name_line_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
         self.sensor_id_type_line_edit = QLineEdit()
         self.sensor_id_type_line_edit.setFont(self.dialog_font)
         self.sensor_id_type_line_edit.setReadOnly(True)
-        self.sensor_id_type_line_edit.setMaximumWidth(60)
-        self.sensor_id_type_line_edit.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        #self.sensor_id_type_line_edit.setMinimumWidth(60)
+        self.sensor_id_type_line_edit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.sensor_id_tag_line_edit = QLineEdit()
         self.sensor_id_tag_line_edit.setFont(self.dialog_font)
+        self.sensor_id_tag_line_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.sensor_id_layout = QHBoxLayout()
         self.sensor_id_layout.addWidget(self.sensor_id_type_line_edit)
         self.sensor_id_layout.addWidget(self.sensor_id_tag_line_edit)
         
-        self.setup_buttons()
+        self.add_button = QPushButton("Add")
+        self.cancel_button = QPushButton("Cancel")
+        self.add_button.setFont(self.dialog_font)
+        self.cancel_button.setFont(self.dialog_font)
+        self.add_button.clicked.connect(self.add_button_clicked)
+        self.cancel_button.clicked.connect(self.cancel_button_clicked)
+        self.button_layout = QHBoxLayout()
+        self.button_layout.addWidget(self.cancel_button)
+        self.button_layout.addWidget(self.add_button)
         
         self.central_layout.addWidget(self.type_label, 0, 0)
         self.central_layout.addWidget(self.sensor_type_combo_box, 0, 1)
@@ -66,18 +81,6 @@ class AddSensorWindow(QDialog):
         
         self.sensor_type_selected()
         self.add_button.setDefault(True)
-
-    def setup_buttons(self):
-        
-        self.add_button = QPushButton("Add")
-        self.cancel_button = QPushButton("Cancel")
-        self.add_button.setFont(self.dialog_font)
-        self.cancel_button.setFont(self.dialog_font)
-        self.add_button.clicked.connect(self.add_button_clicked)
-        self.cancel_button.clicked.connect(self.cancel_button_clicked)
-        self.button_layout = QHBoxLayout()
-        self.button_layout.addWidget(self.cancel_button)
-        self.button_layout.addWidget(self.add_button)
 
     def sensor_type_selected(self):
         self.sensor_name_line_edit.setFocus()

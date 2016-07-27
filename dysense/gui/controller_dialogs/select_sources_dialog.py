@@ -9,7 +9,7 @@ from PyQt4 import QtGui
 
 from dysense.core.utility import get_from_list
 
-class SelectSourcesWindow(QDialog):
+class SelectSourcesDialog(QDialog):
     
     new_sources_selected = pyqtSignal(dict, list, list)
     

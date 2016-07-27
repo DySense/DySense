@@ -11,10 +11,6 @@ import yaml
 
 from PyQt4.QtCore import QObject, QTimer
 
-from dysense.gui.select_sources_window import SelectSourcesWindow
-from dysense.gui.add_sensor_window import AddSensorWindow
-from dysense.gui.end_session_dialog import EndSessionDialog
-
 from dysense.core.issue import Issue
 from dysense.core.utility import json_dumps_unicode, make_unicode, make_utf8
 from dysense.core.version import *
@@ -50,7 +46,7 @@ class GUIPresenter(QObject):
         # Lookup table of sensor information.
         # key - tuple of (controller id, sensor id)
         # value - dictionary of sensor info.
-        self.sensors = {}        
+        self.sensors = {}
         
         self.message_callbacks = { # From Manager
                                   'entire_sensor_update': self.handle_entire_sensor_update,
@@ -71,7 +67,7 @@ class GUIPresenter(QObject):
     def setup_view(self, view):
         
         self.view = view
-   
+        
     def setup_logging(self):
       
         # Use home directory for root output directory. This is platform independent and works well with an installed package.
@@ -199,30 +195,6 @@ class GUIPresenter(QObject):
 
         self._send_message('add_controller', (endpoint, name))
         
-    def end_session(self):
-        
-        # TODO update for multiple controllers
-        self.end_session_dialog = EndSessionDialog(self, self.controllers.values()[0])
-        self.end_session_dialog.setModal(True)
-        self.end_session_dialog.show()
-        
-    def select_data_sources(self):
-        
-        active_controller = self.controllers[self.active_controller_id]
-        
-        self.select_sources_window = SelectSourcesWindow(self, active_controller, self.sensors)
-        self.select_sources_window.setModal(True)
-        self.select_sources_window.show()
-        
-    def add_sensor_requested(self):
-        
-        possible_sensor_types = sorted(self.sensor_metadata.keys())
-        sensor_id_types = [self.sensor_metadata[sensor_type]['type'] for sensor_type in possible_sensor_types]
-        
-        self.add_sensor_window = AddSensorWindow(self, possible_sensor_types, sensor_id_types)
-        self.add_sensor_window.setModal(True)
-        self.add_sensor_window.show()
-        
     def controller_name_changed(self, new_controller_name):
         
         if new_controller_name.strip() == '':
@@ -240,7 +212,7 @@ class GUIPresenter(QObject):
             return self.controllers.values()[0]
         except IndexError:
             return None 
-        
+
     def change_controller_info(self, info_name, info_value):
         
         self._send_message_to_active_controller('change_controller_info', (info_name, info_value))
@@ -296,11 +268,9 @@ class GUIPresenter(QObject):
         
         self.send_sensor_command_to_all_sensors('close', None, only_on_active_controller)
         
-    
     def change_sensor_info(self, info_name, value):
         
         self._send_message_to_active_sensor('change_sensor_info', (info_name, value))
-    
 
     def change_sensor_setting(self, setting_name, value):
         
@@ -390,7 +360,8 @@ class GUIPresenter(QObject):
             self.active_controller_id = controller_id
         
         if is_new_controller:
-            self.view.add_new_controller(controller_id, controller_info)
+            # TODO update for multiple controllers so is_local isn't always true
+            self.view.add_new_controller(controller_id, controller_info, is_local=True)
             for issue_info in controller_info['active_issues']:
                 self.current_issues.append(Issue(**issue_info))
             for issue_info in controller_info['resolved_issues']:
@@ -416,7 +387,6 @@ class GUIPresenter(QObject):
                     if issue.acked:
                         self.current_issues.remove(issue)
                         self.old_issues.append(issue)
-                    
                     
         if event_type == 'issue_changed':
             for issue in self.current_issues:

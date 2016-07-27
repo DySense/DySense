@@ -7,12 +7,14 @@ from PyQt4.Qt import *
 from PyQt4 import QtGui
 
 from dysense.core.utility import make_unicode
+from dysense.gui.controller_widgets.controller_settings_widget import ControllerSettingsWidget
 
 class EndSessionDialog(QDialog):
     
-    def __init__(self, presenter, controller_info, *args):
+    def __init__(self, controller_view, presenter, controller_info, notes, *args):
         QDialog.__init__(self, *args)
         
+        self.controller_view = controller_view
         self.presenter = presenter
         
         self.setWindowTitle('End Session')
@@ -29,7 +31,7 @@ class EndSessionDialog(QDialog):
         controller_settings = controller_info['settings']
         
         self.session_notes = QTextEdit()
-        self.session_notes.setMinimumHeight(30)
+        self.session_notes.setMinimumHeight(50)
         self.session_notes.setLineWrapMode(QTextEdit.WidgetWidth)
         self.session_notes.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.session_notes_box = QGroupBox()
@@ -40,23 +42,16 @@ class EndSessionDialog(QDialog):
         self.session_notes_box_layout = QVBoxLayout(self.session_notes_box)
         self.session_notes_box_layout.addWidget(self.session_notes)
         
-        controller_settings = [('Controller:', controller_info['id']),
-                               ('Operator:', controller_settings['operator_name']),
-                               ('Platform Type:', controller_settings['platform_type']),
-                               ('Platform Tag:', controller_settings['platform_tag']),
-                               ('Experiment ID:', controller_settings['experiment_id']),
-                               ('Surveyed:', controller_settings['surveyed']),
-                               ]
+        self.session_notes.append(notes)
         
         self.settings_box = QGroupBox()
-        self.settings_box_layout = QGridLayout(self.settings_box)
-        for i, (text, value) in enumerate(controller_settings):
-            text_label = QLabel(text)
-            value_label = QLabel(make_unicode(value))
-            text_label.setFont(self.dialog_font)
-            value_label.setFont(self.dialog_font)
-            self.settings_box_layout.addWidget(text_label, i, 0)
-            self.settings_box_layout.addWidget(value_label, i, 1)
+        self.settings_box_layout = QVBoxLayout(self.settings_box)
+        self.settings_box.setTitle('Controller Settings: {}'.format(controller_info['id']))
+        self.settings_box.setAlignment(Qt.AlignHCenter)
+        self.settings_box.setFont(self.dialog_font)
+            
+        self.settings_widget = ControllerSettingsWidget(presenter, controller_info, only_basic_settings=True)
+        self.settings_box_layout.addWidget(self.settings_widget)
         
         self.central_layout.addWidget(self.settings_box)
         self.central_layout.addWidget(self.session_notes_box)
@@ -89,6 +84,8 @@ class EndSessionDialog(QDialog):
         self.close()
         
     def cancel_button_clicked(self):
+        
+        self.controller_view.update_session_notes(make_unicode(self.session_notes.toPlainText()).strip())
         
         self.close()
         

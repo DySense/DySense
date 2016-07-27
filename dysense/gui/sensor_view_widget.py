@@ -8,11 +8,12 @@ import yaml
 # TODO clean up imports
 from PyQt4.QtGui import *
 from PyQt4 import QtGui
+from PyQt4 import QtCore
 
-from dysense.gui.sensor_view_widget_designer import Ui_Form
+from dysense.gui.sensor_view_widget_designer import Ui_sensor_view
 from dysense.core.utility import pretty, make_unicode
 
-class SensorViewWidget(QWidget,Ui_Form):
+class SensorViewWidget(QWidget, Ui_sensor_view):
            
     def __init__(self, controller_id, sensor_info, presenter, view):
         #super().__init__()
@@ -54,24 +55,7 @@ class SensorViewWidget(QWidget,Ui_Form):
         
         # Populated when generating data visualization from metadata.       
         self.data_line_edits = []
-        
-                                        #'output_rate': self.capture_rate_line_edit                                                                           
-                                        
-        
-        
-        
-#         
-#          new_gps_info['settings'] = {'test_file_path': "..nmea_logs\SXBlueGGA.txt",
-#                                            'output_rate': 1,
-#                                            'required_fix': 'none',
-#                                            'required_precision': 0}
-#         
-       
-        
 
-        
-        
-        
         # get type dependent settings from metadata
         #default_settings = self.sensor_info['settings']
         sensor_type = sensor_info['sensor_type']
@@ -85,22 +69,10 @@ class SensorViewWidget(QWidget,Ui_Form):
         special_commands_list = self.sensor_metadata.get('special_commands', None)
         self.setup_special_commands(special_commands_list)
         
-        
-        #setup health icons #TODO crop whitespace from edges of icons and figure out why good_icon pixmap is null
-        self.neutral_icon = QtGui.QPixmap('../resources/grey_neutral_icon.png')
-        self.neutral_icon = self.neutral_icon.scaled(65,63)      
-        self.good_icon = QtGui.QPixmap('../resources/green_check_icon.jpg')
-        #self.good_icon = QtGui.QPixmap('../resources/grey_neutral_icon.png')
-        self.good_icon = self.good_icon.scaled(65,63)
-        self.bad_icon = QtGui.QPixmap('../resources/red_x_icon.png')
-        self.bad_icon = self.bad_icon.scaled(65,63)
-        
-        
         #Set fields not to be edited by user as read only
         self.sensor_message_center_text_edit.setReadOnly(True)
         self.sensor_type_line_edit.setReadOnly(True)
         self.sensor_name_line_edit.setReadOnly(True)
-           
         
         # Connect User Changes        
         self.sensor_id_line_edit.editingFinished.connect(self.instrument_id_changed)
@@ -117,15 +89,42 @@ class SensorViewWidget(QWidget,Ui_Form):
         self.pause_sensor_button.clicked.connect(self.pause_sensor_button_clicked)
         self.close_sensor_button.clicked.connect(self.close_sensor_button_clicked)
         self.remove_sensor_button.clicked.connect(self.remove_sensor_button_clicked)
-        
-        #Connect clear button
-        #self.clear_sensor_message_center_button.clicked.connect(self.clear_sensor_message_center_button_clicked)
     
-
     def setup_settings(self, settings):
        
-        self.settings_group_box_layout = QtGui.QGridLayout()
+        self.settings_font = QtGui.QFont()
+        self.settings_font.setPointSize(11)
+        
+        # Group Box (HLayout) -> Scroll Area -> Frame (Grid Layout)
+
+        self.settings_frame = QtGui.QFrame()
+        self.settings_frame_layout = QGridLayout()
+        self.settings_frame.setLayout(self.settings_frame_layout)
+        
+        self.scroll_area = QtGui.QScrollArea()
+        self.scroll_area.setWidget(self.settings_frame)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        #self.scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        
+        self.settings_group_box = QGroupBox()
+        self.settings_group_box.setTitle('Settings')
+        self.settings_group_box.setAlignment(QtCore.Qt.AlignHCenter)
+        self.settings_group_box.setFont(self.settings_font)
+        
+        self.settings_group_box_layout = QtGui.QHBoxLayout()
         self.settings_group_box.setLayout(self.settings_group_box_layout)
+        self.settings_group_box_layout.addWidget(self.scroll_area)
+        
+        self.top_horizontal_layout.addWidget(self.settings_group_box)
+        
+        box_size_policy = QtGui.QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        #box_size_policy.setHorizontalStretch(1)
+        #box_size_policy.setVerticalStretch(1)
+        self.settings_group_box.setSizePolicy(box_size_policy)
+        
+        self.settings_frame_layout.setMargin(1)
+        self.settings_group_box_layout.setMargin(3)
         
         # create name labels, line edits, and units labels for settings
         for n, setting_metadata in enumerate(self.sensor_metadata['settings']):    
@@ -144,7 +143,55 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.units_label.setToolTip(description)
             self.line_edit.setToolTip(description)
             
-                        
+            # Store the line edit references and corresponding name
+            obj_ref = self.line_edit
+            self.object_to_setting_name[obj_ref] = name
+            self.setting_name_to_object[name] = obj_ref
+            
+            self.settings_frame_layout.addWidget(self.name_label, n, 0)
+            self.settings_frame_layout.addWidget(self.line_edit, n, 1)
+            self.settings_frame_layout.addWidget(self.units_label, n, 2)
+            
+            self.name_label.setText(pretty(name))   
+            self.line_edit.setText(make_unicode(settings[name]))
+            self.units_label.setText(pretty(units))
+            
+            # Connect the line edit signal
+            self.line_edit.editingFinished.connect(self.setting_changed_by_user)
+    
+        '''
+        self.settings_group_box = QGroupBox()
+        self.settings_group_box.setTitle('Settings')
+        #self.settings_group_box.setAlignment(Qt.AlignHCenter)
+        self.settings_group_box.setFont(self.settings_font)
+        
+        self.settings_group_box_layout = QtGui.QGridLayout()
+        self.settings_group_box.setLayout(self.settings_group_box_layout)
+        
+        self.scroll_area = QtGui.QScrollArea()
+        self.scroll_area.setWidget(self.settings_group_box)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        #self.scroll_area.setFixedHeight(400)
+        
+        self.top_horizontal_layout.addWidget(self.scroll_area)
+        
+        # create name labels, line edits, and units labels for settings
+        for n, setting_metadata in enumerate(self.sensor_metadata['settings']):    
+            
+            name = setting_metadata.get('name', 'No name in metadata')
+            default_value = setting_metadata.get('default_value', 'no default')
+            units = setting_metadata.get('units', '')
+            description = setting_metadata.get('description', '')
+            
+            self.name_label = QtGui.QLabel()
+            self.units_label = QtGui.QLabel()
+            self.line_edit = QtGui.QLineEdit()
+            
+            # Set tool tips
+            self.name_label.setToolTip(description)
+            self.units_label.setToolTip(description)
+            self.line_edit.setToolTip(description)
             
             # Store the line edit references and corresponding name
             obj_ref = self.line_edit
@@ -161,10 +208,8 @@ class SensorViewWidget(QWidget,Ui_Form):
             
             # Connect the line edit signal
             self.line_edit.editingFinished.connect(self.setting_changed_by_user)
-
-    
+        '''
     def setup_data_visualization(self):
-        
                 
         self.data_group_box_layout = QtGui.QHBoxLayout()
         self.data_group_box.setLayout(self.data_group_box_layout)
@@ -177,16 +222,16 @@ class SensorViewWidget(QWidget,Ui_Form):
              
             # Store number of decimal places if value is given
             self.dec_places[n] = decimal_places   
-               
-                        
+     
             self.name_label = QtGui.QLabel()
+            self.name_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             self.line_edit = QtGui.QLineEdit()
+            self.line_edit.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             self.line_edit.setReadOnly(True)
             #Add units as tool tip
             if units:
                 self.name_label.setToolTip(units)
                 self.line_edit.setToolTip(units)
-                
                 
             # Store the line edit references and corresponding name
             self.data_line_edits.append(self.line_edit)            
@@ -195,15 +240,12 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.data_group_box_layout.addWidget(self.line_edit)
             
             self.name_label.setText(pretty(name) + ':')
-            
-            
-            
+             
     def setup_special_commands(self, special_commands):
         
         if special_commands == None:
             self.special_commands_group_box.deleteLater()
             return
-        
         
         #special commands dict
         #key = reference
@@ -225,7 +267,6 @@ class SensorViewWidget(QWidget,Ui_Form):
     
     def update_data_visualization(self, data):        
                  
-
         for n, line_edit in enumerate(self.data_line_edits):
             try:
                 if isinstance(data[n], float):
@@ -241,11 +282,10 @@ class SensorViewWidget(QWidget,Ui_Form):
                         line_edit.setText("{0:.5f}".format(data[n]))    
                         
                     else:
-                        line_edit.setText(make_unicode(data[n]))     
-                                        
+                        line_edit.setText(make_unicode(data[n]))
+
                 else:
                     line_edit.setText(make_unicode(data[n]))
-                        
                         
             except IndexError:
                 pass # not all data was provided
@@ -354,18 +394,17 @@ class SensorViewWidget(QWidget,Ui_Form):
             self.sensor_message_center_text_edit.setText(make_unicode(message))
 
     def overall_sensor_health_update(self, health):
-        # call method to update change list widget item color for corresponding health
-        self.view.update_list_widget_color(health, self.controller_id, self.sensor_id)
-        
+
         if health in ['N/A', 'neutral']:
-            self.sensor_health_icon_label.setPixmap(self.neutral_icon)    
+            self.sensor_health_value_label.setStyleSheet('color: black')  
             
         elif health == 'good':
-            self.sensor_health_icon_label.setPixmap(self.good_icon)
+            self.sensor_health_value_label.setStyleSheet('color: green')  
             
         elif health == 'bad':
-            self.sensor_health_icon_label.setPixmap(self.bad_icon)
+            self.sensor_health_value_label.setStyleSheet('color: red')  
     
+        self.sensor_health_value_label.setText(pretty(health))
         
     def clear_sensor_message_center_button_clicked(self):
         self.sensor_message_center_text_edit.clear() 

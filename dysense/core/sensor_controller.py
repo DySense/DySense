@@ -74,6 +74,10 @@ class SensorController(object):
         
         self._session_state = 'closed'
         
+        # If set to true then session state will be 'paused' instead of 'started'
+        # when session is resumed after all issues are cleared.
+        self.session_pause_on_resume = True
+        
         # Set to true if session is invalidated.
         self.session_invalidated = False
         
@@ -708,12 +712,19 @@ class SensorController(object):
     def handle_setup_sensor(self, manager, sensor_id, message_body):
         
         if sensor_id == 'all':
-            sensors = self.sensors
+            if len(self.sensors) == 0:
+                self.log_message('No sensors loaded.', logging.ERROR, manager)
+                return
+
+            for sensor in self.sensors:
+                sensor.setup()
         else:
-            sensors = [self.find_sensor(sensor_id)]
-        
-        for sensor in sensors:
-            sensor.setup()
+            # Just want to setup a single sensor
+            try:
+                sensor = self.find_sensor(sensor_id)
+                sensor.setup()
+            except ValueError:
+                self.log_message('Cannot setup sensor {} since it does not exist'.format(sensor_id), logging.ERROR, manager)
 
     def handle_new_sensor_data(self, sensor, utc_time, sys_time, data, data_ok):
         
@@ -807,6 +818,16 @@ class SensorController(object):
         
         if command_name == 'start_session':
             self.begin_session_startup_procedure(manager)
+        elif command_name == 'pause_session':
+            if self.session_active:
+                self.session_state = 'paused'
+                
+            # Set flag so if session is (or will be) suspended that session won't automatically resume when issues are resolved.
+            self.session_pause_on_resume = True
+                
+            # Make sure sensors aren't saving data files.
+            for sensor in self.sensors:
+                self.send_command_to_sensor(sensor.sensor_id, 'pause')
         elif command_name == 'stop_session':
             self.session_notes = command_args
             self.stop_session(manager)
@@ -853,6 +874,24 @@ class SensorController(object):
         self._send_manager_message('all', 'sensor_changed', (sensor_id, info_name, value))
         
     def begin_session_startup_procedure(self, manager):
+        
+        # Make sure flag is cleared so that if session is (or will be) suspended that the session will automatically resume once issues are resolved.
+        self.session_pause_on_resume = False
+        
+        if self.session_active:
+            
+            if self.session_state == 'suspended':
+                self.log_message("Session is suspended because of a critical issue. Please resolve all issues and then session will resume automatically.", logging.ERROR, manager)
+                return False 
+            
+            if self.session_state == 'paused':
+                self.session_state = 'started'
+            
+            # Already have a session started, so make sure all sensors are un-paused.
+            for sensor in self.sensors:
+                self.send_command_to_sensor(sensor.sensor_id, 'resume')
+                
+            return True # session already setup and in a good state so consider successful
         
         if not self.verify_controller_settings(manager):
             return False
@@ -910,7 +949,7 @@ class SensorController(object):
             self.start_session(self.session_start_utc)
             self.session_state = 'started'
             
-        if self.session_state == 'started':
+        if self.session_state in ['started', 'paused']:
             for issue in self.active_issues:
                 if issue.level == 'critical':
                     self.session_state = 'suspended'
@@ -923,15 +962,18 @@ class SensorController(object):
                     still_have_critical_issue = True 
                     break
 
-            if still_have_critical_issue:        
+            if still_have_critical_issue:
                 # Make sure all sensors aren't saving data files because data isn't being logged.
                 for sensor in self.sensors:
                     self.send_command_to_sensor(sensor.sensor_id, 'pause')
             else: 
-                self.session_state = 'started'
-                # Make sure all sensors are started.
-                for sensor in self.sensors:
-                    self.send_command_to_sensor(sensor.sensor_id, 'resume')
+                if self.session_pause_on_resume:
+                    self.session_state = 'paused'
+                else:
+                    # Automatically resume session.
+                    self.session_state = 'started'
+                    for sensor in self.sensors:
+                        self.send_command_to_sensor(sensor.sensor_id, 'resume')
                     
     def verify_controller_settings(self, manager):
         
