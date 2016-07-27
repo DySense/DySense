@@ -14,6 +14,7 @@ from PyQt4.QtGui import *
 from dysense.gui.dysense_main_window_designer import Ui_main_window
 from dysense.gui.sensor_view_widget import SensorViewWidget
 from dysense.gui.controller_view_widget import ControllerViewWidget
+from dysense.gui.extras_menu_widget import ExtrasMenuWidget
 from dysense.gui.new_issue_popup import NewIssuePopupWindow
 
 from dysense.core.utility import pretty, make_unicode
@@ -88,6 +89,10 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         # View associated with local controller. 
         self.local_controller_view = None
         
+        # Create menu that includes extra functionality.
+        self.extras_menu = ExtrasMenuWidget(self.presenter, self)
+        self.stacked_widget.addWidget(self.extras_menu)
+        
         # Load icons that will be used in sensor list widget.
         self.not_setup_icon = QtGui.QIcon('../resources/sensor_status_icons/neutral_paused.png')
         
@@ -103,6 +108,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
                 
         # Connect main command buttons
         self.menu_button.clicked.connect(self.menu_button_clicked)
+        self.extras_button.clicked.connect(self.extras_button_clicked)
         
         self.sensor_list_widget.itemClicked.connect(self.list_item_clicked)
         
@@ -313,7 +319,18 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         
         self.show_main_menu()
         
-        # Deselect list widget items so health color shows   
+        # Deselect list widget items so health color shows
+        self.deselect_all_sensor_items()
+            
+    def extras_button_clicked(self):
+        
+        self.stacked_widget.setCurrentWidget(self.extras_menu)
+        
+        # Deselect list widget items so health color shows
+        self.deselect_all_sensor_items()
+        
+    def deselect_all_sensor_items(self):
+           
         for i in range(self.sensor_list_widget.count()):
             item = self.sensor_list_widget.item(i)
             self.sensor_list_widget.setItemSelected(item, False)
