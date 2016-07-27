@@ -32,8 +32,10 @@ class ExtrasMenuWidget(QWidget):
         
         ButtonInfo = collections.namedtuple('ButtonInfo', 'text, row, column, callback, icon_name')
         
-        self.button_info = [ButtonInfo('View Session Output', 0, 0, self.view_output_clicked, 'view_output_icon'),
-                            ButtonInfo('Map', 0, 1, self.view_map_clicked, None)]
+        self.button_info = [ButtonInfo('Open Session Output', 0, 0, self.open_output_clicked, 'view_output_icon'),
+                            ButtonInfo('Map', 0, 1, self.view_map_clicked, None),
+                            ButtonInfo('View All Sensor Data', 0, 2, self.view_sensor_data_clicked, None)
+                            ]
         
         self.menu_buttons = []
         
@@ -71,7 +73,11 @@ class ExtrasMenuWidget(QWidget):
         
         print 'show map'
         
-    def view_output_clicked(self):
+    def view_sensor_data_clicked(self):
+        
+        self.main_window.show_sensor_data_table()
+        
+    def open_output_clicked(self):
         
         session_path = self.presenter.local_controller['session_path']
         if session_path is None or session_path.strip().lower() in ['none', '']:

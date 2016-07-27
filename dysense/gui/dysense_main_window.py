@@ -16,6 +16,7 @@ from dysense.gui.sensor_view_widget import SensorViewWidget
 from dysense.gui.controller_view_widget import ControllerViewWidget
 from dysense.gui.extras_menu_widget import ExtrasMenuWidget
 from dysense.gui.new_issue_popup import NewIssuePopupWindow
+from dysense.gui.data_table_widget import DataTableWidget
 
 from dysense.core.utility import pretty, make_unicode
 from dysense.core.version import app_version
@@ -93,6 +94,10 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         self.extras_menu = ExtrasMenuWidget(self.presenter, self)
         self.stacked_widget.addWidget(self.extras_menu)
         
+        # Create widget for showing all sensor data at once.
+        self.sensor_data_table = DataTableWidget()
+        self.stacked_widget.addWidget(self.sensor_data_table)
+        
         # Load icons that will be used in sensor list widget.
         self.not_setup_icon = QtGui.QIcon('../resources/sensor_status_icons/neutral_paused.png')
         
@@ -162,6 +167,9 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         
         # Now that sensor is in list widget update it's info.
         self.update_all_sensor_info(controller_id, sensor_id, sensor_info)
+        
+        # Add sensor row to widget that shows all sensor data.
+        self.sensor_data_table.add_sensor(sensor_id, sensor_info)
     
     def create_new_sensor_view(self, controller_id, sensor_id, sensor_info):
         
@@ -214,7 +222,6 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         
         # Set minimum width which since sizeHint is fixed should set the actual width.
         self.sensor_list_widget.setMinimumWidth(required_width)
-        self.sensor_list_widget.setMaximumWidth(required_width)
 
     def resizeEvent(self, event_info):
         
@@ -315,6 +322,10 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         if self.local_controller_view is not None:
             self.stacked_widget.setCurrentWidget(self.local_controller_view)
         
+    def show_sensor_data_table(self):
+        
+        self.stacked_widget.setCurrentWidget(self.sensor_data_table)
+        
     def menu_button_clicked(self):
         
         self.show_main_menu()
@@ -357,9 +368,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
             self.update_sensor_list_widget(controller_id, sensor_id)  
         
     def remove_sensor(self, controller_id, sensor_id):
-        
-        #TODO create pop up window asking if they are sure they want to remove the sensor
-        
+                
         self.show_main_menu()
         
         # remove sensor from appropriate dictionaries
@@ -367,6 +376,9 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         del self.sensor_view_stack[(controller_id, sensor_id)]
         
         self.refresh_sensor_list_widget()
+        
+        # Remove row from table that shows all sensor data.
+        self.sensor_data_table.remove_sensor(sensor_id)
     
     def show_new_sensor_data(self, controller_id, sensor_id, data):
                 
@@ -378,7 +390,9 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
                         
             sensor_view.update_data_visualization(data)
             
-    
+        # TODO support multiple controllers
+        self.sensor_data_table.refresh_sensor_data(sensor_id, data)
+            
     def append_sensor_message(self, controller_id, sensor_id, text):
 
         sensor_view = self.sensor_to_widget[(controller_id, sensor_id)]  

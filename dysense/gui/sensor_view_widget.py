@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-# TODO clean up imports
-from decimal import *
 import yaml
 
 # TODO clean up imports
@@ -11,7 +9,7 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 
 from dysense.gui.sensor_view_widget_designer import Ui_sensor_view
-from dysense.core.utility import pretty, make_unicode
+from dysense.core.utility import pretty, make_unicode, format_decimal_places, limit_decimal_places
 
 class SensorViewWidget(QWidget, Ui_sensor_view):
            
@@ -158,57 +156,7 @@ class SensorViewWidget(QWidget, Ui_sensor_view):
             
             # Connect the line edit signal
             self.line_edit.editingFinished.connect(self.setting_changed_by_user)
-    
-        '''
-        self.settings_group_box = QGroupBox()
-        self.settings_group_box.setTitle('Settings')
-        #self.settings_group_box.setAlignment(Qt.AlignHCenter)
-        self.settings_group_box.setFont(self.settings_font)
-        
-        self.settings_group_box_layout = QtGui.QGridLayout()
-        self.settings_group_box.setLayout(self.settings_group_box_layout)
-        
-        self.scroll_area = QtGui.QScrollArea()
-        self.scroll_area.setWidget(self.settings_group_box)
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.NoFrame)
-        #self.scroll_area.setFixedHeight(400)
-        
-        self.top_horizontal_layout.addWidget(self.scroll_area)
-        
-        # create name labels, line edits, and units labels for settings
-        for n, setting_metadata in enumerate(self.sensor_metadata['settings']):    
-            
-            name = setting_metadata.get('name', 'No name in metadata')
-            default_value = setting_metadata.get('default_value', 'no default')
-            units = setting_metadata.get('units', '')
-            description = setting_metadata.get('description', '')
-            
-            self.name_label = QtGui.QLabel()
-            self.units_label = QtGui.QLabel()
-            self.line_edit = QtGui.QLineEdit()
-            
-            # Set tool tips
-            self.name_label.setToolTip(description)
-            self.units_label.setToolTip(description)
-            self.line_edit.setToolTip(description)
-            
-            # Store the line edit references and corresponding name
-            obj_ref = self.line_edit
-            self.object_to_setting_name[obj_ref] = name
-            self.setting_name_to_object[name] = obj_ref
-            
-            self.settings_group_box_layout.addWidget(self.name_label, n, 0)
-            self.settings_group_box_layout.addWidget(self.line_edit, n, 1)
-            self.settings_group_box_layout.addWidget(self.units_label, n, 2)
-            
-            self.name_label.setText(pretty(name))   
-            self.line_edit.setText(make_unicode(settings[name]))
-            self.units_label.setText(pretty(units))
-            
-            # Connect the line edit signal
-            self.line_edit.editingFinished.connect(self.setting_changed_by_user)
-        '''
+
     def setup_data_visualization(self):
                 
         self.data_group_box_layout = QtGui.QHBoxLayout()
@@ -268,28 +216,23 @@ class SensorViewWidget(QWidget, Ui_sensor_view):
     def update_data_visualization(self, data):        
                  
         for n, line_edit in enumerate(self.data_line_edits):
+            
             try:
-                if isinstance(data[n], float):
-                         
-                    desired_length = self.dec_places[n] # = False if not specified
-                    
-                    current_length = abs(Decimal(data[n]).as_tuple().exponent)
-                    
-                    if desired_length: # set number of decimal places to desired length if given
-                        line_edit.setText('{:.{prec}f}'.format(data[n], prec=desired_length))
-                        
-                    elif current_length > 5: # if float has more than 5 dec places, cap it at 5
-                        line_edit.setText("{0:.5f}".format(data[n]))    
-                        
-                    else:
-                        line_edit.setText(make_unicode(data[n]))
-
-                else:
-                    line_edit.setText(make_unicode(data[n]))
-                        
+                data_value = data[n]
             except IndexError:
-                pass # not all data was provided
-                  
+                continue # not all data was provided
+            
+            if isinstance(data_value, float):
+                     
+                desired_decimal_places = self.dec_places[n]
+                
+                if desired_decimal_places == 0: # (number not specified)
+                    data_value = limit_decimal_places(data_value, 5)
+                else:
+                    data_value = format_decimal_places(data_value, desired_decimal_places)
+
+            line_edit.setText(make_unicode(data_value))
+      
     def special_command_clicked(self):
                 
         obj_ref = make_unicode(self.sender()).split()[3]    # TODO get rid of split, here and in setup_special_commands

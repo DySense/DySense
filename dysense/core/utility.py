@@ -8,6 +8,7 @@ import json
 import csv
 import bisect
 import math
+from decimal import Decimal
 
 def find_last_index(list_to_search, element):
     try:
@@ -40,6 +41,20 @@ def make_unicode(val, errors='replace'):
 def make_utf8(val):
     '''Return 'val' but as a UTF-8 encoded bytestring.''' 
     return make_unicode(val).encode('utf8')
+
+def format_decimal_places(float_value, desired_num_decimals):
+
+    return '{:.{prec}f}'.format(float_value, prec=desired_num_decimals)
+
+def limit_decimal_places(float_value, desired_num_decimals):
+    
+    actual_num_decimals = abs(Decimal(float_value).as_tuple().exponent)
+                    
+    if actual_num_decimals > desired_num_decimals: 
+        return format_decimal_places(float_value, desired_num_decimals)
+     
+    # Don't need to limit number of decimal places.               
+    return make_unicode(float_value)
 
 def validate_setting(value, setting_metadata):
     
