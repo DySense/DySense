@@ -19,7 +19,7 @@ from dysense.core.csv_log import CSVLog
 from dysense.core.controller_data_sources import *
 from dysense.core.issue import Issue
 from dysense.core.utility import format_id, json_dumps_unicode, utf_8_encoder, make_unicode, make_utf8
-from dysense.core.version import app_version
+from dysense.core.version import app_version, output_version
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
 
@@ -1116,6 +1116,7 @@ class SensorController(object):
             writer.writerow(utf_8_encoder(['end_sys_time', self.last_sys_time_update]))
             
             writer.writerow(utf_8_encoder(['app_version', app_version]))
+            writer.writerow(utf_8_encoder(['output_version', output_version]))
             
             for key, value in sorted(self.settings.items()):
                 writer.writerow(utf_8_encoder([key, value]))

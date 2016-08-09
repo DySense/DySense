@@ -2,7 +2,9 @@
 
 # All versions follow the <major>.<minor>.<patch> scheme with Semantic Versioning.
 
-app_version = '1.0.0'
+app_version = '1.0.0' # Version for entire application
+
+output_version = '1.0.0' # Version for session output structure / data.
 
 # Protocol versions
 m2c_version = '1.0.0' # Manager-Controller protocol
