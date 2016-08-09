@@ -37,7 +37,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
    
         # Set logo
         main_logo = QtGui.QPixmap('../resources/horizontal_logo.png')
-        main_logo = main_logo.scaled(140,40)      
+        main_logo = main_logo.scaled(130,40)      
         self.logo_label.setPixmap(main_logo)
         
         # Maintains list widget background and text color when focus is lost
@@ -105,7 +105,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         # example {'neutral': neutral_icon}
         self.sensor_status_icons = {}
         resources_directory = '../resources/sensor_status_icons'
-        sensor_icon_file_names = ['not_setup', 'neutral', 'good', 'bad',
+        sensor_icon_file_names = ['not_setup', 'bad_not_setup', 'neutral', 'good', 'bad',
                                    'neutral_paused', 'good_paused', 'bad_paused']
         for file_name in sensor_icon_file_names:
             status_icon = QtGui.QIcon(os.path.join(resources_directory, file_name + '.png'))
@@ -269,7 +269,10 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
     def get_sensor_status_icon(self, sensor_health, is_paused, connection_state):
         
         if connection_state == 'closed' or sensor_health == 'N/A':
-            icon_name = 'not_setup'
+            if sensor_health == 'bad':
+                icon_name = 'bad_not_setup'
+            else:
+                icon_name = 'not_setup'
         else:
             icon_name = sensor_health            
             if is_paused:
