@@ -13,11 +13,12 @@ from dysense.core.utility import make_unicode, open_directory_in_viewer
 
 class ExtrasMenuWidget(QWidget):
     
-    def __init__(self, presenter, main_window, *args):
+    def __init__(self, presenter, main_window, sensor_data_table, *args):
         QWidget.__init__(self, *args)
         
         self.presenter = presenter
         self.main_window = main_window
+        self.sensor_data_table = sensor_data_table
 
         self.setup_ui()
         
@@ -26,15 +27,17 @@ class ExtrasMenuWidget(QWidget):
         self.widget_font = QtGui.QFont()
         self.widget_font.setPointSize(14)
         
-        self.central_layout = QGridLayout(self)
+        self.central_layout = QVBoxLayout(self)
+        
+        self.icon_layout = QHBoxLayout()
         
         self.load_button_icons()
         
         ButtonInfo = collections.namedtuple('ButtonInfo', 'text, row, column, callback, icon_name')
         
-        self.button_info = [ButtonInfo('Open Session Output', 0, 0, self.open_output_clicked, 'view_output_icon'),
-                            ButtonInfo('Map', 0, 1, self.view_map_clicked, None),
-                            ButtonInfo('View All Sensor Data', 0, 2, self.view_sensor_data_clicked, None)
+        self.button_info = [ButtonInfo('Session Output', 0, 0, self.open_output_clicked, 'open_output_icon'),
+                            ButtonInfo('Map', 0, 1, self.view_map_clicked, 'map_icon'),
+                            ButtonInfo('Sensor Data', 0, 2, self.view_sensor_data_clicked, 'view_sensor_data_icon')
                             ]
         
         self.menu_buttons = []
@@ -48,18 +51,39 @@ class ExtrasMenuWidget(QWidget):
                 menu_button.setIcon(icon)
                 menu_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
             menu_button.clicked.connect(info.callback)
-            menu_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            menu_button.setMaximumSize(500, 500)
+            menu_button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+            menu_button.setAutoRaise(True)
+            #menu_button.setMaximumSize(500, 500)
             
             self.menu_buttons.append(menu_button)
         
-            self.central_layout.addWidget(menu_button, info.row, info.column)
+            self.icon_layout.addWidget(menu_button)
+            # KLM - this is for grid layout - switch to horizontal layout
+            #self.icon_layout.addWidget(menu_button, info.row, info.column)
+        
+        ## SETUP STACKED WIDGET
+        
+        self.stacked_widget = QtGui.QStackedWidget()
+        self.stacked_widget.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding))
+        
+        self.stacked_widget.addWidget(self.sensor_data_table)
+        
+        ## ADD WIDGETS / LAYOUTS TO CENTRAL WIDGET
+        
+        self.central_layout.addLayout(self.icon_layout)
+        self.central_layout.addWidget(self.stacked_widget)
+
+    def show_stacked_widget(self, widget_ref):
+        
+        self.stacked_widget.setCurrentWidget(widget_ref)
 
     def load_button_icons(self):
         
         resources_directory = '../resources/command_icons'
         icon_extension = '.png'
-        self.icon_names =  ['view_output_icon']
+        self.icon_names =  ['view_sensor_data_icon',
+                            'map_icon',
+                            'open_output_icon']
         
         self.icon_name_to_icon = {}
         
@@ -75,7 +99,7 @@ class ExtrasMenuWidget(QWidget):
         
     def view_sensor_data_clicked(self):
         
-        self.main_window.show_sensor_data_table()
+        self.show_stacked_widget(self.sensor_data_table)
         
     def open_output_clicked(self):
         
@@ -84,6 +108,29 @@ class ExtrasMenuWidget(QWidget):
             self.main_window.show_user_message('Need to start a session first.', logging.INFO)
             return
         open_directory_in_viewer(session_path)
+        
+    def resizeEvent(self, event_info):
+        
+        self.resize_icons()
+    
+    def resize_icons(self):
+        
+        new_width = self.width()
+        new_height = self.height()
+        
+        max_height = new_height * .18
+        max_width = (new_width) / len(self.button_info)
+        
+        min_button_dimension = min(max_height, max_width)
+        
+        new_icon_width, new_icon_height = self.icon_size_for_button_size(min_button_dimension, self.menu_buttons[0].font())
+        
+        # Keep a square
+        new_icon_dimension = min(new_icon_height, new_icon_width)
+        
+        for menu_button in self.menu_buttons:
+
+            menu_button.setIconSize(QSize(new_icon_dimension, new_icon_dimension))
         
     def icon_size_for_button_size(self, min_button_dimension, font):
             
@@ -94,41 +141,3 @@ class ExtrasMenuWidget(QWidget):
         icon_height = min_button_dimension - text_height
 
         return icon_width, icon_height
-    
-    def resizeEvent(self, event_info):
-        
-        for menu_button in self.menu_buttons:
-            
-            min_button_dimension = min(menu_button.width(), menu_button.height())
-            
-            width, height = self.icon_size_for_button_size(min_button_dimension, menu_button.font())
-            
-            min_icon_dimension = min(width, height)
-            
-            menu_button.setIconSize(QSize(min_button_dimension, min_icon_dimension))
-    
-    def resize_menu_icons(self):
-        
-        new_width = self.width() * .33
-        new_height = self.height() * .5
-        
-        max_height = (new_height) / 4
-        max_width = (new_width) / 3
-        
-        min_button_dimension = min(max_height, max_width)
-        
-        new_icon_width, new_icon_height = self.icon_size_for_button_size(min_button_dimension, self.command_buttons[0].font())
-        
-        # Keep a square
-        new_icon_dimension = min(new_icon_height, new_icon_width)
-        
-        for command_button in self.command_buttons:
-            
-            #if new_icon_dimension < 30:
-            #    command_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
-            #else:
-            #    command_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
-            
-            command_button.setIconSize(QSize(new_icon_dimension, new_icon_dimension))
-        
-  

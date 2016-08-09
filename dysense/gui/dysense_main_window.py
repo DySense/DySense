@@ -90,13 +90,13 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         # View associated with local controller. 
         self.local_controller_view = None
         
-        # Create menu that includes extra functionality.
-        self.extras_menu = ExtrasMenuWidget(self.presenter, self)
-        self.stacked_widget.addWidget(self.extras_menu)
-        
         # Create widget for showing all sensor data at once.
+        # This is shown by extras menu, but updated by this main window class.
         self.sensor_data_table = DataTableWidget()
-        self.stacked_widget.addWidget(self.sensor_data_table)
+        
+        # Create menu that includes extra functionality.
+        self.extras_menu = ExtrasMenuWidget(self.presenter, self, self.sensor_data_table)
+        self.stacked_widget.addWidget(self.extras_menu)
         
         # Load icons that will be used in sensor list widget.
         self.not_setup_icon = QtGui.QIcon('../resources/sensor_status_icons/neutral_paused.png')
@@ -322,10 +322,6 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         if self.local_controller_view is not None:
             self.stacked_widget.setCurrentWidget(self.local_controller_view)
         
-    def show_sensor_data_table(self):
-        
-        self.stacked_widget.setCurrentWidget(self.sensor_data_table)
-        
     def menu_button_clicked(self):
         
         self.show_main_menu()
@@ -339,6 +335,11 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         
         # Deselect list widget items so health color shows
         self.deselect_all_sensor_items()
+        
+    def show_live_sensor_data(self):
+        
+        self.extras_button_clicked()
+        self.extras_menu.view_sensor_data_clicked()
         
     def deselect_all_sensor_items(self):
            

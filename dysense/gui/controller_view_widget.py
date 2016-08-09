@@ -71,7 +71,7 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
         self.issues_button.clicked.connect(self.issues_button_clicked)
         self.settings_button.clicked.connect(self.settings_button_clicked)
         self.add_controller_button.clicked.connect(self.add_controller_button_clicked)
-        self.view_output_button.clicked.connect(self.view_output_button_clicked)
+        self.view_sensor_data_button.clicked.connect(self.view_sensor_data_button_clicked)
         self.help_button.clicked.connect(self.help_button_clicked)
         
     #-----------------------------------
@@ -190,12 +190,9 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
     def add_controller_button_clicked(self):
         pass
     
-    def view_output_button_clicked(self):
-        session_path = self.presenter.local_controller['session_path']
-        if session_path is None or session_path.strip().lower() in ['none', '']:
-            self.main_window.show_user_message('Need to start a session first.', logging.INFO)
-            return
-        open_directory_in_viewer(session_path)
+    def view_sensor_data_button_clicked(self):
+        
+        self.main_window.show_live_sensor_data()
     
     def help_button_clicked(self):
         self.show_stacked_widget(self.help_widget)
@@ -332,7 +329,7 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
                                     'issues_icon.png' : self.issues_button,
                                     'settings_icon.png' : self.settings_button,
                                     'add_controller_icon.png' : self.add_controller_button,
-                                    'view_output_icon.png' : self.view_output_button,
+                                    'view_sensor_data_icon.png' : self.view_sensor_data_button,
                                     'help_icon.png' : self.help_button,
                                     }
         
