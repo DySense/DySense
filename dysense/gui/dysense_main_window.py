@@ -36,9 +36,10 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         self.sensor_metadata = sensor_metadata
    
         # Set logo
-        main_logo = QtGui.QPixmap('../resources/horizontal_logo.png')
-        main_logo = main_logo.scaled(130,40)      
-        self.logo_label.setPixmap(main_logo)
+        #main_logo = QtGui.QPixmap('../resources/horizontal_logo.png')
+        #main_logo = main_logo.scaled(130,40)      
+        #self.logo_label.setPixmap(main_logo)
+        self.logo_label.setText('')
         
         # Maintains list widget background and text color when focus is lost
         self.setStyleSheet( """QListWidget:item:selected:!disabled 
@@ -213,7 +214,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         # Adjust widget to account for width of new text.
         min_list_width = 150
         max_list_width = self.width() * 0.25
-        required_width = self.sensor_list_widget.sizeHintForColumn(0) + 2 * self.sensor_list_widget.frameWidth()
+        required_width = self.sensor_list_widget.sizeHintForColumn(0) + 2 * self.sensor_list_widget.frameWidth() + 10
         required_width = max(required_width, min_list_width)
         required_width = min(required_width, max_list_width)
         #required_height = self.sensor_list_widget.sizeHintForRow(0) * self.sensor_list_widget.count()
