@@ -144,6 +144,11 @@ class GUIPresenter(QObject):
             self.handle_error_message("Config file '{}' does not exist.".format(file_path), logging.ERROR)
             return
         
+        # TODO update for multiple controllers
+        if self.local_controller['session_active']:
+            self.invalid_command_during_session('load config')
+            return
+        
         # TODO remove other controllers (and their sensors?) once that's all supported
         self.remove_all_sensors(only_on_active_controller=True)
         
@@ -169,6 +174,11 @@ class GUIPresenter(QObject):
         # Request that all saved sensors get added to the active controller (which right now is the only allowed controller)
         for saved_sensor_info in data.get('sensors', []):
             self.add_sensor(saved_sensor_info)
+            
+    def invalid_command_during_session(self, command_description):
+        
+        error_message = 'Cannot {} while session is active.'.format(command_description)
+        self.handle_error_message(error_message, logging.ERROR)
         
     def new_sensor_selected(self, controller_id, sensor_id):
         

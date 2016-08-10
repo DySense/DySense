@@ -170,7 +170,7 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
         self.add_sensor_dialog.show()
     
     def remove_sensors_button_clicked(self):
-        pass
+        self.main_window.show_user_message('Select sensor in list and then press Remove button.', logging.INFO)
     
     def select_sources_button_clicked(self):
 
@@ -188,7 +188,7 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
         self.show_stacked_widget(self.settings_widget)
     
     def add_controller_button_clicked(self):
-        pass
+        self.main_window.show_user_message('Feature not supported in this release.', logging.INFO)
     
     def view_sensor_data_button_clicked(self):
         
