@@ -207,9 +207,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
             self.update_sensor_list_widget(controller_id, sensor_id)
         for controller_id in self.controller_to_list_row:
             self.update_controller_in_sensor_list_widget(controller_id)
-            
-        self.adjust_sensor_list_size()
-        
+
     def adjust_sensor_list_size(self):
         
         # Adjust widget to account for width of new text.
@@ -220,11 +218,12 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         required_width = min(required_width, max_list_width)
         #required_height = self.sensor_list_widget.sizeHintForRow(0) * self.sensor_list_widget.count()
         
-        # Set minimum width which since sizeHint is fixed should set the actual width.
+        # Set both max and min to fix width since we don't want it to change when items change, only when this method is called.
         self.sensor_list_widget.setMinimumWidth(required_width)
+        self.sensor_list_widget.setMaximumWidth(required_width)
 
     def resizeEvent(self, event_info):
-        
+
         self.adjust_sensor_list_size()
             
     def recalculate_list_widget_ordering(self):
@@ -292,6 +291,11 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         pass
         
     def list_item_clicked(self, item):
+
+        # Make sure widget is a good size here instead of when items are changed because 
+        # if resize this widget then other buttons can (probably will) move around which is annoying
+        # if you're trying to click on another button.  Doing this here makes that less annoying.
+        self.adjust_sensor_list_size()
                 
         #item name = text of item in display list, which is the same as the sensor name
         row_idx = self.sensor_list_widget.currentRow()
