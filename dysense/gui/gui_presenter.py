@@ -55,7 +55,7 @@ class GUIPresenter(QObject):
                                   'new_sensor_data': self.handle_new_sensor_data,
                                   'new_sensor_text': self.handle_new_sensor_text,
                                   'entire_controller_update': self.handle_entire_controller_update,
-                                  'controller_issue_event': self.handle_controller_issue_event,
+                                  'controller_event': self.handle_controller_event,
                                   'controller_removed': self.handle_controller_removed,
                                   'error_message': self.handle_error_message,
                                   'new_controller_text': self.handle_new_controller_text,
@@ -370,15 +370,25 @@ class GUIPresenter(QObject):
                     
         self.view.update_all_controller_info(controller_info['id'], controller_info)
 
-    def handle_controller_issue_event(self, controller_id, event_type, issue_info):
+    def handle_controller_event(self, controller_id, event_type, event_args):
+        
+        if event_type == 'session_started':
+            pass 
+        
+        if event_type == 'session_ended':
+            # Clear notes on screen since they would have been cleared in sensor controller.
+            self.view.clear_session_notes(controller_id)
         
         if event_type == 'new_active_issue':
+            issue_info = event_args
             self.current_issues.append(Issue(**issue_info))
             # TODO support multiple controllers
             if self.local_controller['session_active']:
                 self.view.notify_new_issue(issue_info)
+            self.view.refresh_current_issues(self.current_issues)
         
         if event_type == 'issue_resolved':
+            issue_info = event_args
             for issue in self.current_issues[:]:
                 if not issue.resolved and issue.matches(issue_info):
                     issue.resolved = True
@@ -387,14 +397,15 @@ class GUIPresenter(QObject):
                     if issue.acked:
                         self.current_issues.remove(issue)
                         self.old_issues.append(issue)
+            self.view.refresh_current_issues(self.current_issues)
                     
         if event_type == 'issue_changed':
+            issue_info = event_args
             for issue in self.current_issues:
                 if not issue.resolved and issue.matches(issue_info):
                     issue.level = issue_info['level']
                     issue.reason = issue_info['reason']
-        
-        self.view.refresh_current_issues(self.current_issues)
+            self.view.refresh_current_issues(self.current_issues)
         
     def handle_controller_removed(self, controller_id):
         self.view.remove_sensor(controller_id)

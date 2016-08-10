@@ -166,8 +166,17 @@ class SensorController(object):
         return self._session_active
     @session_active.setter
     def session_active(self, new_value):
+        
+        if new_value == self._session_active:
+            return # value not changed
+        
         self._session_active = new_value
         self.send_entire_controller_info()
+        
+        if new_value == True:
+            self.send_session_event('session_started')
+        else:
+            self.send_session_event('session_ended')
         
     @property
     def session_name(self):
@@ -447,7 +456,11 @@ class SensorController(object):
         
     def send_controller_issue_event(self, event_type, issue):
     
-        self._send_manager_message('all', 'controller_issue_event', (event_type, issue.public_info))
+        self._send_manager_message('all', 'controller_event', (event_type, issue.public_info))
+        
+    def send_session_event(self, event_type, event_args=None):
+    
+        self._send_manager_message('all', 'controller_event', (event_type, event_args))
         
     def send_entire_sensor_info(self, manager_id, sensor):
     

@@ -235,6 +235,9 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
     def refresh_current_issues(self, current_issues):
         
         self.issues_widget.refresh_current_issues(current_issues)
+        
+    def clear_session_notes(self):
+        self.session_notes = ""
       
     #-----------------------------------
     # Widget Methods
