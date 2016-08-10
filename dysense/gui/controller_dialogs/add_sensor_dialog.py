@@ -33,6 +33,8 @@ class AddSensorDialog(QDialog):
         self.name_label = QLabel('Name:')
         self.id_label = QLabel('ID:')
         self.heads_up_label = QLabel('(name cannot be changed once set)')
+        self.heads_up_label.setAlignment(Qt.AlignCenter)
+        self.heads_up_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
         self.type_label.setFont(self.dialog_font)
         self.name_label.setFont(self.dialog_font)
@@ -43,21 +45,21 @@ class AddSensorDialog(QDialog):
         self.sensor_type_combo_box.addItems(possible_sensor_types)
         self.sensor_type_combo_box.currentIndexChanged.connect(self.sensor_type_selected)
         self.sensor_type_combo_box.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.sensor_type_combo_box.setMaxVisibleItems(20)
         
         self.sensor_name_line_edit = QLineEdit()
         self.sensor_name_line_edit.setFont(self.dialog_font)
         self.sensor_name_line_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
-        self.sensor_id_type_line_edit = QLineEdit()
-        self.sensor_id_type_line_edit.setFont(self.dialog_font)
-        self.sensor_id_type_line_edit.setReadOnly(True)
-        #self.sensor_id_type_line_edit.setMinimumWidth(60)
-        self.sensor_id_type_line_edit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.sensor_id_type_label = QLabel()
+        self.sensor_id_type_label.setFont(self.dialog_font)
+        #self.sensor_id_type_label.setMinimumWidth(60)
+        self.sensor_id_type_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.sensor_id_tag_line_edit = QLineEdit()
         self.sensor_id_tag_line_edit.setFont(self.dialog_font)
         self.sensor_id_tag_line_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.sensor_id_layout = QHBoxLayout()
-        self.sensor_id_layout.addWidget(self.sensor_id_type_line_edit)
+        self.sensor_id_layout.addWidget(self.sensor_id_type_label)
         self.sensor_id_layout.addWidget(self.sensor_id_tag_line_edit)
         
         self.add_button = QPushButton("Add")
@@ -76,7 +78,7 @@ class AddSensorDialog(QDialog):
         self.central_layout.addWidget(self.sensor_name_line_edit, 1, 1)
         self.central_layout.addWidget(self.id_label, 2, 0)
         self.central_layout.addLayout(self.sensor_id_layout, 2, 1, 1, 1)
-        self.central_layout.addWidget(self.heads_up_label, 3, 1)
+        self.central_layout.addWidget(self.heads_up_label, 3, 0, 1, 3)
         self.central_layout.addLayout(self.button_layout, 4, 0, 1, 2)
         
         self.sensor_type_selected()
@@ -86,7 +88,7 @@ class AddSensorDialog(QDialog):
         self.sensor_name_line_edit.setFocus()
         try:
             sensor_id_type = self.possible_sensor_id_types[self.sensor_type_combo_box.currentIndex()]
-            self.sensor_id_type_line_edit.setText(make_unicode(sensor_id_type))
+            self.sensor_id_type_label.setText('{} - '.format(make_unicode(sensor_id_type)))
         except IndexError:
             pass
 
@@ -94,7 +96,7 @@ class AddSensorDialog(QDialog):
 
         new_sensor_info =  {'sensor_type': self.sensor_type_combo_box.currentText().strip(), 
                             'sensor_id': self.sensor_name_line_edit.text().strip(),
-                            'instrument_type': self.sensor_id_type_line_edit.text().strip(),
+                            'instrument_type': self.sensor_id_type_label.text().strip(),
                             'instrument_tag': self.sensor_id_tag_line_edit.text().strip()}
         
         self.presenter.add_sensor(new_sensor_info)
