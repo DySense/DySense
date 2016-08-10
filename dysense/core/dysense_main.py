@@ -15,7 +15,7 @@ import sip
 sip.setapi('QString', 2)
 sip.setapi('QVariant', 2)
 
-from PyQt4 import QtGui
+from PyQt4 import QtGui, Qt
 
 from dysense.gui.dysense_main_window import DysenseMainWindow
 from dysense.gui.gui_presenter import GUIPresenter
@@ -69,8 +69,17 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     gui_presenter.receive_messages()
     
     try:
-        #main_window.showMaximized()
-        main_window.show()
+
+        # Set main window size based off screen size.  If screen size is small then maximize window from start.
+        screen_rect = QtGui.QDesktopWidget().availableGeometry(main_window)
+        if screen_rect.width() <= 800 or screen_rect.height() <= 600:
+            main_window.showMaximized()
+        else:
+            desired_width = max(screen_rect.width() * 0.75, main_window.width())
+            desired_height = max(screen_rect.height() * 0.75, main_window.height())
+            main_window.resize(Qt.QSize(desired_width, desired_height))
+            main_window.show()
+
         app.exec_()
     
         # TODO intercept window closing event and if there are any non-closed sensors
