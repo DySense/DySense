@@ -7,6 +7,7 @@ import yaml
 from PyQt4.QtGui import *
 from PyQt4 import QtGui
 from PyQt4 import QtCore
+from PyQt4.Qt import Qt
 
 from dysense.gui.sensor_view_widget_designer import Ui_sensor_view
 from dysense.core.utility import pretty, make_unicode, format_decimal_places, limit_decimal_places
@@ -172,7 +173,8 @@ class SensorViewWidget(QWidget, Ui_sensor_view):
             self.dec_places[n] = decimal_places   
      
             self.name_label = QtGui.QLabel()
-            self.name_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            self.name_label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+            self.name_label.setAlignment(Qt.AlignRight)
             self.line_edit = QtGui.QLineEdit()
             self.line_edit.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
             self.line_edit.setReadOnly(True)
