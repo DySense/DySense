@@ -10,7 +10,6 @@ import datetime
 import sys
 import logging
 import yaml
-from logging import getLogger
 import csv
 
 from dysense.core.sensor_connection import SensorConnection
@@ -230,29 +229,32 @@ class SensorController(object):
         
         # Use home directory for root output directory. This is platform independent and works well with an installed package.
         home_directory = os.path.expanduser('~')
-        output_directory = os.path.join(home_directory, 'dysense_logs/')
+        output_directory = os.path.join(home_directory, 'dysense_debug_logs/')
         if not os.path.exists(output_directory):
             os.makedirs(output_directory)
         
         # Create logger to write out to a file.
         log = logging.getLogger("dysense")
+        log.setLevel(logging.DEBUG)
+        #handler = logging.StreamHandler(sys.stdout)
         handler = logging.FileHandler(os.path.join(output_directory, time.strftime("%Y-%m-%d_%H-%M-%S_dysense_log.log")))
-        handler.setLevel(logging.INFO)
+        handler.setLevel(logging.DEBUG)
         handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
         log.addHandler(handler)
-        
+
     def setup_session_logging(self, output_directory):
 
         # Create logger to write out to a file.
         log = logging.getLogger("session")
+        log.setLevel(logging.DEBUG)
         handler = logging.FileHandler(os.path.join(output_directory, time.strftime("session_log.log")))
-        handler.setLevel(logging.INFO)
+        handler.setLevel(logging.DEBUG)
         handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
         log.addHandler(handler)
     
     def close_session_logging(self):
         
-        session_log = getLogger('session')
+        session_log = logging.getLogger('session')
         handlers = session_log.handlers[:]
         for handler in handlers:
             handler.close()
@@ -263,16 +265,17 @@ class SensorController(object):
         # Sanity check that message is unicode like it should be.
         msg = make_unicode(msg)
         
-        getLogger('dysense').log(level, msg)
+        logging.getLogger('dysense').log(level, msg)
         
         if self.session_active:
-            getLogger('session').log(level, msg)
+            logging.getLogger('session').log(level, msg)
         
         if manager is not None and level >= logging.ERROR:
             self._send_manager_message(manager.router_id, 'error_message', (msg, level))
             
-        self.text_messages.append(msg)
-        self._send_manager_message('all', 'new_controller_text', msg)
+        if level >= logging.INFO:
+            self.text_messages.append(msg)
+            self._send_manager_message('all', 'new_controller_text', msg)
         
     def run(self):
         # TODO - report unhandled exceptions http://stackoverflow.com/questions/22581496/error-in-pyqt-qthread-not-printed
@@ -472,6 +475,8 @@ class SensorController(object):
         
         for sensor in self.sensors:
             self.send_entire_sensor_info(manager.router_id, sensor)
+            
+        self.log_message('Connected to manager.', logging.DEBUG)
         
     def handle_add_sensor(self, manager, sensor_info):
         '''Validate that sensor name is unique and adds to list of sensors.'''
@@ -532,7 +537,7 @@ class SensorController(object):
         for setting_name, setting_value in new_sensor.settings.items():
             new_sensor.update_setting(setting_name, setting_value)
         
-        self.log_message("Added new {} sensor.".format(sensor_type))
+        self.log_message("Added new sensor {} ({}).".format(sensor_name, sensor_type), logging.DEBUG)
 
     def handle_remove_sensor(self, manager, sensor_id):
         '''Search through sensors and remove one that has matching id.'''
@@ -551,7 +556,7 @@ class SensorController(object):
             self.sensors.remove(sensor)
             self._send_manager_message('all', 'sensor_removed', sensor.sensor_id)
             
-            self.log_message("Removed {}".format(sensor.sensor_id))
+            self.log_message("Removed sensor {} ({})".format(sensor.sensor_id, sensor.sensor_type), logging.DEBUG)
             
             # Remove any data sources that match up with the removed sensor.
             if self.time_source and self.time_source.matches(sensor.sensor_id, self.controller_id):
@@ -834,6 +839,7 @@ class SensorController(object):
         elif command_name == 'pause_session':
             if self.session_active:
                 self.session_state = 'paused'
+                self.log_message('Session paused.', logging.INFO)
                 
             # Set flag so if session is (or will be) suspended that session won't automatically resume when issues are resolved.
             self.session_pause_on_resume = True
@@ -899,6 +905,7 @@ class SensorController(object):
             
             if self.session_state == 'paused':
                 self.session_state = 'started'
+                self.log_message('Session resumed.', logging.INFO)
             
             # Already have a session started, so make sure all sensors are un-paused.
             for sensor in self.sensors:

@@ -23,8 +23,6 @@ class GUIPresenter(QObject):
         
         super(GUIPresenter, self).__init__()
         
-        self.setup_logging()
-        
         self.context = context
         self.manager = manager
         self.sensor_metadata = metadata['sensors']
@@ -67,26 +65,6 @@ class GUIPresenter(QObject):
     def setup_view(self, view):
         
         self.view = view
-        
-    def setup_logging(self):
-      
-        # Use home directory for root output directory. This is platform independent and works well with an installed package.
-        home_directory = os.path.expanduser('~')
-        output_directory = os.path.join(home_directory, 'dysense_logs/')
-        if not os.path.exists(output_directory):
-            os.makedirs(output_directory)
-        
-        # Create logger at lowest level since each handler will define its own level which will further filter.
-        log = logging.getLogger("ui")
-        log.setLevel(logging.DEBUG)
-        
-        # Add handler to record information to a log file.
-        handler = logging.FileHandler(os.path.join(output_directory, time.strftime("%Y-%m-%d_%H-%M-%S_ui_log.log")))
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
-        log.addHandler(handler)
-     
-        log.info('DySense Version {}'.format(app_version))
         
     def try_save_config(self, file_path):
         try:
@@ -424,9 +402,7 @@ class GUIPresenter(QObject):
         
         if level < logging.ERROR:
             return # don't care about this level
-        
-        logging.getLogger("ui").log(level, message)
-        
+
         self.view.show_user_message(message, level)
     
     def handle_new_controller_text(self, controller, text):
