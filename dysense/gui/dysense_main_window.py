@@ -34,12 +34,6 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         
         self.presenter = presenter
         self.sensor_metadata = sensor_metadata
-   
-        # Set logo
-        #main_logo = QtGui.QPixmap('../resources/horizontal_logo.png')
-        #main_logo = main_logo.scaled(130,40)      
-        #self.logo_label.setPixmap(main_logo)
-        self.logo_label.setText('')
         
         # Maintains list widget background and text color when focus is lost
         self.setStyleSheet( """QListWidget:item:selected:!disabled 
