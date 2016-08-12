@@ -366,9 +366,23 @@ class SensorViewWidget(QWidget, Ui_sensor_view):
         self.presenter.pause_sensor() 
         
     def close_sensor_button_clicked(self):
+        
+        # TODO - update for multiple controllers - actually use controller that sensor is on.
+        if self.presenter.local_controller['session_active']:
+            question = "A session is active. Are you sure you want to close this sensor?"
+            reply = QtGui.QMessageBox.question(self, 'Message',  question, QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+            if reply != QtGui.QMessageBox.Yes:
+                return
+        
         self.presenter.close_sensor()         
             
     def remove_sensor_button_clicked(self):    
+        
+        question = "Are you sure you want to remove this sensor?"
+        reply = QtGui.QMessageBox.question(self, 'Message',  question, QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+        if reply != QtGui.QMessageBox.Yes:
+            return
+        
         self.presenter.remove_sensor(self.sensor_id)    
 
             
