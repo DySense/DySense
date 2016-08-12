@@ -267,8 +267,9 @@ class SensorController(object):
         
         logging.getLogger('dysense').log(level, msg)
         
-        if self.session_active:
-            logging.getLogger('session').log(level, msg)
+        session_log = logging.getLogger('session')
+        if len(session_log.handlers) > 0:
+            session_log.log(level, msg)
         
         if manager is not None and level >= logging.ERROR:
             self._send_manager_message(manager.router_id, 'error_message', (msg, level))
