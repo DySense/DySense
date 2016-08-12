@@ -317,7 +317,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         
         self.stacked_widget.setCurrentIndex(self.controller_view_stack[controller_id])
         
-        self.presenter.active_controller = controller_id
+        self.presenter.active_controller_id = controller_id
         
     def show_main_menu(self):
         
@@ -449,3 +449,8 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
     def clear_session_notes(self, controller_id):
         # TODO support multiple controllers
         self.local_controller_view.clear_session_notes()
+        
+    def confirm_question(self, question, title='Question'):
+        
+        reply = QtGui.QMessageBox.question(self, title, question, QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+        return reply == QtGui.QMessageBox.Yes

@@ -199,6 +199,13 @@ class GUIPresenter(QObject):
             # TODO update for multiple controllers
             return self.controllers.values()[0]
         except IndexError:
+            return None
+        
+    @property
+    def active_controller(self):
+        try:
+            return self.controllers[self.active_controller_id]
+        except IndexError:
             return None 
 
     def change_controller_info(self, info_name, info_value):
@@ -286,6 +293,19 @@ class GUIPresenter(QObject):
         self.view.refresh_current_issues(self.current_issues)
         
     def send_controller_command(self, command_name, command_args=None, send_to_all_controllers=False):
+        
+        # TODO support multiple controllers - check through all sensors if send_to_all_controllers is true 
+        if command_name == 'start_session' and not self.active_controller['session_active']:
+            # Starting a session for the first time so warn if there are any issues.
+            num_active_issues = len(self.active_controller['active_issues'])
+            if num_active_issues > 0:
+                if num_active_issues == 1:
+                    question_start = "There is 1 unresolved issue"
+                else:
+                    question_start = "There are {} unresolved issues".format(len(self.active_controller['active_issues']))
+
+                if not self.view.confirm_question(question_start + ". Do you want to start session anyways?"):
+                    return
         
         if send_to_all_controllers:
             self._send_message_to_all_controllers('controller_command', (command_name, command_args))
