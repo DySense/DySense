@@ -356,7 +356,7 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
         # Create widgets to go in stacked widget.
         self.settings_widget = ControllerSettingsWidget(presenter, controller_info)
         self.messages_widget = ControllerMessagesWidget()
-        self.issues_widget = ControllerIssuesWidget()
+        self.issues_widget = ControllerIssuesWidget(presenter)
         self.help_widget = ControllerHelpWidget()
 
         # Associate widgets with titles.

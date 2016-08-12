@@ -342,6 +342,7 @@ class SensorController(object):
                         self.active_issues.remove(issue)
                         self.resolved_issues.append(issue)
                         self.send_controller_issue_event('issue_resolved', issue)
+                        self.send_entire_controller_info()
 
                 # TODO make this more efficient when receiving sources were not constantly trying to resolve issues that don't exist.
                 if self.session_active:
@@ -1248,13 +1249,16 @@ class SensorController(object):
             if reason != existing_issue.reason:
                 existing_issue.reason = reason
                 self.send_controller_issue_event('issue_changed', existing_issue)
+                self.send_entire_controller_info()
             if level != existing_issue.level:
                 existing_issue.level = level
                 self.send_controller_issue_event('issue_changed', existing_issue)
+                self.send_entire_controller_info()
         else:
             new_issue = Issue(**issue_info)
             self.active_issues.append(new_issue)
             self.send_controller_issue_event('new_active_issue', new_issue)
+            self.send_entire_controller_info()
     
     def try_resolve_issue(self, sub_id, issue_type):
         
