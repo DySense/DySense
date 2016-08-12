@@ -20,6 +20,11 @@ class DataTableWidget(QWidget):
         self.row_index_to_sensor_id = {}
         self.sensor_id_to_row_index = {}
         
+        # Track which sensors IDs have shown data in table.
+        # key - sensor_id 
+        # value - true if have already shown data in table for this sensor.
+        self.sensor_id_to_data_status = {}
+        
     def setup_ui(self):
         
         self.button_font = QtGui.QFont()
@@ -37,7 +42,12 @@ class DataTableWidget(QWidget):
         self.data_table.cellClicked.connect(self.cell_clicked)
         self.data_table.cellDoubleClicked.connect(self.cell_double_clicked)
         
+        self.hint_label = QLabel('Hint: Click a row to auto-update column sizes and header names')
+        self.hint_label.setFont(QFont('label_font', pointSize=14))
+        self.hint_label.setAlignment(Qt.AlignCenter)
+        
         self.central_layout.addWidget(self.data_table)
+        self.central_layout.addWidget(self.hint_label)
         
     def refresh_table(self):
         
@@ -92,13 +102,21 @@ class DataTableWidget(QWidget):
             # Default to showing column headers for first sensor
             if row_idx == 0:
                 column_headers = self.get_all_column_headers(info)
-                self.data_table.setHorizontalHeaderLabels(column_headers)
+                self.data_table.setHorizontalHeaderLabels(column_headers)  
+
+        self.data_table.resizeColumnsToContents()
+        # If set to stretch then user can't resize columns.
+        #self.data_table.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+        #self.data_table.horizontalHeader().setStretchLastSection(True)
         
     def add_sensor(self, sensor_id, sensor_info):
         
         data_info = sensor_info['metadata']['data']
         
         self.sensor_id_to_data_info[sensor_id] = data_info
+        
+        # Indicate that haven't shown data for this sensor yet.
+        self.sensor_id_to_data_status[sensor_id] = False
         
         self.refresh_table()
     
@@ -117,6 +135,8 @@ class DataTableWidget(QWidget):
         column_headers = self.get_all_column_headers(data_info)
         
         self.data_table.setHorizontalHeaderLabels(column_headers)
+        
+        self.data_table.resizeColumnsToContents()
         
     def cell_double_clicked(self, row_idx, col_idx):
         # Treat this as a single click since user shouldn't be able to edit the cell contents.
@@ -173,9 +193,10 @@ class DataTableWidget(QWidget):
                     data_value = limit_decimal_places(data_value, 5)
 
             table_item.setText(make_unicode(data_value))
-
-                
-        # If set to stretch then user can't resize columns.
-        #self.data_table.resizeColumnsToContents()
-        #self.data_table.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
-        #self.data_table.horizontalHeader().setStretchLastSection(True)
+            
+        if not self.sensor_id_to_data_status[sensor_id]:
+            # First time showing data for this sensor show make sure columns are big enough to show it.
+            self.data_table.resizeColumnsToContents()
+        else:
+            # Remember that we've shown data for this sensor because constantly resizing looks funny.
+            self.sensor_id_to_data_status[sensor_id] = True
