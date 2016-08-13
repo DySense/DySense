@@ -452,5 +452,12 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         
     def confirm_question(self, question, title='Question'):
         
-        reply = QtGui.QMessageBox.question(self, title, question, QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+        popup = QtGui.QMessageBox()
+        popup.setFont(QtGui.QFont('popup_font', pointSize=14))
+        popup.setText(make_unicode(question))
+        popup.setWindowTitle(title)
+        popup.setWindowIcon(popup.style().standardIcon(QStyle.SP_MessageBoxQuestion))
+        popup.setStandardButtons(QMessageBox.No | QMessageBox.Yes)
+        
+        reply = popup.exec_() 
         return reply == QtGui.QMessageBox.Yes
