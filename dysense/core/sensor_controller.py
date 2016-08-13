@@ -1141,8 +1141,10 @@ class SensorController(object):
             writer.writerow(utf_8_encoder(['start_sys_time', self.session_start_sys_time]))
             writer.writerow(utf_8_encoder(['end_sys_time', self.last_sys_time_update]))
             
+            writer.writerow(utf_8_encoder(['controller_id', self.controller_id]))
             writer.writerow(utf_8_encoder(['app_version', app_version]))
             writer.writerow(utf_8_encoder(['output_version', output_version]))
+            #writer.writerow(utf_8_encoder(['utc_difference', self.session_start_utc - self.session_start_sys_time]))
             
             for key, value in sorted(self.settings.items()):
                 writer.writerow(utf_8_encoder([key, value]))
