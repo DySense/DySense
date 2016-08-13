@@ -187,6 +187,15 @@ class GUIPresenter(QObject):
         
         if new_controller_name.strip() == '':
             self.handle_error_message("Controller name can't be empty string.", logging.ERROR)
+            # 'Refresh' controller info to show the old name again.
+            self.view.update_all_controller_info(self.local_controller['id'], self.local_controller)
+            return
+        
+        question = 'Are you sure you want to change the controller ID?' \
+        ' This is how other computers recognize this application and changing this ID can also affect saved configuration files.'
+        if not self.view.confirm_question(question):
+            # User doesn't want to.. so 'refresh' controller info to show the old name again.
+            self.view.update_all_controller_info(self.local_controller['id'], self.local_controller)
             return
         
         self.view.local_controller_name = new_controller_name
