@@ -1063,6 +1063,11 @@ class SensorController(object):
             
             sensor.output_file = CSVLog(sensor_csv_file_path, buffer_size=1)
             
+            # Store the names (e.g. latitude) of the sensor output data in the file.
+            # The file will only be created once the sensor starts outputting data.
+            sensor_data_names = [setting['name'] for setting in sensor.metadata['data']]
+            sensor.output_file.handle_metadata(['utc_time'] + sensor_data_names)
+            
         # Create vehicle state logs
         position_source_path = os.path.join(self.session_path, 'position.csv')
         self.position_source_log = CSVLog(position_source_path, 1)

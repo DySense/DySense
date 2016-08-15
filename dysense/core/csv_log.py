@@ -65,7 +65,7 @@ class CSVLog:
         # Make sure data gets written in case of power failure.
         self.file.flush()
             
-    def handle_metadata(self, sensor_type, sensor_id, metadata): 
+    def handle_metadata(self, metadata): 
         '''Store metadata in buffer to be written out the first time handle_data is called.'''
         if len(metadata) == 0:
             raise ArgumentError(u'Metadata must contain at least one element')
