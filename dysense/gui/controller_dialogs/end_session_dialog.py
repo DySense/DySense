@@ -58,6 +58,13 @@ class EndSessionDialog(QDialog):
         self.central_layout.addLayout(self.button_layout)
         
         self.confirm_button.setDefault(True)
+        self.session_notes.setFocus()
+
+    def update_controller_setting(self, setting_name, setting_value):
+        try:
+            self.settings_widget.update_setting(setting_name, setting_value)
+        except KeyError:
+            pass # setting widget might not include this setting (e.g. base directory)
 
     def setup_buttons(self):
         

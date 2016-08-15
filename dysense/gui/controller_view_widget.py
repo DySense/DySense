@@ -44,6 +44,8 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
         # Notes that have been saved by user for current session.
         self.session_notes = ""
         
+        self.end_session_dialog = None # created when button is clicked
+        
         # Setup widget
         self.load_session_icons()
         self.load_command_icons()
@@ -221,8 +223,10 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
             
             if info_name == 'settings':
                 settings = info_value 
-                for settings_name, settings_value in settings.iteritems():               
-                    self.settings_widget.update_setting(settings_name, settings_value)
+                for setting_name, setting_value in settings.iteritems():               
+                    self.settings_widget.update_setting(setting_name, setting_value)
+                    if self.end_session_dialog is not None and self.end_session_dialog.isVisible():
+                        self.end_session_dialog.update_controller_setting(setting_name, setting_value)
                     
     def update_session_notes(self, notes):
         
