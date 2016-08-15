@@ -17,7 +17,7 @@ from dysense.core.sensor_creation import SensorDriverFactory, SensorCloseTimeout
 from dysense.core.csv_log import CSVLog
 from dysense.core.controller_data_sources import *
 from dysense.core.issue import Issue
-from dysense.core.utility import format_id, json_dumps_unicode, utf_8_encoder, make_unicode, make_utf8
+from dysense.core.utility import format_id, json_dumps_unicode, utf_8_encoder, make_unicode, make_utf8, validate_type
 from dysense.core.version import app_version, output_version
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
@@ -64,6 +64,9 @@ class SensorController(object):
                          'platform_tag': '',
                          'experiment_id': '',
                          'surveyed': True}
+        
+        # Allow settings to optionally define a type (e.g. bool) that will be enforced. 
+        self.setting_name_to_type = {'surveyed': 'bool'}
         
         # Vehicle position/orientation files. New ones created for each session.
         self.position_source_log = None
@@ -706,15 +709,15 @@ class SensorController(object):
         else:
             self.log_message("Info '{}' cannot be changed externally.".format(info_name), logging.ERROR, manager)
 
-    def handle_change_controller_setting(self, manager, settings_name, settings_value):
+    def handle_change_controller_setting(self, manager, setting_name, setting_value):
 
         # Make sure value is allowed to be changed.
         value_can_change = True
-        if self.session_active and settings_name == 'base_out_directory':
+        if self.session_active and setting_name == 'base_out_directory':
             self.log_message('Cannot change output directory while session is active.', logging.ERROR, manager)
             value_can_change = False
-        elif not settings_name in self.settings:
-            self.log_message('Cannot change setting {} because that settings does not exist.'.format(settings_name), logging.ERROR, manager)
+        elif not setting_name in self.settings:
+            self.log_message('Cannot change setting {} because that settings does not exist.'.format(setting_name), logging.ERROR, manager)
             value_can_change = False
         
         if not value_can_change:
@@ -722,12 +725,33 @@ class SensorController(object):
             return 
         
         try:
-            settings_value = settings_value.strip()
+            settings_value = setting_name.strip()
         except AttributeError:
             pass
+        
+        self.update_controller_setting(setting_name, setting_value, manager)
 
-        self.settings[settings_name] = settings_value
-        self.send_entire_controller_info()
+    def update_controller_setting(self, setting_name, setting_value, manager=None):
+        
+        try:
+            setting_type = self.setting_name_to_type[setting_name]
+            
+            try:
+                setting_value = validate_type(setting_value, setting_type)
+            except ValueError as e:
+                self.log_message("{} cannot be converted into the expected type '{}'".format(setting_value, setting_type), logging.ERROR, manager)
+                self.send_entire_controller_info() # so user can be notified setting didn't change.
+                return # don't set value
+            except KeyError:
+                self.log_message("Can't change setting {} because it does not exist.".format(setting_name), logging.ERROR, manager)
+                self.send_entire_controller_info() # so user can be notified setting didn't change.
+                return # don't set value
+            
+        except KeyError:
+            pass # setting doesn't have type so can't validate it, just set it below
+        
+        self.settings[setting_name] = setting_value
+        self.send_entire_controller_info() # so user can be notified setting changed 
 
     def handle_setup_sensor(self, manager, sensor_id, message_body):
         
