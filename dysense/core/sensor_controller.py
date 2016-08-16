@@ -713,9 +713,14 @@ class SensorController(object):
 
         # Make sure value is allowed to be changed.
         value_can_change = True
-        if self.session_active and setting_name == 'base_out_directory':
-            self.log_message('Cannot change output directory while session is active.', logging.ERROR, manager)
-            value_can_change = False
+        if self.session_active:
+            if setting_name == 'base_out_directory':
+                self.log_message('Cannot change output directory while session is active.', logging.ERROR, manager)
+                value_can_change = False
+            if setting_name in ['platform_type', 'platform_tag']:
+                self.log_message('Cannot change platform type/tag while session is active. If you need to you must manually rename session '
+                                 'output folder AND change value in session_info.csv after session has ended.', logging.ERROR, manager)
+                value_can_change = False
         elif not setting_name in self.settings:
             self.log_message('Cannot change setting {} because that settings does not exist.'.format(setting_name), logging.ERROR, manager)
             value_can_change = False
