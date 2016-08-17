@@ -109,3 +109,17 @@ class OrientationDataSource(AbstractDataSource):
             self.orientation_idx = self.get_matching_tag_idx(self.angle_name)
         except ValueError:
             raise ValueError("Could not find {} tag in sensor metadata".format(self.angle_name))
+        
+class HeightDataSource(AbstractDataSource):
+    
+    def __init__(self, callback, **kargs):
+        self.height_idx = None
+        super(HeightDataSource, self).__init__(callback, **kargs)
+        
+    def verify_metadata(self):
+
+        try:
+            self.height_idx = self.get_matching_tag_idx('height')
+        except ValueError:
+            raise ValueError("Could not find valid height tag in sensor metadata")
+        

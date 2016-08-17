@@ -27,11 +27,10 @@ sensors:
           description: Either true or false.
           default_value: true
           tags: [changeable]
-      tags: []
       data:
         - name: counter
           type: str
-          tags: [roll] # for testing data sources
+          tags: [roll, height] # for testing data sources
         - name: rand_int
           type: int
           min_value: 0
@@ -355,6 +354,7 @@ sensors:
           type: int
           units: centimeters
           decimal_places: 3
+          tags: [height]
         
     sonar_banner_qe:
       version: "1.0"
@@ -393,6 +393,7 @@ sensors:
           type: float
           units: centimeters
           decimal_places: 3
+          tags: [height]
         
     gps_trmb_test:
       version: "1.0"

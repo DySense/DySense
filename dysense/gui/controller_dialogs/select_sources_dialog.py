@@ -21,9 +21,13 @@ class SelectSourcesDialog(QDialog):
         self.dialog_font = QtGui.QFont()
         self.dialog_font.setPointSize(14)
         
-        # Used to associate sensor info with checkbox.
+        # Used to associate position sensor info with checkbox.
         self.checkbox_to_position_sensor = {}
         self.position_sensor_to_checkbox = {}
+        
+        # Used to associate height sensor info with checkbox.
+        self.checkbox_to_height_sensor = {}
+        self.height_sensor_to_checkbox = {}
         
         # Used to associate combo box index with sensor info.
         self.possible_time_sensors = []
@@ -42,11 +46,13 @@ class SelectSourcesDialog(QDialog):
         self.setup_time_box(controller_info, sensors)
         self.setup_orientation_box(controller_info, sensors)
         self.setup_position_box(controller_info, sensors)
+        self.setup_height_source_box(controller_info, sensors)
         self.setup_buttons()
         
         self.central_layout.addWidget(self.time_group_box)
         self.central_layout.addWidget(self.position_group_box)
         self.central_layout.addWidget(self.orientation_group_box)
+        self.central_layout.addWidget(self.height_group_box)
         self.central_layout.addLayout(self.button_layout)
         
     def setup_time_box(self, controller_info, sensors):
@@ -173,6 +179,33 @@ class SelectSourcesDialog(QDialog):
             self.position_gb_layout.addWidget(checkbox)
         
         self.position_group_box.setLayout(self.position_gb_layout)
+        
+    def setup_height_source_box(self, controller_info, sensors):
+        
+        self.height_group_box = QGroupBox("height")
+        self.height_group_box.setTitle("Height Above Ground")
+        self.height_group_box.setAlignment(Qt.AlignHCenter)
+        self.height_group_box.setFont(self.dialog_font)
+        
+        self.height_gb_layout = QVBoxLayout()
+        
+        possible_height_sensors = self.find_sensors_with_tag(sensors, 'height', tag_in_data=True)
+        for sensor_info in possible_height_sensors:
+            checkbox = QCheckBox()
+            checkbox.setText(sensor_info['sensor_id'])
+            checkbox.setFont(self.dialog_font)
+            
+            self.height_sensor_to_checkbox[sensor_info['sensor_id']] = checkbox
+            self.checkbox_to_height_sensor[checkbox] = sensor_info
+            
+            # TODO update for multiple controllers
+            for current_height_source in controller_info.get('height_sources',[]):
+                if current_height_source['sensor_id'] == sensor_info['sensor_id']:
+                    checkbox.setChecked(True)
+            
+            self.height_gb_layout.addWidget(checkbox)
+        
+        self.height_group_box.setLayout(self.height_gb_layout)
 
     def setup_buttons(self):
         
@@ -224,9 +257,15 @@ class SelectSourcesDialog(QDialog):
         
         orientation_sources = [roll_source, pitch_source, yaw_source]
         
+        height_sources = []
+        for checkbox, sensor_info in self.checkbox_to_height_sensor.iteritems():
+            if checkbox.isChecked():
+                height_sources.append(sensor_info)
+        
         self.presenter.change_controller_info('time_source', time_source_info)
         self.presenter.change_controller_info('position_sources', position_sources)
         self.presenter.change_controller_info('orientation_sources', orientation_sources)
+        self.presenter.change_controller_info('height_sources', height_sources)
         
         self.close()
         

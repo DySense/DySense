@@ -52,6 +52,7 @@ class SensorController(object):
         self._time_source = None
         self._position_sources = []
         self._orientation_sources = []
+        self._height_sources = []
         
         self.controller_id = format_id(controller_id) 
         
@@ -71,6 +72,7 @@ class SensorController(object):
         # Vehicle position/orientation files. New ones created for each session.
         self.position_source_log = None
         self.orientation_source_log = None
+        self.height_source_log = None
         
         self.stop_request = threading.Event()
         
@@ -149,6 +151,7 @@ class SensorController(object):
                 'time_source': None if not self.time_source else self.time_source.public_info,
                 'position_sources': [source.public_info for source in self.position_sources],
                 'orientation_sources': [source.public_info for source in self.orientation_sources],
+                'height_sources': [source.public_info for source in self.height_sources],
                 'settings': self.settings,
                 'text_messages': self.text_messages,
                 'active_issues': [source.public_info for source in self.active_issues],
@@ -226,6 +229,16 @@ class SensorController(object):
         angle_types = ['roll', 'pitch', 'yaw']
         for n, val in enumerate(new_value):
             self._orientation_sources.append(OrientationDataSource(self.send_entire_controller_info, angle_types[n], **val))
+        self.send_entire_controller_info()
+        
+    @property
+    def height_sources(self):
+        return self._height_sources
+    @height_sources.setter
+    def height_sources(self, new_value):
+        self._height_sources = []
+        for val in new_value:
+            self._height_sources.append(HeightDataSource(self.send_entire_controller_info, **val))
         self.send_entire_controller_info()
         
     def setup_logging(self):
@@ -363,6 +376,11 @@ class SensorController(object):
                             self.try_create_issue(self.controller_id, source.sensor_id, 'lost_orientation_source', 'Not receiving data from orientation source.', 'critical')
                         else:
                             self.try_resolve_issue(source.sensor_id, 'lost_orientation_source')
+                    for source in self.height_sources:
+                        if not source.receiving:
+                            self.try_create_issue(self.controller_id, source.sensor_id, 'lost_height_source', 'Not receiving data from height source.', 'critical')
+                        else:
+                            self.try_resolve_issue(source.sensor_id, 'lost_height_source')
                 else: 
                     # TODO make this more efficient when receiving sources were not constantly trying to resolve issues that don't exist. 
                     if self.time_source:
@@ -371,6 +389,8 @@ class SensorController(object):
                         self.try_resolve_issue(source.sensor_id, 'lost_position_source')
                     for source in self.orientation_sources:
                         self.try_resolve_issue(source.sensor_id, 'lost_orientation_source')
+                    for source in self.height_sources:
+                        self.try_resolve_issue(source.sensor_id, 'lost_height_source')
                             
                 self.update_session_state()
                 
@@ -572,6 +592,9 @@ class SensorController(object):
             for source in self.orientation_sources[:]:
                 if source.matches(sensor.sensor_id, sensor.controller_id):
                     self.orientation_sources.remove(source)
+            for source in self.height_sources[:]:
+                if source.matches(sensor.sensor_id, sensor.controller_id):
+                    self.height_sources.remove(source)
                     
             # Remove any active issues that match up with the removed sensors.
             for issue in self.active_issues:
@@ -706,6 +729,8 @@ class SensorController(object):
             self.position_sources = info_value
         elif info_name == 'orientation_sources':
             self.orientation_sources = info_value
+        elif info_name == 'height_sources':
+            self.height_sources = info_value
         else:
             self.log_message("Info '{}' cannot be changed externally.".format(info_name), logging.ERROR, manager)
 
@@ -790,6 +815,7 @@ class SensorController(object):
         is_time_source = self.time_source and self.time_source.matches(sensor.sensor_id, self.controller_id)
         matching_position_sources = [source for source in self.position_sources if source.matches(sensor.sensor_id, self.controller_id)]
         matching_orientation_sources = [source for source in self.orientation_sources if source.matches(sensor.sensor_id, self.controller_id)]
+        matching_height_sources = [source for source in self.height_sources if source.matches(sensor.sensor_id, self.controller_id)]
         
         # Check if we should log data. This assumes that data is ok.
         need_to_log_data = (not sensor.sensor_paused) and self.session_state == 'started'
@@ -805,6 +831,10 @@ class SensorController(object):
         for source in matching_orientation_sources:
             source.mark_updated()
             self.process_orientation_source_data(source, utc_time, sys_time, data, need_to_log_data)
+
+        for source in matching_height_sources:
+            source.mark_updated()
+            self.process_height_source_data(source, utc_time, sys_time, data, need_to_log_data)
 
         if need_to_log_data:
             # Write data to corresponding sensor log.
@@ -862,6 +892,22 @@ class SensorController(object):
         if need_to_log:
             orientation_data.insert(0, utc_time)
             self.orientation_source_log.write(orientation_data)
+            
+    def process_height_source_data(self, source, utc_time, sys_time, data, need_to_log):
+
+        height_data = data[source.height_idx]
+
+        # TODO just send to local manager.
+        self._send_manager_message('all', 'new_source_data', (source.sensor_id, 'height', utc_time, sys_time, height_data))
+
+        if need_to_log:
+            
+            height_data = [utc_time, height_data]
+                    
+            if len(self.height_sources) > 1:
+                height_data.insert(0, source.sensor_id)
+    
+            self.height_source_log.write(height_data)
 
     def handle_controller_command(self, manager, command_name, command_args):
         
@@ -955,7 +1001,7 @@ class SensorController(object):
             self.log_message("Can't start session without at least one selected position source.", logging.ERROR, manager)
             return False
         
-        for source in [self.time_source] + self.position_sources + self.orientation_sources:
+        for source in [self.time_source] + self.position_sources + self.orientation_sources + self.height_sources:
             if (source.controller_id.lower() not in ['none', 'derived']) and source.controller_id != self.controller_id:
                 self.log_message("Can't start session because source '{}' is part of a controller '{}' that's not connected.".format(source.sensor_id, source.controller_id), logging.ERROR, manager)
                 return False
@@ -991,6 +1037,13 @@ class SensorController(object):
         
         if self.session_state == 'waiting_for_orientation':
             for source in self.orientation_sources:
+                if not source.receiving:
+                    return
+            # All sources receiving.    
+            self.session_state = 'waiting_for_height'
+            
+        if self.session_state == 'waiting_for_height':
+            for source in self.height_sources:
                 if not source.receiving:
                     return
             # All sources receiving.    
@@ -1102,6 +1155,8 @@ class SensorController(object):
         self.position_source_log = CSVLog(position_source_path, 1)
         orientation_source_path = os.path.join(self.session_path, 'orientation.csv')
         self.orientation_source_log = CSVLog(orientation_source_path, 1)
+        height_source_path = os.path.join(self.session_path, 'height.csv')
+        self.height_source_log = CSVLog(height_source_path, 1)
             
         # Start all other sensors now that session is started.
         self.log_message("Starting all sensors.")
@@ -1124,8 +1179,10 @@ class SensorController(object):
         
         self.position_source_log.terminate()
         self.orientation_source_log.terminate()
+        self.height_source_log.terminate()
         self.position_source_log = None
         self.orientation_source_log = None
+        self.height_source_log = None
         
         for sensor in self.sensors:
             sensor.output_file.terminate()
@@ -1250,7 +1307,17 @@ class SensorController(object):
             saved_info['orientation_idx'] = orientation_source.orientation_idx
             
             source_name = orientation_source.angle_name + '_source'
-            outdata[source_name] = saved_info      
+            outdata[source_name] = saved_info
+            
+        outdata['height_sources'] = []
+        for height_source in self.height_sources:
+            saved_info = {}
+            for key, value in height_source.public_info.items():
+                if key in ['controller_id', 'sensor_id', 'metadata']:
+                    saved_info[key] = value
+            saved_info['height_index'] = height_source.height_idx
+
+            outdata['height_sources'].append(saved_info)  
         
         with open(info_file_path, 'w') as outfile:
             outfile.write(yaml.safe_dump(outdata, allow_unicode=True, default_flow_style=False))
@@ -1267,7 +1334,7 @@ class SensorController(object):
         
         # First see if we need to promote the level to critical if this is a data source. 
         # Need to do this before constructing 'sensor_info' below.
-        for data_source in [self.time_source] + self.position_sources + self.orientation_sources:
+        for data_source in [self.time_source] + self.position_sources + self.orientation_sources + self.height_sources:
             if data_source and data_source.matches(sensor_id=sub_id, controller_id=main_id):
                 level = 'critical'
                 break
