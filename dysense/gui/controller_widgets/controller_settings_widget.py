@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import os
+
 from PyQt4.Qt import *
 from PyQt4 import QtGui, QtCore
 
@@ -77,8 +79,15 @@ class ControllerSettingsWidget(QWidget):
             text_label.setToolTip(tooltip)
             value_line_edit.setToolTip(tooltip)
             
+            value_line_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            
             self.main_layout.addWidget(text_label, i, 0)
-            self.main_layout.addWidget(value_line_edit, i, 1)
+            
+            if setting_name == 'base_out_directory':
+                # Need to add special browse button next to line edit.
+                self.main_layout.addLayout(self.browse_layout(value_line_edit), i, 1)
+            else:
+                self.main_layout.addWidget(value_line_edit, i, 1)
             
             self.object_to_setting_name[value_line_edit] = setting_name
             self.setting_name_to_object[setting_name] = value_line_edit
@@ -86,8 +95,31 @@ class ControllerSettingsWidget(QWidget):
             # Connect signal so we know when value changes
             value_line_edit.editingFinished.connect(self.value_changed_by_user)
             
+    def browse_layout(self, line_edit):
         
+        browse_button = QPushButton('Select')
+        browse_button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        browse_button.clicked.connect(self.browse_button_clicked)
         
+        layout = QHBoxLayout()
+        layout.addWidget(line_edit)
+        layout.addWidget(browse_button)
+        
+        return layout
+    
+    def browse_button_clicked(self):
+        
+        output_directory = QFileDialog.getExistingDirectory(self, "Select Directory", os.path.expanduser('~'))
+        
+        if not output_directory:
+            return # User didn't select a directory.
+        
+        line_edit = self.setting_name_to_object['base_out_directory']
+        
+        line_edit.setText(output_directory)
+        line_edit.setModified(True)
+        line_edit.editingFinished.emit()
+          
     def value_changed_by_user(self):
         
         # Only run method if value was actually changed.
@@ -109,15 +141,3 @@ class ControllerSettingsWidget(QWidget):
         matching_line_edit = self.setting_name_to_object[setting_name]
 
         matching_line_edit.setText(make_unicode(setting_value))
-        
-    '''
-    def output_directory_tool_button_clicked(self):
-        output_directory = QFileDialog.getExistingDirectory(self, "Select Directory")
-        
-        if not output_directory:
-            return # User didn't select a directory.
-        
-        self.output_directory_line_edit.setText(output_directory)
-        self.output_directory_line_edit.setModified(True)
-        self.output_directory_line_edit.editingFinished.emit()
-    '''
