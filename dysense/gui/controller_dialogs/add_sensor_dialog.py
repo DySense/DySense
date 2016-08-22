@@ -61,6 +61,14 @@ class AddSensorDialog(QDialog):
         self.sensor_id_layout = QHBoxLayout()
         self.sensor_id_layout.addWidget(self.sensor_id_type_label)
         self.sensor_id_layout.addWidget(self.sensor_id_tag_line_edit)
+
+        name_tooltip = 'User friendly name for sensor (e.g. left-camera)'
+        id_tooltip = 'Unique ID for sensor (e.g. serial number)'
+        self.name_label.setToolTip(name_tooltip)
+        self.sensor_name_line_edit.setToolTip(name_tooltip)
+        self.sensor_id_tag_line_edit.setToolTip(id_tooltip)
+        self.sensor_id_type_label.setToolTip(id_tooltip)
+        self.id_label.setToolTip(id_tooltip)
         
         self.add_button = QPushButton("Add")
         self.cancel_button = QPushButton("Cancel")

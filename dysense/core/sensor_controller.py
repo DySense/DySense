@@ -1176,7 +1176,7 @@ class SensorController(object):
             sensor_data_names = [setting['name'] for setting in sensor.metadata['data']]
             sensor.output_file.handle_metadata(['utc_time'] + sensor_data_names)
             
-        # Create vehicle state logs
+        # Create platform state logs.  Don't add in headers since if multiple sources then will have extra first column.
         position_source_path = os.path.join(self.session_path, 'position.csv')
         self.position_source_log = CSVLog(position_source_path, 1)
         orientation_source_path = os.path.join(self.session_path, 'orientation.csv')

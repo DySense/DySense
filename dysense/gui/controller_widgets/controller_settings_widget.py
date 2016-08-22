@@ -32,10 +32,20 @@ class ControllerSettingsWidget(QWidget):
         # Override certain settings so they show something different for the text label.
         # (e.g. replace 'id' with 'controller id' since it's more descriptive for the user to see)
         settings_name_override = {'id': 'Controller ID',
-                                  'base_out_directory': 'Output Folder'}
+                                  'base_out_directory': 'Output Folder',
+                                  'experiment_id': 'Experiment ID'}
         
         # Define what order settings will show up in widget.
         settings_order = ['id', 'base_out_directory', 'operator_name', 'platform_type', 'platform_tag', 'experiment_id', 'surveyed']
+        
+        setting_name_to_tooltip = {'id': 'Name of this computer. Should be unique.',
+                                   'base_out_directory': 'Base folder where new session folders will be saved.',
+                                   'operator_name': 'First and last name of person in charge of session.',
+                                   'platform_type': 'Name associated with this type of platform.',
+                                   'platform_tag': 'Unique ID of platform (e.g. serial number)',
+                                   'experiment_id': 'ID of experiment being covered by this session.',
+                                   'surveyed': 'If using RTK then set to False if base station location is not surveyed. If not using RTK then always set to True',
+                                   }
         
         # Convert settings to an ordered list so they show up in a consistent order.
         ordered_controller_settings = []
@@ -62,6 +72,11 @@ class ControllerSettingsWidget(QWidget):
             value_line_edit = QLineEdit(make_unicode(setting_value))
             #text_label.setFont(self.w_font)
             #value_line_edit.setFont(self.dialog_font)
+            
+            tooltip = setting_name_to_tooltip.get(setting_name,'')
+            text_label.setToolTip(tooltip)
+            value_line_edit.setToolTip(tooltip)
+            
             self.main_layout.addWidget(text_label, i, 0)
             self.main_layout.addWidget(value_line_edit, i, 1)
             
@@ -70,6 +85,8 @@ class ControllerSettingsWidget(QWidget):
             
             # Connect signal so we know when value changes
             value_line_edit.editingFinished.connect(self.value_changed_by_user)
+            
+        
         
     def value_changed_by_user(self):
         
