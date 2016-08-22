@@ -53,6 +53,7 @@ class SensorController(object):
         self._position_sources = []
         self._orientation_sources = []
         self._height_sources = []
+        self._fixed_height_source = None
         
         self.controller_id = format_id(controller_id) 
         
@@ -77,6 +78,9 @@ class SensorController(object):
         self.stop_request = threading.Event()
         
         self._session_state = 'closed'
+        
+        # The last manager that a message was received from.
+        self.last_manager = None
         
         # If set to true then session state will be 'paused' instead of 'started'
         # when session is resumed after all issues are cleared.
@@ -152,6 +156,7 @@ class SensorController(object):
                 'position_sources': [source.public_info for source in self.position_sources],
                 'orientation_sources': [source.public_info for source in self.orientation_sources],
                 'height_sources': [source.public_info for source in self.height_sources],
+                'fixed_height_source': self.fixed_height_source,
                 'settings': self.settings,
                 'text_messages': self.text_messages,
                 'active_issues': [source.public_info for source in self.active_issues],
@@ -239,6 +244,22 @@ class SensorController(object):
         self._height_sources = []
         for val in new_value:
             self._height_sources.append(HeightDataSource(self.send_entire_controller_info, **val))
+        self.send_entire_controller_info()
+        
+    @property
+    def fixed_height_source(self):
+        return self._fixed_height_source
+    @fixed_height_source.setter
+    def fixed_height_source(self, new_value):
+        
+        if make_unicode(new_value).strip() == "":
+            self._fixed_height_source = None
+        else:
+            try:
+                self._fixed_height_source = validate_type(new_value, 'float')
+            except ValueError:
+                self.log_message("{} is not a valid height measurement.".format(new_value), logging.ERROR, self.last_manager)
+            
         self.send_entire_controller_info()
         
     def setup_logging(self):
@@ -462,6 +483,9 @@ class SensorController(object):
         manager = self.managers[router_id]
         message_callback = self.message_callbacks[message['type']]
         message_body = message['body']
+        
+        self.last_manager = manager
+        
         if isinstance(message_body, (tuple, list)):
             message_callback(manager, *message_body)
         else:
@@ -731,6 +755,8 @@ class SensorController(object):
             self.orientation_sources = info_value
         elif info_name == 'height_sources':
             self.height_sources = info_value
+        elif info_name == 'fixed_height_source':
+            self.fixed_height_source = info_value
         else:
             self.log_message("Info '{}' cannot be changed externally.".format(info_name), logging.ERROR, manager)
 
@@ -1157,6 +1183,13 @@ class SensorController(object):
         self.orientation_source_log = CSVLog(orientation_source_path, 1)
         height_source_path = os.path.join(self.session_path, 'height.csv')
         self.height_source_log = CSVLog(height_source_path, 1)
+            
+        # Fixed height won't change so create it now.
+        if self.fixed_height_source is not None:
+            fixed_height_source_path = os.path.join(self.session_path, 'fixed_height.csv')
+            fixed_height_source_log = CSVLog(fixed_height_source_path, 1)
+            fixed_height_source_log.write([self.fixed_height_source, 'meters'])
+            fixed_height_source_log.terminate()
             
         # Start all other sensors now that session is started.
         self.log_message("Starting all sensors.")

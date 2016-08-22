@@ -82,7 +82,7 @@ class GUIPresenter(QObject):
             # TODO support multiple controllers
             useful_info = {}
             for info_name, info_value in controller_info.iteritems():
-                if info_name in ['settings', 'time_source', 'position_sources', 'orientation_sources', 'height_sources']:
+                if info_name in ['settings', 'time_source', 'position_sources', 'orientation_sources', 'height_sources', 'fixed_height_source']:
                     useful_info[info_name] = info_value
             controllers.append(useful_info)
         data['controllers'] = controllers

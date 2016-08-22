@@ -7,7 +7,7 @@ import sys
 from PyQt4.Qt import *
 from PyQt4 import QtGui
 
-from dysense.core.utility import get_from_list
+from dysense.core.utility import get_from_list, make_unicode
 
 class SelectSourcesDialog(QDialog):
     
@@ -204,6 +204,29 @@ class SelectSourcesDialog(QDialog):
                     checkbox.setChecked(True)
             
             self.height_gb_layout.addWidget(checkbox)
+            
+        # Add in option for use to select fixed height above ground.
+        self.fixed_height_layout = QHBoxLayout()
+        self.fixed_height_label = QLabel("Height:")
+        self.fixed_height_label.setAlignment(Qt.AlignRight)
+        self.fixed_height_label.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed))
+        self.fixed_height_line_edit = QLineEdit()
+        self.fixed_height_line_edit.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed))
+        self.fixed_height_line_edit.setMaximumWidth(QFontMetrics(self.dialog_font).width('1.23456'))
+        self.fixed_height_units_label = QLabel("(meters)")
+        self.fixed_height_units_label.setAlignment(Qt.AlignLeft)
+        self.fixed_height_units_label.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed))
+        
+        height_source_value = controller_info['fixed_height_source']
+        if height_source_value == None:
+            height_source_value = ''
+        self.fixed_height_line_edit.setText(make_unicode(height_source_value))
+        
+        self.fixed_height_layout.addWidget(self.fixed_height_label)
+        self.fixed_height_layout.addWidget(self.fixed_height_line_edit)
+        self.fixed_height_layout.addWidget(self.fixed_height_units_label)
+        
+        self.height_gb_layout.addLayout(self.fixed_height_layout)
         
         self.height_group_box.setLayout(self.height_gb_layout)
 
@@ -266,6 +289,9 @@ class SelectSourcesDialog(QDialog):
         self.presenter.change_controller_info('position_sources', position_sources)
         self.presenter.change_controller_info('orientation_sources', orientation_sources)
         self.presenter.change_controller_info('height_sources', height_sources)
+        
+        fixed_height_value = self.fixed_height_line_edit.text().strip()
+        self.presenter.change_controller_info('fixed_height_source', fixed_height_value)
         
         self.close()
         
