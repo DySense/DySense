@@ -26,6 +26,10 @@ from dysense.core.sensor_controller import SensorController
 from dysense.core.utility import yaml_load_unicode, make_unicode
 
 def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=False):
+    
+    # This program uses relative paths for finding sensors, so make sure the working directory
+    # is set to the directory containing this function.
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
         
     app = QtGui.QApplication(sys.argv)
     #app.setStyle('plastique')
