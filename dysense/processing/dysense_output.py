@@ -2,16 +2,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import sys
 import os
-import csv
-import argparse
 import copy
 from collections import defaultdict
 
 from dysense.core.utility import yaml_load_unicode, validate_type
+from dysense.processing.utility import unicode_csv_reader
 
 class StampedPosition(object):
+    '''Time stamped position measurement.'''
     
     def __init__(self, utc_time, x, y, z):
         self.utc_time = utc_time
@@ -20,12 +19,14 @@ class StampedPosition(object):
         self.z = z
         
 class StampedAngle(object):
+    '''Time stamped angle measurement.'''
     
     def __init__(self, utc_time, angle):
         self.utc_time = utc_time
         self.angle = angle
 
 class SensorOffset(object):
+    '''Offset of sensor from official platform position.'''
     
     def __init__(self, sensor_name, sensor_type, sensor_tag, x, y, z, roll, pitch, yaw):
         self.sensor_name = sensor_name
@@ -46,17 +47,16 @@ class SensorOffset(object):
     def orientation(self):
         return (self.roll, self.pitch, self.yaw)
 
-def unicode_csv_reader(utf8_file, **kwargs):
-    csv_reader = csv.reader(utf8_file, **kwargs)
-    for row in csv_reader:
-        yield [unicode(cell, 'utf-8') for cell in row]
-
-class DySenseReader(object):
-    '''All files are assumed to be saved in UTF8 format.'''
-    
-    def __init__(self, session_path):
-        
+class SessionOutput(object):
+    '''
+    Provide interface for reading different parts of a DySense session directory.
+    Before using data user should verify that session_valid property is True.
+    All files are assumed to be saved in UTF8 format.
+    '''
+    def __init__(self, session_path, log):
+        '''Constructor'''
         self.session_path = session_path
+        self.log = log
         
         self.sources = self._read_data_source_info()
         
@@ -124,17 +124,17 @@ class DySenseReader(object):
     
     def read_positions(self):
         '''
-        Read time-stamped position information from official position file. 
+        Read time-stamped position information from platform position file. 
         
         Return dictionary of position sources found in position file where each key is the position source name and
-         the value is a list of named tuples sorted by time.  
+         the value is a list of StampedPosition objects sorted by time.  
          
-        If a position file can't be opened then ArgumentError will be raised.
+        If a line is missing data then it will be skipped and an error message will be logged.
+        If there are no position sources than will raise ValueError
         '''
-
         # Make sure there is a valid position source.
         if len(self.position_sources) == 0:
-            raise Exception('No valid position sources found in session metadata.')
+            raise ValueError('No valid position sources found in session metadata.')
         
         # Dictionary that will be returned at end of method.
         measurements_by_source = defaultdict(list)
@@ -160,7 +160,8 @@ class DySenseReader(object):
                     continue # blank or comment line
                 
                 if len(line) < minimum_fields_per_row:
-                    raise Exception('Position line #{} contains only {} elements.'.format(line_num, len(line)))
+                    self.log.error('Position line #{} contains only {} elements.'.format(line_num, len(line)))
+                    continue
                 
                 if multiple_position_sources:
                     position_source_name = line[0]
@@ -189,15 +190,27 @@ class DySenseReader(object):
         return measurements_by_source
     
     def read_orientations(self):
+        '''
+        Read time-stamped angles from platform orientation file. 
         
+        Return value will be roll, pitch, yaw where each of these may be 3 different things:
+            1) None if that source (e.g. pitch source) wasn't specified for session.
+            2) The string 'derived' if the angles should be calculated (e.g. using multiple-accurate position sources)
+            3) A list of TimeStampedAngles sorted by time.
+         
+        If a line is missing data then it will be skipped and an error message will be logged.
+        If no orientation file exists then all 3 return values will be None
+        '''
         def read_angle(file_lines, source, angle_matches):
             
+            measurements_stored = False
             if not source or source['sensor_id'].lower() == 'none':
                 measurements = None
             elif source['sensor_id'].lower() == 'derived':
                 measurements = 'derived'
             else:
                 measurements = []
+                measurements_stored = True
                 
             for line_num, line in enumerate(file_lines):
                 
@@ -208,7 +221,8 @@ class DySenseReader(object):
                     continue # blank or comment line
                 
                 if len(line) < 3:
-                    raise Exception('Orientation line #{} contains only {} elements.'.format(line_num, len(line)))
+                    self.log.error('Orientation line #{} contains only {} elements.'.format(line_num, len(line)))
+                    continue
 
                 utc_time = float(line[0])
                 angle_type = line[1]
@@ -218,7 +232,8 @@ class DySenseReader(object):
                     measurements.append(StampedAngle(utc_time, angle_value))
                 
             # Sort measurements by time. 
-            measurements = sorted(measurements, key=lambda measurement: measurement.utc_time)
+            if measurements_stored:
+                measurements = sorted(measurements, key=lambda measurement: measurement.utc_time)
                 
             return measurements
         
@@ -280,7 +295,7 @@ class DySenseReader(object):
                 log_data, log_file_name = self._read_sensor_log_data(sensor)
 
             except Exception as e:
-                print 'Cannot read log for {} - reason: {}'.format(sensor['sensor_id'], str(e))
+                self.log.error('Cannot read log for {} - reason: {}'.format(sensor['sensor_id'], str(e)))
                 log_data = None
                 log_file_name = None
             
@@ -373,7 +388,7 @@ def main():
 
     session_path = r'C:/Users\Kyle\dysense_session字字\HSKY_25256_20160524_190408'
 
-    dysense_reader = DySenseReader(session_path)
+    dysense_reader = SessionOutput(session_path)
     
     position_measurements_by_source = dysense_reader.read_positions()
     

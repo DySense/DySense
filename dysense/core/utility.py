@@ -8,6 +8,8 @@ import json
 import csv
 import bisect
 import math
+import datetime
+import logging
 from decimal import Decimal
 
 def find_last_index(list_to_search, element):
@@ -278,4 +280,29 @@ def wrap_angle_radians(angle):
         angle -= 2*math.pi
         
     return angle
+
+def write_args_to_file(filename, out_directory, args):
+    # Write arguments out to file for archiving purposes.
+    args_filepath = os.path.join(out_directory, filename)
+    with open(args_filepath, 'wb') as args_file:
+        csv_writer = csv.writer(args_file)
+        csv_writer.writerow(['Date', str(datetime.datetime.now())])
+        csv_writer.writerows([[k, v] for k, v in args.items()])
+        
+def logging_string_to_level(level):
+    
+    level = level.lower()
+    
+    if level == 'debug':
+        return logging.DEBUG
+    if level == 'info':
+        return logging.INFO
+    if level == 'warn':
+        return logging.WARN
+    if level == 'error':
+        return logging.ERROR
+    if level == 'critical':
+        return logging.DEBUG
+    
+    return None
     

@@ -20,9 +20,10 @@ class GeoReading(object):
         
 class GeoTagger(object):
 
-    def __init__(self, max_time_diff):
+    def __init__(self, max_time_diff, log):
         
         self.max_time_diff = max_time_diff
+        self.log = log
 
     def tag_all_readings(self, readings, position_offsets, orientation_offsets, positions, roll_angles, pitch_angles, yaw_angles):
         '''Assumes everything is already sorted by time.'''
@@ -80,6 +81,12 @@ class GeoTagger(object):
         
         if math.isnan(roll):
             roll = 0
+            
+        if math.isnan(pitch):
+            pitch = 0
+            
+        if math.isnan(yaw):
+            yaw = 0
         
         # TODO take into account roll and pitch for calculating offsets.  
         x_offset = x_body * math.cos(yaw) - y_body * math.sin(yaw)
@@ -137,7 +144,7 @@ class GeoTagger(object):
     
     def interpolate_orientation(self, reading_time, orientation_times, orientations_by_axes):
         ''''''
-        print "Interpolation not currently supported for orientation. Exiting"
+        self.log.critical("Interpolation not currently supported for orientation. Exiting")
         sys.exit(1)
     
         orientation_index = find_less_than_or_equal(orientation_times, reading_time)
