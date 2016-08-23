@@ -4,7 +4,7 @@
 
 app_version = '1.0.0' # Version for entire application
 
-output_version = '1.0.0' # Version for session output structure / data.
+output_version = '2.0.0' # Version for session output structure / data.
 
 # Protocol versions
 m2c_version = '1.0.0' # Manager-Controller protocol

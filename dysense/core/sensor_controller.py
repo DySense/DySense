@@ -70,11 +70,6 @@ class SensorController(object):
         # Allow settings to optionally define a type (e.g. bool) that will be enforced. 
         self.setting_name_to_type = {'surveyed': 'bool'}
         
-        # Vehicle position/orientation files. New ones created for each session.
-        self.position_source_log = None
-        self.orientation_source_log = None
-        self.height_source_log = None
-        
         self.stop_request = threading.Event()
         
         self._session_state = 'closed'
@@ -843,24 +838,24 @@ class SensorController(object):
         matching_orientation_sources = [source for source in self.orientation_sources if source.matches(sensor.sensor_id, self.controller_id)]
         matching_height_sources = [source for source in self.height_sources if source.matches(sensor.sensor_id, self.controller_id)]
         
-        # Check if we should log data. This assumes that data is ok.
-        need_to_log_data = (not sensor.sensor_paused) and self.session_state == 'started'
-        
         if is_time_source:
             self.time_source.mark_updated()
             self.process_time_source_data(utc_time, sys_time)
         
         for source in matching_position_sources:
             source.mark_updated()
-            self.process_position_source_data(source, utc_time, sys_time, data, need_to_log_data)
+            self.process_position_source_data(source, utc_time, sys_time, data)
         
         for source in matching_orientation_sources:
             source.mark_updated()
-            self.process_orientation_source_data(source, utc_time, sys_time, data, need_to_log_data)
+            self.process_orientation_source_data(source, utc_time, sys_time, data)
 
         for source in matching_height_sources:
             source.mark_updated()
-            self.process_height_source_data(source, utc_time, sys_time, data, need_to_log_data)
+            self.process_height_source_data(source, utc_time, sys_time, data)
+
+        # Check if we should log data. This assumes that data is ok.
+        need_to_log_data = (not sensor.sensor_paused) and self.session_state == 'started'
 
         if need_to_log_data:
             # Write data to corresponding sensor log.
@@ -884,7 +879,7 @@ class SensorController(object):
         self.last_utc_time = utc_time
         self.last_sys_time_update = time.time()
         
-    def process_position_source_data(self, source, utc_time, sys_time, data, need_to_log):
+    def process_position_source_data(self, source, utc_time, sys_time, data):
 
         x = data[source.position_x_idx]
         y = data[source.position_y_idx]
@@ -897,43 +892,21 @@ class SensorController(object):
 
         # TODO just send to local manager.
         self._send_manager_message('all', 'new_source_data', (source.sensor_id, 'position', utc_time, sys_time, position_data))
-
-        if need_to_log:
-            
-            position_data.insert(0, utc_time)
                     
-            if len(self.position_sources) > 1:
-                position_data.insert(0, source.sensor_id)
-    
-            self.position_source_log.write(position_data)
-                    
-    def process_orientation_source_data(self, source, utc_time, sys_time, data, need_to_log):
+    def process_orientation_source_data(self, source, utc_time, sys_time, data):
 
         angle = data[source.orientation_idx]
         orientation_data = [source.angle_name[0], angle]
         
         # TODO just send to local manager.
         self._send_manager_message('all', 'new_source_data', (source.sensor_id, 'orientation', utc_time, sys_time, orientation_data))
-        
-        if need_to_log:
-            orientation_data.insert(0, utc_time)
-            self.orientation_source_log.write(orientation_data)
             
-    def process_height_source_data(self, source, utc_time, sys_time, data, need_to_log):
+    def process_height_source_data(self, source, utc_time, sys_time, data):
 
         height_data = data[source.height_idx]
 
         # TODO just send to local manager.
         self._send_manager_message('all', 'new_source_data', (source.sensor_id, 'height', utc_time, sys_time, height_data))
-
-        if need_to_log:
-            
-            height_data = [utc_time, height_data]
-                    
-            if len(self.height_sources) > 1:
-                height_data.insert(0, source.sensor_id)
-    
-            self.height_source_log.write(height_data)
 
     def handle_controller_command(self, manager, command_name, command_args):
         
@@ -1176,21 +1149,6 @@ class SensorController(object):
             sensor_data_names = [setting['name'] for setting in sensor.metadata['data']]
             sensor.output_file.handle_metadata(['utc_time'] + sensor_data_names)
             
-        # Create platform state logs.  Don't add in headers since if multiple sources then will have extra first column.
-        position_source_path = os.path.join(self.session_path, 'position.csv')
-        self.position_source_log = CSVLog(position_source_path, 1)
-        orientation_source_path = os.path.join(self.session_path, 'orientation.csv')
-        self.orientation_source_log = CSVLog(orientation_source_path, 1)
-        height_source_path = os.path.join(self.session_path, 'height.csv')
-        self.height_source_log = CSVLog(height_source_path, 1)
-            
-        # Fixed height won't change so create it now.
-        if self.fixed_height_source is not None:
-            fixed_height_source_path = os.path.join(self.session_path, 'fixed_height.csv')
-            fixed_height_source_log = CSVLog(fixed_height_source_path, 1)
-            fixed_height_source_log.write([self.fixed_height_source, 'meters'])
-            fixed_height_source_log.terminate()
-            
         # Start all other sensors now that session is started.
         self.log_message("Starting all sensors.")
         for sensor in self.sensors:
@@ -1209,13 +1167,6 @@ class SensorController(object):
         
         for sensor in self.sensors:
             self.send_command_to_sensor(sensor.sensor_id, 'pause')
-        
-        self.position_source_log.terminate()
-        self.orientation_source_log.terminate()
-        self.height_source_log.terminate()
-        self.position_source_log = None
-        self.orientation_source_log = None
-        self.height_source_log = None
         
         for sensor in self.sensors:
             sensor.output_file.terminate()
@@ -1314,17 +1265,16 @@ class SensorController(object):
 
         if self.time_source is not None:
             saved_info = {}
-            for key, value in self.time_source.public_info.items():
-                if key in ['controller_id', 'sensor_id', 'metadata']:
-                    saved_info[key] = value
+            saved_info['sensor_id'] = self.time_source.sensor_id
+            saved_info['controller_id'] = self.time_source.controller_id
+            # Don't need to specify time index since it's standardized as first piece of data.
             outdata['time_source'] = saved_info
             
         outdata['position_sources'] = []
         for position_source in self.position_sources:
             saved_info = {}
-            for key, value in position_source.public_info.items():
-                if key in ['controller_id', 'sensor_id', 'metadata']:
-                    saved_info[key] = value
+            saved_info['sensor_id'] = position_source.sensor_id
+            saved_info['controller_id'] = position_source.controller_id
             saved_info['x_index'] = position_source.position_x_idx
             saved_info['y_index'] = position_source.position_y_idx
             saved_info['z_index'] = position_source.position_z_idx
@@ -1334,9 +1284,8 @@ class SensorController(object):
             
         for orientation_source in self.orientation_sources:
             saved_info = {}
-            for key, value in orientation_source.public_info.items():
-                if key in ['controller_id', 'sensor_id', 'metadata']:
-                    saved_info[key] = value
+            saved_info['sensor_id'] = orientation_source.sensor_id
+            saved_info['controller_id'] = orientation_source.controller_id
             saved_info['orientation_idx'] = orientation_source.orientation_idx
             
             source_name = orientation_source.angle_name + '_source'
@@ -1345,12 +1294,17 @@ class SensorController(object):
         outdata['height_sources'] = []
         for height_source in self.height_sources:
             saved_info = {}
-            for key, value in height_source.public_info.items():
-                if key in ['controller_id', 'sensor_id', 'metadata']:
-                    saved_info[key] = value
+            saved_info['sensor_id'] = height_source.sensor_id
+            saved_info['controller_id'] = height_source.controller_id
             saved_info['height_index'] = height_source.height_idx
 
-            outdata['height_sources'].append(saved_info)  
+            outdata['height_sources'].append(saved_info)
+            
+        if self.fixed_height_source is not None:
+            saved_info = {}
+            saved_info['height'] = self.fixed_height_source
+            
+            outdata['fixed_height_source'] = saved_info
         
         with open(info_file_path, 'w') as outfile:
             outfile.write(yaml.safe_dump(outdata, allow_unicode=True, default_flow_style=False))
