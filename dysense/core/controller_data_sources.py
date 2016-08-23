@@ -78,7 +78,6 @@ class PositionDataSource(AbstractDataSource):
         self.position_x_idx = None
         self.position_y_idx = None
         self.position_z_idx = None
-        self.position_zone_idx = None
         super(PositionDataSource, self).__init__(callback, **kargs)
         
     def verify_metadata(self):
@@ -89,12 +88,6 @@ class PositionDataSource(AbstractDataSource):
             self.position_z_idx = self.get_matching_tag_idx('position_z')
         except ValueError:
             raise ValueError("Could not find valid x, y and z position tags in sensor metadata")
-
-        # Zone is optional so don't raise exception if not found
-        try:
-            self.position_zone_idx = self.get_matching_tag_idx('position_zone')
-        except ValueError:
-            self.position_zone_idx = None
 
 class OrientationDataSource(AbstractDataSource):
     

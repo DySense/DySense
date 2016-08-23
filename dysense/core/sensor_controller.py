@@ -885,10 +885,6 @@ class SensorController(object):
         y = data[source.position_y_idx]
         z = data[source.position_z_idx]
         position_data = [x, y, z]
-        
-        if source.position_zone_idx is not None:
-            zone = data[source.position_zone_idx]
-            position_data.append(zone)
 
         # TODO just send to local manager.
         self._send_manager_message('all', 'new_source_data', (source.sensor_id, 'position', utc_time, sys_time, position_data))
@@ -1278,7 +1274,6 @@ class SensorController(object):
             saved_info['x_index'] = position_source.position_x_idx
             saved_info['y_index'] = position_source.position_y_idx
             saved_info['z_index'] = position_source.position_z_idx
-            saved_info['zone_index'] = position_source.position_zone_idx
             
             outdata['position_sources'].append(saved_info)    
             
