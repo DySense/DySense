@@ -76,20 +76,25 @@ def validate_setting(value, setting_metadata):
     return value
 
 def validate_type(value, expected_type):
-    '''Return value cast to expected type, or if cast is invalid than raise ValueError'''
+    '''
+    Return value cast to expected type, or if cast is invalid than raise ValueError.
+    If value is None then will return None.
+    '''
+    if value is None:
+        return None
     
     expected_type = expected_type.lower()
 
     if expected_type in ['int', 'integer']:
         value = int(value)
     elif expected_type in ['str', 'string']:
-        value = unicode(value)
+        value = make_unicode(value)
     elif expected_type in ['float', 'double']:
         value = float(value)
     elif expected_type in ['bool', 'boolean']:
-        if unicode(value).lower() in ['true', 'yes', 't', 'y']:
+        if make_unicode(value).lower() in ['true', 'yes', 't', 'y']:
             value = True
-        elif unicode(value).lower() in ['false', 'no', 'f', 'n']:
+        elif make_unicode(value).lower() in ['false', 'no', 'f', 'n']:
             value = False
         else:
             raise ValueError
