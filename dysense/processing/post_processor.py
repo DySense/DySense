@@ -201,6 +201,9 @@ class PostProcessor:
             sensor_log_file_path = os.path.join(tagged_logs_directory_path, sensor_log_file_name)
             sensor_output_log = CSVLog(sensor_log_file_path, 1)
             
+            sensor_data_names = [setting['name'] for setting in sensor['metadata']['data']]
+            sensor_output_log.handle_metadata(['utc_time', 'latitude', 'longitude', 'altitude', 'roll', 'pitch', 'yaw'] + sensor_data_names)
+            
             log_data = sensor['log_data']
             out_data = [[d['time']] + list(d['position']) + list(d['orientation']) + list(d['data']) for d in log_data]
             for data_line in out_data:
