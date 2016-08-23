@@ -545,7 +545,7 @@ class SensorController(object):
         sensor_type = make_unicode(sensor_info['sensor_type']).strip()
         position_offsets = sensor_info.get('position_offsets', [0, 0, 0])
         orientation_offsets = sensor_info.get('orientation_offsets', [0, 0, 0])
-        instrument_type = make_unicode(sensor_info.get('instrument_type', 'NONE'))
+        instrument_type = make_unicode(sensor_info.get('instrument_type', 'NONE')).replace(' ','')
         instrument_tag = format_id(make_unicode(sensor_info.get('instrument_tag', '123')))
         
         settings = {}

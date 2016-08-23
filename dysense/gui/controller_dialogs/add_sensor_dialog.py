@@ -16,6 +16,9 @@ class AddSensorDialog(QDialog):
         self.presenter = presenter
         self.possible_sensor_id_types = possible_sensor_id_types
         
+        # Set when user updates which sensor they've chosen.
+        selected_id_type = ''
+        
         self.setup_ui(possible_sensor_types)
 
     def setup_ui(self, possible_sensor_types):
@@ -97,6 +100,7 @@ class AddSensorDialog(QDialog):
         try:
             sensor_id_type = self.possible_sensor_id_types[self.sensor_type_combo_box.currentIndex()]
             self.sensor_id_type_label.setText('{} - '.format(make_unicode(sensor_id_type)))
+            self.selected_id_type = make_unicode(sensor_id_type)
         except IndexError:
             pass
 
@@ -104,7 +108,7 @@ class AddSensorDialog(QDialog):
 
         new_sensor_info =  {'sensor_type': self.sensor_type_combo_box.currentText().strip(), 
                             'sensor_id': self.sensor_name_line_edit.text().strip(),
-                            'instrument_type': self.sensor_id_type_label.text().strip(),
+                            'instrument_type': self.selected_id_type,
                             'instrument_tag': self.sensor_id_tag_line_edit.text().strip()}
         
         self.presenter.add_sensor(new_sensor_info)
