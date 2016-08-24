@@ -1281,7 +1281,7 @@ class SensorController(object):
             saved_info = {}
             saved_info['sensor_id'] = orientation_source.sensor_id
             saved_info['controller_id'] = orientation_source.controller_id
-            saved_info['orientation_idx'] = orientation_source.orientation_idx
+            saved_info['orientation_index'] = orientation_source.orientation_idx
             
             source_name = orientation_source.angle_name + '_source'
             outdata[source_name] = saved_info
