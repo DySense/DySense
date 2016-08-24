@@ -28,8 +28,6 @@ class EndSessionDialog(QDialog):
         
         self.setup_buttons()
         
-        controller_settings = controller_info['settings']
-        
         self.session_notes = QTextEdit()
         self.session_notes.setMinimumHeight(50)
         self.session_notes.setLineWrapMode(QTextEdit.WidgetWidth)

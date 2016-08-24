@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import os
+import copy
 
 from PyQt4.Qt import *
 from PyQt4 import QtGui, QtCore
@@ -15,7 +16,7 @@ class ControllerSettingsWidget(QWidget):
         
         self.presenter = presenter
         self.controller_id = controller_info['id']
-        controller_settings = controller_info['settings']
+        controller_settings = copy.deepcopy(controller_info['settings'])
         self.only_basic_settings = only_basic_settings
         
         # Populated from controller settings to relate widgets and settings.

@@ -789,17 +789,18 @@ class SensorController(object):
             
             try:
                 setting_value = validate_type(setting_value, setting_type)
-            except ValueError as e:
+            except ValueError:
                 self.log_message("{} cannot be converted into the expected type '{}'".format(setting_value, setting_type), logging.ERROR, manager)
                 self.send_entire_controller_info() # so user can be notified setting didn't change.
                 return # don't set value
-            except KeyError:
-                self.log_message("Can't change setting {} because it does not exist.".format(setting_name), logging.ERROR, manager)
-                self.send_entire_controller_info() # so user can be notified setting didn't change.
-                return # don't set value
-            
+
         except KeyError:
             pass # setting doesn't have type so can't validate it, just set it below
+        
+        if setting_name not in self.settings:
+            self.log_message("Can't add new controller setting {}".format(setting_name), logging.ERROR, manager)
+            self.send_entire_controller_info() # so user can be notified setting didn't take effect.
+            return # don't add new setting
         
         self.settings[setting_name] = setting_value
         self.send_entire_controller_info() # so user can be notified setting changed 
