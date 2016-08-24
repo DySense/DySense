@@ -13,12 +13,13 @@ from dysense.core.utility import make_unicode, open_directory_in_viewer
 
 class ExtrasMenuWidget(QWidget):
     
-    def __init__(self, presenter, main_window, sensor_data_table, *args):
+    def __init__(self, presenter, main_window, sensor_data_table, map_widget, *args):
         QWidget.__init__(self, *args)
         
         self.presenter = presenter
         self.main_window = main_window
         self.sensor_data_table = sensor_data_table
+        self.map_widget = map_widget
 
         self.setup_ui()
         
@@ -67,6 +68,7 @@ class ExtrasMenuWidget(QWidget):
         self.stacked_widget.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding))
         
         self.stacked_widget.addWidget(self.sensor_data_table)
+        self.stacked_widget.addWidget(self.map_widget)
         
         ## ADD WIDGETS / LAYOUTS TO CENTRAL WIDGET
         
@@ -95,7 +97,7 @@ class ExtrasMenuWidget(QWidget):
         
     def view_map_clicked(self):
         
-        print 'show map'
+        self.show_stacked_widget(self.map_widget)
         
     def view_sensor_data_clicked(self):
         

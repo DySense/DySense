@@ -17,6 +17,7 @@ from dysense.gui.controller_view_widget import ControllerViewWidget
 from dysense.gui.extras_menu_widget import ExtrasMenuWidget
 from dysense.gui.new_issue_popup import NewIssuePopupWindow
 from dysense.gui.data_table_widget import DataTableWidget
+from dysense.gui.mapping_widget import MappingWidget
 
 from dysense.core.utility import pretty, make_unicode
 from dysense.core.version import app_version
@@ -85,12 +86,13 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         # View associated with local controller. 
         self.local_controller_view = None
         
-        # Create widget for showing all sensor data at once.
-        # This is shown by extras menu, but updated by this main window class.
+        # Create widget for showing all sensor data at once and for mapping.
+        # These are shown by extras menu, but updated by this main window class.
         self.sensor_data_table = DataTableWidget()
+        self.map_widget = MappingWidget(self.presenter)
         
         # Create menu that includes extra functionality.
-        self.extras_menu = ExtrasMenuWidget(self.presenter, self, self.sensor_data_table)
+        self.extras_menu = ExtrasMenuWidget(self.presenter, self, self.sensor_data_table, self.map_widget)
         self.stacked_widget.addWidget(self.extras_menu)
         
         # Load icons that will be used in sensor list widget.
@@ -461,3 +463,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         
         reply = popup.exec_() 
         return reply == QtGui.QMessageBox.Yes
+    
+    def update_map(self, controller_id, sensor_id, source_type, utc_time, sys_time, data):
+        if self.map_widget.active:
+            self.map_widget.new_data_recieved(controller_id, sensor_id, source_type, utc_time, sys_time, data)

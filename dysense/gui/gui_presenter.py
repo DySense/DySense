@@ -440,9 +440,7 @@ class GUIPresenter(QObject):
     def handle_new_source_data(self, controller_id, sensor_id, source_type, utc_time, sys_time, data):
         
         if source_type == 'position':
-            # TODO update map (system time passed in as argument to this callback)
-            #print "{} {} {} {} {}".format(controller_id, sensor_id, utc_time, sys_time, data)
-            pass
+            self.view.update_map(controller_id, sensor_id, source_type, utc_time, sys_time, data)
     
     def send_sensor_command(self, command_name, command_args=None):
     
