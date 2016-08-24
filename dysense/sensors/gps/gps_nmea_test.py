@@ -14,7 +14,7 @@ class GpsNmeaTest(GpsNmea):
     def __init__(self, sensor_id, instrument_id, settings, context, connect_endpoint):
         
         try:
-            self.test_file_path = make_unicode(settings['test_file_path'])
+            self.test_file_path = os.path.abspath(make_unicode(settings['test_file_path']).strip('"'))
             self.output_rate = make_unicode(settings['output_rate'])
             self.required_fix = make_unicode(settings['required_fix'])
             self.required_latlon_error = float(settings['required_error'])
