@@ -45,7 +45,8 @@ class PostProcessor:
         
         if multiple_position_sensors:
             # Need to combine all sources into a single sequence of platform positions.
-            raise Exception("TODO")
+            #raise Exception("TODO")
+            platform_positions = position_measurements_by_source.values()[1]
         else:
             platform_positions = position_measurements_by_source.values()[0]
             

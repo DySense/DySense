@@ -9,7 +9,7 @@ import datetime
 import time
 import logging
 
-from dysense.processing.dysense_output import SessionOutput
+from dysense.processing.dysense_output import SessionOutputFactory
 from dysense.processing.geotagger import GeoTagger
 from dysense.processing.utility import *
 from dysense.processing.database import Database
@@ -43,6 +43,7 @@ def postprocess(**args):
     '''
     Calculate platform position/orientation, geotag sensor data and optionally upload results to database.
     Arguments should follow command line formatting (e.g. boolean as string 'true' instead of True)
+    Return processed session or None if error occurs.
     '''
     # Copy args so we can archive them to a file when function is finished.
     args_copy = args.copy()
@@ -65,7 +66,11 @@ def postprocess(**args):
     log = setup_logging(processed_directory_path, file_log_level, console_log_level)
     
     # Setup and run post-processor to geotag sensor readings.
-    session_output = SessionOutput(session_directory_path, log)
+    session_output = SessionOutputFactory.get_object(session_directory_path, log)
+    
+    if session_output is None:
+        return None
+    
     geotagger = GeoTagger(max_time_diff, log)
     processor = PostProcessor(session_output, geotagger, log)
     

@@ -64,3 +64,19 @@ def unicode_csv_reader(utf8_file, **kwargs):
     csv_reader = csv.reader(utf8_file, **kwargs)
     for row in csv_reader:
         yield [unicode(cell, 'utf-8') for cell in row]
+
+class StampedPosition(object):
+    '''Time stamped position measurement.'''
+    
+    def __init__(self, utc_time, x, y, z):
+        self.utc_time = utc_time
+        self.x = x
+        self.y = y
+        self.z = z
+        
+class StampedAngle(object):
+    '''Time stamped angle measurement.'''
+    
+    def __init__(self, utc_time, angle):
+        self.utc_time = utc_time
+        self.angle = angle
