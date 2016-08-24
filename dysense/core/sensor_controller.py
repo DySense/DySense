@@ -1249,7 +1249,7 @@ class SensorController(object):
             with open(file_path, 'w') as outfile:
                 outdata = {}
                 for key, value in sensor.public_info.items():
-                    if key in ['sensor_type', 'sensor_id', 'settings', 'parameters', 'text_messages',
+                    if key in ['sensor_type', 'sensor_id', 'controller_id', 'settings', 'parameters', 'text_messages',
                                 'position_offsets', 'orientation_offsets', 'instrument_type', 'instrument_tag', 'metadata']:
                         outdata[key] = value
                 outfile.write(yaml.safe_dump(outdata, allow_unicode=True, default_flow_style=False))
