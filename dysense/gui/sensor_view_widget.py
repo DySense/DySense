@@ -36,8 +36,8 @@ class SensorViewWidget(QWidget, Ui_sensor_view):
 
                                'instrument_tag': self.sensor_id_line_edit,
                                'position_offsets': [self.forward_position_line_edit,
-                                                    self.left_position_line_edit,
-                                                    self.up_position_line_edit],
+                                                    self.right_position_line_edit,
+                                                    self.down_position_line_edit],
                                'orientation_offsets': [self.roll_orientation_line_edit,
                                                        self.pitch_orientation_line_edit,
                                                        self.yaw_orientation_line_edit],          
@@ -76,8 +76,8 @@ class SensorViewWidget(QWidget, Ui_sensor_view):
         # Connect User Changes        
         self.sensor_id_line_edit.editingFinished.connect(self.instrument_id_changed)
         self.forward_position_line_edit.editingFinished.connect(self.position_offset_changed)
-        self.left_position_line_edit.editingFinished.connect(self.position_offset_changed)
-        self.up_position_line_edit.editingFinished.connect(self.position_offset_changed)
+        self.right_position_line_edit.editingFinished.connect(self.position_offset_changed)
+        self.down_position_line_edit.editingFinished.connect(self.position_offset_changed)
         self.roll_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
         self.pitch_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
         self.yaw_orientation_line_edit.editingFinished.connect(self.orientation_offset_changed)
@@ -316,9 +316,9 @@ class SensorViewWidget(QWidget, Ui_sensor_view):
         
         if self.sender().isModified():
             forward = self.forward_position_line_edit.text()
-            left = self.left_position_line_edit.text()
-            up = self.up_position_line_edit.text()
-            self.presenter.change_sensor_info('position_offsets', [forward, left, up])
+            right = self.right_position_line_edit.text()
+            down = self.down_position_line_edit.text()
+            self.presenter.change_sensor_info('position_offsets', [forward, right, down])
             self.sender().setModified(False)
      
     def orientation_offset_changed(self):    

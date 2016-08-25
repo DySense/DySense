@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
 import math
 import re
 
+from PyQt4 import QtGui, QtCore
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+
 class MappingWidget(QtGui.QWidget):
+    
     def __init__(self, presenter):
+        '''Constructor'''
         QtGui.QWidget.__init__(self)
+
         self.view = View(self)
-        # initialize the scenerect to the same size as the view
-        self.view.setSceneRect(QtCore.QRectF(self.view.viewport().rect()))
         
         self.presenter = presenter
         
@@ -27,10 +29,7 @@ class MappingWidget(QtGui.QWidget):
         
         self.active = True
         
-        # bool is true when map is shown
-        self.plot_data_bool = False
-        
-        self.clear_map_button = QtGui.QPushButton('Clear Map', self)        
+        self.clear_map_button = QtGui.QPushButton('Clear Map')        
         
         # Create items
         self.update_rate_line_edit = QtGui.QLineEdit()
@@ -87,7 +86,7 @@ class MappingWidget(QtGui.QWidget):
             pass        
         
     def new_data_recieved(self, controller_id, sensor_id, source_type, utc_time, sys_time, data):        
-        
+
         # add the first position source to data sources list
         if self.source_count == 0:
             self.data_sources.append((controller_id, sensor_id))           
@@ -115,6 +114,7 @@ class MappingWidget(QtGui.QWidget):
                 
 
 class View(QtGui.QGraphicsView):
+    
     def __init__(self, parent):
         QtGui.QGraphicsView.__init__(self, parent)
         self.parent = parent
@@ -145,7 +145,7 @@ class View(QtGui.QGraphicsView):
     
     
     def setup(self):
-        x_len, y_len = self.get_size()
+        x_len, y_len = self.scene_size()
         self.cen_x = x_len/2.0
         self.cen_y = y_len/2.0
         self.center = (self.cen_x, self.cen_y)
@@ -163,12 +163,12 @@ class View(QtGui.QGraphicsView):
     def set_scene_rect(self):
         self.setSceneRect(QtCore.QRectF(self.viewport().rect()))    
         
-    def get_size(self):
+    def scene_size(self):
         
-        self.current_size = [float(s) for s in re.findall(r"[-+]?\d*\.\d+|\d+",str(self.sceneRect().size()))][1:]              
-        return self.current_size
+        scene_size = self.sceneRect().size()
+        return [scene_size.width(), scene_size.height()]
  
-    def add_point(self):       
+    def add_point(self):
         
         # get the 2 most recent lats and longs
         lat1 = self.parent.position_data_degs[-2][0]
@@ -194,7 +194,7 @@ class View(QtGui.QGraphicsView):
         self.point_relative_cm.append((new_x_cm, new_y_cm))        
         
         # only plot points if map is shown. Otherwise store points in cache.
-        if not self.parent.plot_data_bool:
+        if not self.parent.active:
             self.point_cache.append((new_x_cm, new_y_cm))
             return        
         
@@ -243,7 +243,7 @@ class View(QtGui.QGraphicsView):
         
         current_x_max, current_x_min, current_y_max, current_y_min = self.get_bounds()       
                                     
-        x_bound, y_bound = self.get_size()                  
+        x_bound, y_bound = self.scene_size()                  
             
         if current_x_max >= x_bound - 30:
             self.refit()
@@ -277,7 +277,7 @@ class View(QtGui.QGraphicsView):
         reducing_scale_factor = 0.99
         origin_edge_space = 120
         
-        x_len, y_len = self.get_size()        
+        x_len, y_len = self.scene_size()        
         
         self.possible_origins =  [
                                  (origin_edge_space, origin_edge_space),

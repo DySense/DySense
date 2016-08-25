@@ -312,24 +312,24 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="left_position_label">
+         <widget class="QLabel" name="right_position_label">
           <property name="text">
-           <string>Left:</string>
+           <string>Right:</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="left_position_line_edit"/>
+         <widget class="QLineEdit" name="right_position_line_edit"/>
         </item>
         <item>
-         <widget class="QLabel" name="up_position_label">
+         <widget class="QLabel" name="down_position_label">
           <property name="text">
-           <string>Up:</string>
+           <string>Down:</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="up_position_line_edit"/>
+         <widget class="QLineEdit" name="down_position_line_edit"/>
         </item>
        </layout>
       </widget>
@@ -601,8 +601,8 @@
   <tabstop>sensor_type_line_edit</tabstop>
   <tabstop>sensor_id_line_edit</tabstop>
   <tabstop>forward_position_line_edit</tabstop>
-  <tabstop>left_position_line_edit</tabstop>
-  <tabstop>up_position_line_edit</tabstop>
+  <tabstop>right_position_line_edit</tabstop>
+  <tabstop>down_position_line_edit</tabstop>
   <tabstop>roll_orientation_line_edit</tabstop>
   <tabstop>pitch_orientation_line_edit</tabstop>
   <tabstop>yaw_orientation_line_edit</tabstop>

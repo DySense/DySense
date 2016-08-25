@@ -41,7 +41,7 @@ class SensorConnection(object):
         self.text_messages = []
         
         # Sensor offsets relative to vehicle position.
-        self.position_offsets = position_offsets # Forward left up - meters
+        self.position_offsets = position_offsets # Forward right down - meters
         self.orientation_offsets = orientation_offsets # Roll pitch yaw - degrees
         
         # ID of the sensor itself, not the one assigned by the program.

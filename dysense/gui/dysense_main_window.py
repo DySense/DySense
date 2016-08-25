@@ -89,7 +89,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         # Create widget for showing all sensor data at once and for mapping.
         # These are shown by extras menu, but updated by this main window class.
         self.sensor_data_table = DataTableWidget()
-        self.map_widget = MappingWidget(self.presenter)
+        self.map_widget = None # MappingWidget(self.presenter)
         
         # Create menu that includes extra functionality.
         self.extras_menu = ExtrasMenuWidget(self.presenter, self, self.sensor_data_table, self.map_widget)
@@ -465,5 +465,8 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         return reply == QtGui.QMessageBox.Yes
     
     def update_map(self, controller_id, sensor_id, source_type, utc_time, sys_time, data):
+        
+        return
+        
         if self.map_widget.active:
             self.map_widget.new_data_recieved(controller_id, sensor_id, source_type, utc_time, sys_time, data)
