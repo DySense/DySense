@@ -98,13 +98,8 @@ class GUIPresenter(QObject):
             sensors.append(useful_info)
         data['sensors'] = sensors
         
-        app_version = '1.0.0'
-
-        # Save version numbers when config was saved for detecting issues when loading config on a different version.        
+        # Save version number when config was saved for detecting issues when loading config on a different version.        
         data['app_version'] = app_version
-        data['m2c_version'] = m2c_version
-        data['s2c_version'] = s2c_version
-        data['p2m_version'] = p2m_version
     
         with open(file_path, 'w') as outfile:
             outfile.write(yaml.safe_dump(data, allow_unicode=True, default_flow_style=False))
