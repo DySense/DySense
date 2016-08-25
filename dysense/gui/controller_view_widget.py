@@ -215,8 +215,8 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
                 self.settings_widget.update_setting(info_name, info_value)
                 
             if info_name == 'session_state':
-                if not controller_info['session_active']:
-                    session_status = 'Not Started'        
+                if info_value.lower() == 'closed':
+                    session_status = 'Not Started'
                 else:
                     session_status = info_value
                 self.session_status_label.setText(make_unicode(pretty(session_status)))
