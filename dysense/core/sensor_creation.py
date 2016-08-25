@@ -124,7 +124,7 @@ class SensorDriverProcess(object):
         startup_args[2] = json_dumps_unicode(startup_args[2]) # serialize sensor settings
         startup_args[3] = make_utf8(startup_args[3]) # make sure connect endpoint is encoded.
     
-        absolute_path = os.path.join(os.path.abspath(sys.path[0]), relative_path)
+        absolute_path = os.path.join(os.getcwd(), relative_path)
         absolute_path =  make_utf8(absolute_path)
         try:
             if language == 'python':
