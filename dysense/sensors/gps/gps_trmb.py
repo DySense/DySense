@@ -91,11 +91,11 @@ class GpsTrimble(SensorBase):
         self.num_messages_processed += 1
 
         if not check_nmea_checksum(nmea_string):
-            if self.num_messages_processed > 1:
-                # Only send message if wasn't first message because sometimes first message isn't complete.
+            if self.num_messages_processed == 1:
+                return 'normal' # first message is likely a fragment so don't treat it as an error
+            else:
                 self.send_text("Invalid checksum.")
-                #self.send_text(nmea_string)
-            return 'error'
+                return 'error'
         
         try:
             sentence_type, parsed_sentence = parse_nmea_sentence(nmea_string)
@@ -146,6 +146,7 @@ class GpsTrimble(SensorBase):
                 self.send_text('Parsed {} message which isnt being handled.'.format(sentence_type))
             
         if (self.ggk_count == 0 or self.avr_count == 0) and self.num_messages_processed > 10:
+            # Should be receiving both types of messages by now...
             current_state = 'timed_out'
                                       
         self.last_state = current_state

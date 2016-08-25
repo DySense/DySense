@@ -80,10 +80,11 @@ class GpsNmea(SensorBase):
         self.num_messages_processed += 1
 
         if not check_nmea_checksum(nmea_string):
-            if self.num_messages_processed > 1:
-                # Only send message if wasn't first message because sometimes first message isn't complete.
+            if self.num_messages_processed == 1:
+                return 'normal' # first message is likely a fragment so don't treat it as an error
+            else:
                 self.send_text("Invalid checksum.")
-            return 'error'
+                return 'error'
         
         try:
             sentence_type, parsed_sentence = parse_nmea_sentence(nmea_string)
@@ -110,7 +111,8 @@ class GpsNmea(SensorBase):
                 self.unhandled_message_types.append(sentence_type)
                 self.send_text('Parsed {} message which isnt being handled.'.format(sentence_type))
             
-        if self.gga_count == 0:
+        if self.gga_count == 0 and self.num_messages_processed > 10:
+            #  Should be receiving GGA messages by now..
             current_state = 'timed_out'
                                       
         # Make sure GST messages are being received if the user's trying to monitor fix accuracy.    
