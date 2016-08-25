@@ -68,7 +68,7 @@ class ExtrasMenuWidget(QWidget):
         self.stacked_widget.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding))
         
         self.stacked_widget.addWidget(self.sensor_data_table)
-        #self.stacked_widget.addWidget(self.map_widget)
+        self.stacked_widget.addWidget(self.map_widget)
         
         ## ADD WIDGETS / LAYOUTS TO CENTRAL WIDGET
         
@@ -96,8 +96,8 @@ class ExtrasMenuWidget(QWidget):
             self.icon_name_to_icon[icon_name] = icon
         
     def view_map_clicked(self):
-        pass
-        #self.show_stacked_widget(self.map_widget)
+        
+        self.show_stacked_widget(self.map_widget)
         
     def view_sensor_data_clicked(self):
         

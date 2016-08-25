@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 import math
-import re
+import sys
 
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import *
@@ -13,361 +13,295 @@ class MappingWidget(QtGui.QWidget):
     def __init__(self, presenter):
         '''Constructor'''
         QtGui.QWidget.__init__(self)
-
-        self.view = View(self)
         
         self.presenter = presenter
         
-        self.setContentsMargins(0,0,0,0)
+        self.map_view = MapView(self)
         
-        # list of tuples of the controller and sensor ids that have been sent for position data
-        self.data_sources = []
+        # Saved positions (northing, easting)
+        self.positions = []
         
-        # list of tuples of lat, long, and sys_time
-        self.position_data_degs = []        
-        self.source_count = 0
+        # Minimum time to wait before adding new point.
+        self.min_update_period = 0.5
         
-        self.active = True
+        # Convert lat/long to meters. Set once receive first latitude.
+        self.meters_per_deg_lat = float('NaN')
+        self.meters_per_deg_long = float('NaN')
+        
+        # Set to true when need to use the next latitude to calculate a new scale between degrees and meters.
+        self.need_to_calculate_deg_scale = True
+        
+        # Convert between meters and pixels
+        self.pixels_per_meter_x = 0
+        self.pixels_per_meter_y = 0
+        
+        self._reset_bounds()
+        
+        self._setup_ui()
+        
+    def _setup_ui(self):
         
         self.clear_map_button = QtGui.QPushButton('Clear Map')        
         
-        # Create items
+        # Create widgets
         self.update_rate_line_edit = QtGui.QLineEdit()
         self.update_rate_line_edit.setMaxLength(3)
         self.update_rate_line_edit.setInputMask('0.00')        
-        self.update_rate_line_edit.setFixedWidth(60)
         self.update_rate_label = QtGui.QLabel('Update Rate')
-        self.spacer = QtGui.QSpacerItem(1,1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.update_rate_units_label = QtGui.QLabel('Hz')
+        self.spacer = QtGui.QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
         
-        self.update_rate_label.setToolTip('Hz')
-        self.update_rate_line_edit.setToolTip('Hz')
+        # Add widgets to layout
+        main_layout = QtGui.QVBoxLayout(self)
+        main_layout.addWidget(self.map_view)
         
-        # add items to layouts
-        hlayout = QtGui.QHBoxLayout()
-        hlayout.addWidget(self.update_rate_label)
-        hlayout.addWidget(self.update_rate_line_edit)
-        hlayout.addSpacerItem(self.spacer)
-        hlayout.addWidget(self.clear_map_button)
+        bottom_row_layout = QtGui.QHBoxLayout()
+        bottom_row_layout.addWidget(self.update_rate_label)
+        bottom_row_layout.addWidget(self.update_rate_line_edit)
+        bottom_row_layout.addWidget(self.update_rate_units_label)
+        bottom_row_layout.addSpacerItem(self.spacer)
+        bottom_row_layout.addWidget(self.clear_map_button)
+
+        main_layout.addLayout(bottom_row_layout)
         
-        vlayout = QtGui.QVBoxLayout(self)
-        vlayout.addWidget(self.view)
-        vlayout.addLayout(hlayout)
+        #bottom_row_layout.setContentsMargins(0, 0, 0, 0)
         
-        vlayout.setContentsMargins(0, 0, 0, 0)
-        hlayout.setContentsMargins(0, 0, 0, 0)
+        # Want the map to take up as much space as possible
+        self.map_view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
-               
-        # make connections
+        # Connect signals to slots
         self.clear_map_button.clicked.connect(self.clear_map_button_clicked)
-        self.update_rate_line_edit.textChanged.connect(self.update_rate_changed)
-        
-        # set default update rate to 2
+        self.update_rate_line_edit.editingFinished.connect(self.update_rate_changed)
+
         self.update_rate_line_edit.setText('2')
         
-        self.set_size()
-        self.initial_setup()    
+    def resizeEvent(self, *args, **kwargs):
+        self.redraw_map()
         
-    def set_size(self):
-        self.view.setSceneRect(QtCore.QRectF(self.view.viewport().rect()))    
+    def redraw_map(self):
+        
+        self.map_view.resize_scene_to_viewport()
+        
+        self._calculate_new_pixel_scale()
     
-    def initial_setup(self):
-        self.view.setup()
-        
     def clear_map_button_clicked(self):
-        pass
-                
         
+        question = "Are you sure you want to clear the map?"
+        if not self.presenter.view.confirm_question(question):
+            return
+        
+        self.clear_map()
+                
     def update_rate_changed(self):
         try:
-            self.update_rate = float(self.update_rate_line_edit.text())
-            self.update_time = 1.0/self.update_rate
-            
+            update_rate = float(self.update_rate_line_edit.text())
+            self.min_update_period = 1.0 / update_rate
+        except ZeroDivisionError:
+            pass
+        
+    def update_for_new_position(self, controller_id, sensor_id, utc_time, sys_time, data):
+
+        try:
+            latitude, longitude = data[:2]
         except ValueError:
-            pass        
-        
-    def new_data_recieved(self, controller_id, sensor_id, source_type, utc_time, sys_time, data):        
+            return # not enough data provided
 
-        # add the first position source to data sources list
-        if self.source_count == 0:
-            self.data_sources.append((controller_id, sensor_id))           
-            self.source_count += 1
-            
-            # add the lat, long, and sys time for the first position data
-            self.position_data_degs.append((data[0],data[1],sys_time))
-            
-            
-            # calculate the degrees to centimeters scale factors with initial latitude
-            self.cm_per_deg_lat = (111132.92-559.82*math.cos(2*data[0]*math.pi / 180)+1.175*math.cos(4*data[0]*math.pi / 180)) * 100.0
-            self.cm_per_deg_long = (111412.84*math.cos(data[0]*math.pi / 180) - 93.5*math.cos(3*data[0]*math.pi / 180)) * 100.0            
-            return
+        expected_number_of_sources = len(self.presenter.local_controller['position_sources'])
         
-        # only use one position source for now    
-        if (controller_id, sensor_id) not in self.data_sources:
-            return
-        
-        # ensure that enough time has passed from the last stored data to current data
-        if sys_time - self.position_data_degs[-1][2] >= self.update_time:
-            self.position_data_degs.append((data[0],data[1],sys_time))
+        if expected_number_of_sources == 0:
+            return # No selected source(s), this data is likely brand new or old.
+        if expected_number_of_sources > 1:
+            # More than one source so need to average into a single position
+            latitude, longitude = self._try_merge_positions(latitude, longitude)
+            if latitude is None:
+                return # Need to wait for newer data from another source.
+        else:
+            # Just one sensor so can use it's position directly.
+            pass
             
-            self.view.add_point()
-            return
-                
+        self._new_position(latitude, longitude)
+            
+    def _reset_bounds(self):
+        '''Set bounds to extremes so they will be overwritten by next valid position'''
+        self.min_northing = sys.float_info.max
+        self.max_northing = -sys.float_info.max
+        self.min_easting = sys.float_info.max
+        self.max_easting = -sys.float_info.max
+            
+    def _new_position(self, latitude, longitude):
+            
+        if self.need_to_calculate_deg_scale:
+            self.meters_per_deg_lat = (111132.92-559.82*math.cos(2*latitude*math.pi / 180)+1.175*math.cos(4*latitude*math.pi / 180))
+            self.meters_per_deg_long = (111412.84*math.cos(latitude*math.pi / 180) - 93.5*math.cos(3*latitude*math.pi / 180))
+            self.need_to_calculate_deg_scale = False
+            
+        # Convert to meters since we need to plot in 2D plane and meters are easy for user to understand.
+        north_meters = self.meters_per_deg_lat * latitude
+        east_meters = self.meters_per_deg_long * longitude
+        
+        new_position = (north_meters, east_meters)
+        
+        self.positions.append(new_position)
 
-class View(QtGui.QGraphicsView):
+        # If new position is outside the old bounds then we'll need to calculate a new meters -> pixel scaling.
+        need_to_rescale = False
+
+        if north_meters < self.min_northing:
+            self.min_northing = north_meters
+            need_to_rescale = True
+        if north_meters > self.max_northing:
+            self.max_northing = north_meters
+            need_to_rescale = True
+        if east_meters < self.min_easting:
+            self.min_easting = east_meters
+            need_to_rescale = True
+        if east_meters > self.max_easting:
+            self.max_easting = east_meters
+            need_to_rescale = True
+
+        if need_to_rescale:
+            self._calculate_new_pixel_scale()
+            self._redraw_all_positions()
+        else:
+            self._draw_position(new_position)
+            
+        # TODO
+        #elif self.isVisible():
+        #    self._draw_position(new_position)
+        #else:
+        #    # Wait until map is visible again and the point will be drawn then.
+        #    pass
+        
+    def _calculate_new_pixel_scale(self):
+        
+        northing_span = self.max_northing - self.min_northing
+        easting_span = self.max_easting - self.min_easting
+        
+        try:
+            self.pixels_per_meter_y = self.map_view.drawable_height / northing_span
+        except ZeroDivisionError:
+            self.pixels_per_meter_y = float('NaN')
+            
+        try:
+            self.pixels_per_meter_x = self.map_view.drawable_width / easting_span
+        except ZeroDivisionError:
+            self.pixels_per_meter_x = float('NaN')
+            
+    def _redraw_all_positions(self):
+        
+        self.map_view.reset_map()
+        
+        for position in self.positions:
+            self._draw_position(position)
+            
+        self.map_view.update_scale_bar(self.pixels_per_meter_x)
+        
+    def _draw_position(self, position):
+        
+        northing, easting = position
+        
+        x_pix = (easting - self.min_easting) * self.pixels_per_meter_x
+        y_pix = (northing - self.min_northing) * self.pixels_per_meter_y
+            
+        self.map_view.draw_point(x_pix, y_pix)
+        
+    def _try_merge_positions(self, latitude, longitude):
+        
+        # TODO filter by time and source
+        return latitude, longitude
+    
+    def clear_map(self):
+        
+        self.positions = []
+        self._reset_bounds()
+        self.map_view.reset_map()
+
+class MapView(QtGui.QGraphicsView):
     
     def __init__(self, parent):
+        '''Constructor'''
         QtGui.QGraphicsView.__init__(self, parent)
+        
         self.parent = parent
+        
         self.setScene(QtGui.QGraphicsScene(self))
-        self.setSceneRect(QtCore.QRectF(self.viewport().rect())) 
+        self.resize_scene_to_viewport()
         
-        # store tuples of the x y values of each point in cm.
-        self.point_relative_cm = []
-        
-        # store tuples of the x y coordinates of each point in pixels
-        self.point_coords_pix = []
-        
-        # tuples of x y cm values of cached points to be plotted when map is shown
-        self.point_cache = []
-        
-        # scale factor pixels/centimeter
-        self.pixels_per_cm = 2
-        
-        # radius of points
+        # Radius of points in pixels
         self.point_radius = 7
         
-        # turn off the scroll bars
+        # Turn off the scroll bars
         self.setVerticalScrollBarPolicy(1)
         self.setHorizontalScrollBarPolicy(1)
         
-        self.last_point = self.scene().addEllipse(-10,10, self.point_radius,self.point_radius)
+        self.last_point = None
+        
+        self.reset_map()
+        
+    @property
+    def drawable_width(self):
+        return self.sceneRect().size().width() - 30
+        
+    @property
+    def drawable_height(self):
+        return self.sceneRect().size().height() - 50
+        
+    def map_resized(self):
                
-    
-    
-    def setup(self):
         x_len, y_len = self.scene_size()
-        self.cen_x = x_len/2.0
-        self.cen_y = y_len/2.0
-        self.center = (self.cen_x, self.cen_y)
+        self.center_x = x_len / 2.0
+        self.center_y = y_len / 2.0
+               
+    def reset_map(self):
         
-        self.point_relative_cm.append((0,0))
-        self.draw_origin()
-                
-        self.set_scale()       
+        self.scene().clear()
         
-    def draw_origin(self):
-        cen_x, cen_y = self.center
-        elip = self.scene().addEllipse(cen_x,cen_y, 15,15)
-        elip.setBrush(Qt.blue)
+        self.map_resized()
         
-    def set_scene_rect(self):
+    def resize_scene_to_viewport(self):
         self.setSceneRect(QtCore.QRectF(self.viewport().rect()))    
         
     def scene_size(self):
         
         scene_size = self.sceneRect().size()
-        return [scene_size.width(), scene_size.height()]
- 
-    def add_point(self):
-        
-        # get the 2 most recent lats and longs
-        lat1 = self.parent.position_data_degs[-2][0]
-        lng1 = self.parent.position_data_degs[-2][1]
-        
-        lat2 = self.parent.position_data_degs[-1][0]
-        lng2 = self.parent.position_data_degs[-1][1]
-        
-        delta_lat = lat2 - lat1
-        delta_lng = lng2 - lng1
-                                
-        # convert to centimeters. latitude = y axis, longitude = x axis        
-        delta_x_cm = delta_lng * self.parent.cm_per_deg_long
-        delta_y_cm = delta_lat * self.parent.cm_per_deg_lat
-                
-        last_x = self.point_relative_cm[-1][0]
-        last_y = self.point_relative_cm[-1][1]
-        
-        new_x_cm = last_x + delta_x_cm
-        new_y_cm = last_y + delta_y_cm
-        
-        # save all points for redraw function
-        self.point_relative_cm.append((new_x_cm, new_y_cm))        
-        
-        # only plot points if map is shown. Otherwise store points in cache.
-        if not self.parent.active:
-            self.point_cache.append((new_x_cm, new_y_cm))
-            return        
-        
-        # if map is shown:
-        
-        if len(self.point_cache):
-            
-            # plot all points in cache
-            self.plot_points(self.point_cache)
-            
-            # empty cache
-            del self.point_cache[:]
-            
-        # continue to plot points while map is shown
-        self.plot_single_point((new_x_cm, new_y_cm))        
-        self.check_bounds()    
+        return [scene_size.width(), scene_size.height()]  
      
-    
-    def plot_single_point(self,point):
+    def draw_point(self, x_pix, y_pix):
         
-        cen_x = self.center[0]
-        cen_y = self.center[1]
-        x_pix = point[0]*self.pixels_per_cm + cen_x
-        y_pix = point[1]*self.pixels_per_cm + cen_y
-        new_point = self.scene().addEllipse(x_pix,y_pix, self.point_radius,self.point_radius)
-        new_point.setBrush(Qt.green) 
-        self.point_coords_pix.append((x_pix,y_pix))
-    
-    # takes a list of tuples of coordinates in cm and plots them for current pixel scaling
-    def plot_points(self, points):
-                
-        cen_x, cen_y = self.center        
+        if math.isnan(x_pix):
+            x_pix = self.center_x
+            
+        if math.isnan(y_pix):
+            y_pix = self.center_y
         
-        # plot the origin reference point
-        self.draw_origin()
+        new_point = self.scene().addEllipse(x_pix, y_pix, self.point_radius, self.point_radius)
         
-        for point in points:
-            x_pix = point[0]*self.pixels_per_cm + cen_x
-            y_pix = point[1]*self.pixels_per_cm + cen_y
-            new_point = self.scene().addEllipse(x_pix,y_pix, self.point_radius,self.point_radius)
+        if self.last_point is None:
+            new_point.setBrush(Qt.blue)
+        else:
             new_point.setBrush(Qt.green)
-            self.point_coords_pix.append((x_pix,y_pix))            
-    
-    
-    def check_bounds(self):
-        
-        current_x_max, current_x_min, current_y_max, current_y_min = self.get_bounds()       
-                                    
-        x_bound, y_bound = self.scene_size()                  
             
-        if current_x_max >= x_bound - 30:
-            self.refit()
-                                             
-        elif current_y_max >= y_bound - 30:
-            self.refit()
+        self.last_point = new_point 
             
-        elif current_x_min <= 30:
-            self.refit()
-            
-        elif current_y_min <= 30:
-            self.refit()
-                        
-        else: 
-            self.set_scale()
-    
-    def get_bounds(self): #NEW
-        current_x_max = max(val[0] for val in self.point_coords_pix)
-        current_x_min = min(val[0] for val in self.point_coords_pix)
-        current_y_max = max(val[1] for val in self.point_coords_pix)
-        current_y_min = min(val[1] for val in self.point_coords_pix)
-        
-        return current_x_max, current_x_min, current_y_max, current_y_min
-    
-    
-    def refit(self):        
-        # This function uses the 4 extremum of all logged position data points, max/min northing and max/min easting, and calculates the maximum pixels to meters ratio
-        # while fitting them on the screen for all the possible origins. The origin with the largest ratio is selected and the corresponding ratio is set.
-        self.refit_pixels_per_cm = 4
-        self.all_origin_ratios = []
-        reducing_scale_factor = 0.99
-        origin_edge_space = 120
-        
-        x_len, y_len = self.scene_size()        
-        
-        self.possible_origins =  [
-                                 (origin_edge_space, origin_edge_space),
-                                 (x_len/2, origin_edge_space),
-                                 (x_len-origin_edge_space, origin_edge_space),
-                                 (origin_edge_space, y_len/2),
-                                 (x_len/2, y_len/2),
-                                 (x_len-origin_edge_space, y_len/2),
-                                 (origin_edge_space, y_len-origin_edge_space),
-                                 (x_len/2, y_len-origin_edge_space),
-                                 (x_len-origin_edge_space, y_len-origin_edge_space)                         
-                                 ]
-        
-        for origin in self.possible_origins:
-            
-            self.refit_pixels_per_cm = 4
-            cen_x = origin[0]
-            cen_y = origin[1]
-            
-            current_x_max_cm = max(val[0] for val in self.point_relative_cm)
-            current_x_min_cm = min(val[0] for val in self.point_relative_cm)
-            current_y_max_cm = max(val[1] for val in self.point_relative_cm)
-            current_y_min_cm = min(val[1] for val in self.point_relative_cm)            
-                        
-            out_of_scene = True
-            while out_of_scene == True:        
-                 
-                # max/min pix values are relative the current origin being tested
-                x_max_pix = current_x_max_cm*self.refit_pixels_per_cm + cen_x
-                x_min_pix = current_x_min_cm*self.refit_pixels_per_cm + cen_x
-                y_max_pix = current_y_max_cm*self.refit_pixels_per_cm + cen_y                
-                y_min_pix = current_y_min_cm*self.refit_pixels_per_cm + cen_y                                    
-                
-                    
-                if x_max_pix >= x_len:
-                    self.refit_pixels_per_cm = reducing_scale_factor * self.refit_pixels_per_cm
-                    continue                      
-                elif y_max_pix >= y_len:
-                    self.refit_pixels_per_cm = reducing_scale_factor * self.refit_pixels_per_cm
-                    continue
-                elif x_min_pix <= 0:
-                    self.refit_pixels_per_cm = reducing_scale_factor * self.refit_pixels_per_cm
-                    continue
-                elif y_min_pix <= 0:
-                    self.refit_pixels_per_cm = reducing_scale_factor * self.refit_pixels_per_cm
-                    continue
-                else:
-                    self.all_origin_ratios.append(self.refit_pixels_per_cm) 
-                    out_of_scene = False
-        
-        # determine the new ratio and its corresponding origin        
-        self.new_ratio = max(self.all_origin_ratios)
-        origin_number = self.all_origin_ratios.index(self.new_ratio)     
-        
-        self.new_origin = self.possible_origins[origin_number]
-        
-        self.center = self.new_origin
-        self.pixels_per_cm = self.new_ratio * 0.9
-        self.draw_origin()
-        
-        self.scene().clear()
-        
-        del self.point_coords_pix[:]                 
-           
-        self.plot_points(self.point_relative_cm)
-        
-        # reset the scale for the new ratio
-        self.set_scale()        
-      
-        
-    # sets and updates the length scale based on the pixels_per_cm ratio    
-    def set_scale(self):        
-        
-        scale_length = 100
-        y_pos_scale = 2 * self.cen_y - 30
-        x_pos1_scale = self.cen_x - (scale_length/2)
-        x_pos2_scale = self.cen_x + (scale_length/2)
-        scale_value = (scale_length / self.pixels_per_cm) / 100.0
+    def update_scale_bar(self, pixels_per_meter):        
+        '''Update length of scale bar based on the pixels_per_meter ratio'''  
+         
+        scale_length = 100 # pixels
+        y_pos_scale = 2 * self.center_y - 30
+        x_pos1_scale = self.center_x - (scale_length / 2)
+        x_pos2_scale = self.center_x + (scale_length / 2)
+        scale_value = (scale_length / pixels_per_meter)
         
         vert_line_length = 15        
         
         pen = QPen(Qt.black,3)
         
-        # set horizontal lines of scale bar
+        # Set horizontal lines of scale bar
         line1 = QLineF(x_pos1_scale, y_pos_scale,x_pos2_scale , y_pos_scale)
         line_item1 = QGraphicsLineItem(line1, scene=self.scene())
         line_item1.setPen(pen)
 
-        
-        # set vertical lines of scale bar
+        # Set vertical lines of scale bar
         line2 = QLineF(x_pos1_scale, y_pos_scale,x_pos1_scale, y_pos_scale-vert_line_length)
         line3 = QLineF(x_pos2_scale, y_pos_scale-vert_line_length,x_pos2_scale, y_pos_scale)
         line_item2 = QGraphicsLineItem(line2, scene=self.scene())
@@ -375,8 +309,8 @@ class View(QtGui.QGraphicsView):
         line_item2.setPen(pen)
         line_item3.setPen(pen)
         
-        x_pos_text = self.cen_x + 30 + (scale_length / 2)
-        y_pos_text = 2 * self.cen_y - 50
+        x_pos_text = self.center_x + 30 + (scale_length / 2)
+        y_pos_text = 2 * self.center_y - 50
         
         scale_text = QGraphicsTextItem(scene = self.scene())   
         scale_text.setPlainText('%.2f Meters' % scale_value)    
