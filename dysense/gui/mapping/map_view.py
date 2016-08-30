@@ -43,7 +43,7 @@ class MapView(QtGui.QGraphicsView):
     @property
     def drawable_height(self):
         '''Height of scene in pixels that's used for drawing points.'''
-        return self.sceneRect().size().height() - self._edge_pad - 50
+        return self.sceneRect().size().height() - self._edge_pad - 70
         
     @property
     def center_x(self):
@@ -71,7 +71,10 @@ class MapView(QtGui.QGraphicsView):
         self._resize_scene_to_view()
      
     def draw_point(self, x_pix, y_pix, color=Qt.green, radius=7, zvalue=0):
-        '''Draw new circle at specified (x,y) location. If x or y is NaN then will draw in the center.'''
+        '''
+        Draw new circle at specified (x,y) location where origin is in top left.
+         If x or y is NaN then will draw in the center.
+        '''
         if math.isnan(x_pix):
             x_pix = self.center_x
         if math.isnan(y_pix):

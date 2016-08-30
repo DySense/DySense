@@ -81,8 +81,6 @@ class MapSourceFilter(QtGui.QWidget):
         average_lon = average([position[1] for position in positions_at_common_times])
         average_alt = average([position[2] for position in positions_at_common_times])
         
-        print common_utc_time
-        
         if math.isnan(average_lat):
             return None
 

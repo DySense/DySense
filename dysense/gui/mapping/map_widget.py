@@ -32,7 +32,7 @@ class MapWidget(QtGui.QWidget):
         self.source_filter = MapSourceFilter(self.default_min_update_period)
         
         # Use to move between different coordinate frames.
-        self.converter = CoordinateConverter()
+        self.converter = CoordinateConverter(self.map_view)
         
         # List of MapPositions. These are converted to pixel coordinates and drawn on the map.
         self.positions = []
@@ -48,6 +48,7 @@ class MapWidget(QtGui.QWidget):
         # Connect signals to slots
         self.clear_map_button.clicked.connect(self._clear_map_button_clicked)
         self.update_rate_line_edit.textChanged.connect(self._update_rate_changed)
+        self.fix_aspect_checkbox.toggled.connect(self._fix_aspect_toggled)
         
     def update_for_new_position(self, controller_id, sensor_id, utc_time, sys_time, data, expected_sources):
         '''
@@ -92,7 +93,7 @@ class MapWidget(QtGui.QWidget):
         
     def _calculate_new_pixel_scale(self):
         
-        self.converter.calculate_new_pixel_scale(self.map_view)
+        self.converter.calculate_new_pixel_scale()
         
         self.map_view.update_pixels_per_meter(self.converter.pixels_per_meter_x)
         
@@ -150,6 +151,12 @@ class MapWidget(QtGui.QWidget):
         except (ZeroDivisionError, ValueError):
             pass
         
+    def _fix_aspect_toggled(self, is_checked):
+        
+        self.converter.fixed_ratio = is_checked
+        self._calculate_new_pixel_scale()
+        self._redraw_all_positions()
+        
     def _setup_ui(self):
         
         self.widget_font = QFont('mapping_font', pointSize=12)
@@ -164,7 +171,14 @@ class MapWidget(QtGui.QWidget):
         self.update_rate_line_edit.setInputMask('0.0')
         self.update_rate_label = QtGui.QLabel('Update Rate')
         self.update_rate_units_label = QtGui.QLabel('Hz')
-        self.spacer = QtGui.QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.spacer1 = QtGui.QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.spacer2 = QtGui.QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        
+        self.fix_aspect_checkbox = QCheckBox()
+        self.fix_aspect_checkbox.setText('Fix Aspect Ratio')
+        self.fix_aspect_checkbox.setFont(self.widget_font)
+        self.fix_aspect_checkbox.setChecked(True)
+        self._fix_aspect_toggled(self.fix_aspect_checkbox.isChecked())
         
         self.update_rate_label.setFont(self.widget_font)
         self.update_rate_line_edit.setFont(self.widget_font)
@@ -178,7 +192,9 @@ class MapWidget(QtGui.QWidget):
         bottom_row_layout.addWidget(self.update_rate_label)
         bottom_row_layout.addWidget(self.update_rate_line_edit)
         bottom_row_layout.addWidget(self.update_rate_units_label)
-        bottom_row_layout.addSpacerItem(self.spacer)
+        bottom_row_layout.addSpacerItem(self.spacer1)
+        bottom_row_layout.addWidget(self.fix_aspect_checkbox)
+        bottom_row_layout.addSpacerItem(self.spacer2)
         bottom_row_layout.addWidget(self.clear_map_button)
 
         main_layout.addLayout(bottom_row_layout)
