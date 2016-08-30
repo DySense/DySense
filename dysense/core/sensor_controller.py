@@ -17,7 +17,8 @@ from dysense.core.sensor_creation import SensorDriverFactory, SensorCloseTimeout
 from dysense.core.csv_log import CSVLog
 from dysense.core.controller_data_sources import *
 from dysense.core.issue import Issue
-from dysense.core.utility import format_id, json_dumps_unicode, utf_8_encoder, make_unicode, make_utf8, validate_type
+from dysense.core.utility import format_id, json_dumps_unicode, utf_8_encoder
+from dysense.core.utility import make_unicode, make_utf8, validate_type, make_filename_unique
 from dysense.core.version import app_version, output_version
 
 SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
@@ -1105,6 +1106,8 @@ class SensorController(object):
         self.session_name = "{}_{}_{}".format(self.settings['platform_type'],
                                               self.settings['platform_tag'],
                                               formatted_time)
+        
+        self.session_name = make_filename_unique(self.settings['base_out_directory'], self.session_name)
         
         self.session_path = os.path.join(self.settings['base_out_directory'], self.session_name)
         

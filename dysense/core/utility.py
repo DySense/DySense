@@ -306,3 +306,20 @@ def logging_string_to_level(level):
     
     return None
     
+def make_filename_unique(directory, fname_no_ext):
+    
+    original_fname = fname_no_ext
+    dir_contents = os.listdir(directory)
+    dir_fnames = [os.path.splitext(c)[0] for c in dir_contents]
+    
+    while fname_no_ext in dir_fnames:
+        
+        try:
+            v = fname_no_ext.split('_')
+            i = int(v[-1])
+            i += 1
+            fname_no_ext = '_'.join(v[:-1] + [unicode(i)])
+        except ValueError:
+            fname_no_ext = '{}_{}'.format(original_fname, 1)
+
+    return fname_no_ext

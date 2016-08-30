@@ -51,15 +51,7 @@ class GpsTrimbleTest(GpsTrimble):
 
         nmea_string = self.test_file.readline().strip()
         
-        # For the very first message use the current system time for UTC time instead of what's
-        # in the file because if the same test file is repeatedly used then directories that use
-        # the starting UTC time will all be the same.
-        if self.num_data_messages_sent == 0:
-            utc_override = cal.timegm(datetime.timetuple(datetime.utcnow()))
-        else:
-            utc_override = None
-        
-        current_state = self.process_nmea_message(nmea_string, self.sys_time, utc_override)
+        current_state = self.process_nmea_message(nmea_string, self.sys_time)
         
         return current_state
 

@@ -75,7 +75,7 @@ class GpsNmea(SensorBase):
         # Notes to be saved with next 'logged position'. Reset to None after every log entry.
         self.next_log_notes = None
               
-    def process_nmea_message(self, nmea_string, message_read_sys_time, utc_override=None):
+    def process_nmea_message(self, nmea_string, message_read_sys_time):
         
         self.num_messages_processed += 1
 
@@ -97,7 +97,7 @@ class GpsNmea(SensorBase):
         current_state = self.last_gga_handle_result
         
         if 'GGA' == sentence_type:
-            current_state = self.handle_gga_message(parsed_sentence, message_read_sys_time, utc_override)
+            current_state = self.handle_gga_message(parsed_sentence, message_read_sys_time)
             self.last_gga_handle_result = current_state
 
         elif 'GST' == sentence_type:
@@ -121,7 +121,7 @@ class GpsNmea(SensorBase):
 
         return current_state
                                                         
-    def handle_gga_message(self, data, message_read_sys_time, utc_override):
+    def handle_gga_message(self, data, message_read_sys_time):
         
         # Set to false below if one of the data monitoring checks fails.
         data_quality_ok = True
@@ -179,12 +179,6 @@ class GpsNmea(SensorBase):
             
         self.enough_satellites_last_message = enough_satellites
         
-        if utc_override:
-            utc_time = utc_override
-            # Override data quality because this is only used for test GPS to make sure first time stamp
-            # is unique, so need to make sure the over-ridden UTC time is actually used.
-            data_quality_ok = True
-             
         self.handle_data(utc_time, message_read_sys_time, [latitude, longitude, altitude, num_sats, hdop], data_quality_ok)
         
         if self.log_next_position:

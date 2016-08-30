@@ -86,7 +86,7 @@ class GpsTrimble(SensorBase):
         # Notes to be saved with next 'logged position'. Reset to None after every log entry.
         self.next_log_notes = None
               
-    def process_nmea_message(self, nmea_string, message_read_sys_time, utc_override=None):
+    def process_nmea_message(self, nmea_string, message_read_sys_time):
         
         self.num_messages_processed += 1
 
@@ -114,7 +114,7 @@ class GpsTrimble(SensorBase):
         elif 'GGK' == sentence_type:
             processed_successfully = self.handle_ggk_message(parsed_sentence)
             if processed_successfully:
-                current_state = self.combine_position_and_orientation(self.ggk['utc_time'], message_read_sys_time, utc_override)
+                current_state = self.combine_position_and_orientation(self.ggk['utc_time'], message_read_sys_time)
                 
                 if self.log_next_position:
                     # Log primary antenna (lat/long) reported by GGK to file.
@@ -153,7 +153,7 @@ class GpsTrimble(SensorBase):
                                       
         return current_state
     
-    def combine_position_and_orientation(self, utc_time, sys_time, utc_override=None):
+    def combine_position_and_orientation(self, utc_time, sys_time):
         
         if self.ggk_count == 0 or self.avr_count == 0:
             return 'normal' # let driver determine if timed out or not.
@@ -240,12 +240,6 @@ class GpsTrimble(SensorBase):
             self.send_text('Tracking enough satellites.')
             
         self.enough_satellites_last_message = enough_satellites
-        
-        if utc_override:
-            utc_time = utc_override
-            # Override data quality because this is only used for test GPS to make sure first time stamp
-            # is unique, so need to make sure the over-ridden UTC time is actually used.
-            data_quality_ok = True
              
         self.handle_data(utc_time, sys_time, [corrected_lat, corrected_long, corrected_altitude, corrected_yaw * rad2deg,
                                                num_sats, self.ggk['dop']], data_quality_ok)
