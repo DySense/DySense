@@ -219,14 +219,14 @@ def closest_value(x_value, x_set, y_set, i1=None, max_x_diff=None):
 
 def interpolate(x_value, x_set, y_set, i1=None, max_x_diff=None):
     '''
-    Return y value corresponding to x value.  If outside bounds of x_set then returns closest value.
+    Return y value corresponding to x value. If outside bounds of x_set then returns closest value. Assumes x_set is sorted ascending.
     x_set and y_set must have the same amounts of elements. If i1 isn't None then it's treated as the
     rightmost index in x_set where x_set[i1] is less than or equal to x_value.  If max_x_diff is specified
     then if abs(x_set[i1] - x_set[i2]) exceeds this value OR if x_value is outside x_set and the closest value 
-    is outside max_x_diff away then NaN (not a number) is returned. Return None on failure.
+    is outside max_x_diff away then NaN (not a number) is returned. Raise ValueError if sets aren't same size.
     '''
     if len(x_set) != len(y_set):
-        return None
+        raise ValueError('Sets must be same size to interpolate.')
     
     if i1 is None:
         # index of element in x_set right before or equal to x_value
@@ -235,14 +235,14 @@ def interpolate(x_value, x_set, y_set, i1=None, max_x_diff=None):
     if i1 < 0:
         # specified x value occurs before any x's so return first y if it's close enough.
         if max_x_diff is not None and abs(x_value - x_set[0]) > max_x_diff:
-            return float('nan')
+            return [float('nan')] * len(y_set[0])
         else:
             return y_set[0]
     
     if i1 >= (len(x_set) - 1):
         # specified x value occurs after all x's so return last y if it's close enough.
         if max_x_diff is not None and abs(x_value - x_set[-1]) > max_x_diff:
-            return float('nan')
+            return [float('nan')] * len(y_set[0])
         else:
             return y_set[-1]
     
@@ -257,11 +257,13 @@ def interpolate(x_value, x_set, y_set, i1=None, max_x_diff=None):
     
     # Check to see if there's too large of separation in x that would make the interpolation unreliable.
     if max_x_diff is not None and abs(x_set[i1] - x_set[i2]) > max_x_diff:
-        return float('nan')
+        return [float('nan')] * len(y_set[0])
     
-    slope = (y_set[i2] - y_set[i1]) / (x_set[i2] - x_set[i1])
+    s = float(x_value - x_set[i1]) / (x_set[i2] - x_set[i1])
     
-    return y_set[i1] + slope * (x_value - x_set[i1])
+    y_set_interp = [(1-s)*v0 + s*v1 for v0, v1 in zip(y_set[i1], y_set[i2])]
+        
+    return y_set_interp 
 
 def wrap_angle_degrees(angle):
     
@@ -280,6 +282,13 @@ def wrap_angle_radians(angle):
         angle -= 2*math.pi
         
     return angle
+
+def average(numeric_list):
+    
+    try:
+        return float(sum(numeric_list)) / len(numeric_list)
+    except ZeroDivisionError:
+        return 0.0
 
 def write_args_to_file(filename, out_directory, args):
     # Write arguments out to file for archiving purposes.

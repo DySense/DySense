@@ -17,7 +17,7 @@ from dysense.gui.controller_view_widget import ControllerViewWidget
 from dysense.gui.extras_menu_widget import ExtrasMenuWidget
 from dysense.gui.new_issue_popup import NewIssuePopupWindow
 from dysense.gui.data_table_widget import DataTableWidget
-from dysense.gui.mapping_widget import MappingWidget
+from dysense.gui.mapping.map_widget import MapWidget
 
 from dysense.core.utility import pretty, make_unicode
 from dysense.core.version import app_version
@@ -89,7 +89,7 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         # Create widget for showing all sensor data at once and for mapping.
         # These are shown by extras menu, but updated by this main window class.
         self.sensor_data_table = DataTableWidget()
-        self.map_widget = self.sensor_data_table # MappingWidget(self.presenter)
+        self.map_widget = MapWidget(self.presenter)
         
         # Create menu that includes extra functionality.
         self.extras_menu = ExtrasMenuWidget(self.presenter, self, self.sensor_data_table, self.map_widget)
@@ -466,7 +466,5 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
     
     def update_map(self, controller_id, sensor_id, source_type, utc_time, sys_time, data):
 
-        return
-
         if source_type == 'position':
-            self.map_widget.update_for_new_position(controller_id, sensor_id, utc_time, sys_time, data)
+            self.map_widget.update_for_new_position(controller_id, sensor_id, utc_time, sys_time, data, self.presenter.active_controller['position_sources'])

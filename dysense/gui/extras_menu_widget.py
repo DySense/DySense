@@ -74,6 +74,9 @@ class ExtrasMenuWidget(QWidget):
         
         self.central_layout.addLayout(self.icon_layout)
         self.central_layout.addWidget(self.stacked_widget)
+        
+        # Show default widget
+        self.show_stacked_widget(self.map_widget)
 
     def show_stacked_widget(self, widget_ref):
         
