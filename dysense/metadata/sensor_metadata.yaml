@@ -121,7 +121,9 @@ sensors:
           type: string
         - name: file_name
           type: string
-          
+      special_commands:
+        - report_distance
+        
     irt_ue:
       version: "1.0"
       type: IRT
