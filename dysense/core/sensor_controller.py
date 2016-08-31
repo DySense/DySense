@@ -11,6 +11,7 @@ import sys
 import logging
 import yaml
 import csv
+import traceback
 
 from dysense.core.sensor_connection import SensorConnection
 from dysense.core.sensor_creation import SensorDriverFactory, SensorCloseTimeout
@@ -98,6 +99,9 @@ class SensorController(object):
         
         # Used for creating new sensor drivers. Can't instantiate it until we know what endpoints we're bound to.
         self.sensor_driver_factory = None
+        
+        # Set to true when trying to stop session to detect if that's what's throwing an exception.
+        self.stopping_session = False
         
         # Endpoints for sensors and managers to connect to.
         # Need to bind to all interfaces for managers since they can connect from another computer.
@@ -312,10 +316,28 @@ class SensorController(object):
             self._send_manager_message('all', 'new_controller_text', msg)
         
     def run(self):
-        # TODO - report unhandled exceptions http://stackoverflow.com/questions/22581496/error-in-pyqt-qthread-not-printed
+
         try:
             self.setup()
             self.run_message_loop()
+        except Exception as e:
+            formatted_lines = traceback.format_exc().splitlines()
+            traceback_lines = formatted_lines[:-1] 
+
+            error_lines = []
+            error_lines.append("------------")
+            error_lines.append("{} - {}".format(type(e).__name__, make_unicode(e)))
+            for traceback_line in traceback_lines:
+                error_lines.append(traceback_line)
+            error_lines.append("------------")
+
+            # Log each line separately so shows up with newlines in log(s).
+            for error_line in error_lines:
+                self.log_message(error_line, level=logging.CRITICAL)
+                
+            # Notify everyone that this controller crashed.
+            self._send_manager_message('all', 'controller_event', ('controller_crashed', None))
+            
         finally:
             self.close_down()
 
@@ -414,8 +436,11 @@ class SensorController(object):
                 next_update_loop_time = current_time + update_loop_interval
             
     def close_down(self):
-        
+
         self.log_message("Controller closing down.")
+        
+        if self.session_active and not self.stopping_session:
+            self.stop_session(manager=None, interrupted=True)
         
         for sensor in self.sensors:
             self.close_down_sensor(sensor)
@@ -1158,7 +1183,13 @@ class SensorController(object):
         
         self._send_sensor_message(sensor_id, 'command', (command_name, command_args))
 
-    def stop_session(self, manager):
+    def stop_session(self, manager, interrupted=False):
+
+        self.stopping_session = True
+        self.try_stop_session(manager, interrupted)
+        self.stopping_session = False
+
+    def try_stop_session(self, manager, interrupted):
         
         if not self.session_active:
             self.log_message("Session already closed.")
@@ -1191,9 +1222,17 @@ class SensorController(object):
             # other files in the directory are still closing down, or the user has the directory open in an explorer window.
             invalidated_file_path = os.path.join(self.session_path, 'invalidated.txt')
             with open(invalidated_file_path, 'w') as invalidated_file:
-                invalidated_file.write('The existence of this file in a session directory means this session should not be uploaded to the database.')
+                invalidated_file.write('The existence of this file means this session should not be uploaded to the database.')
             # Reset flag for next session.
             self.session_invalidated = False
+            
+        # Create file to show session wasn't closed by user.
+        if interrupted:
+            interrupted_file_path = os.path.join(self.session_path, 'interrupted.txt')
+            with open(interrupted_file_path, 'w') as interrupted_file:
+                interrupted_file.write('The existence of this file means the session was not closed by the user.  ' \
+                                       'Either the program crashed or the user exited the application.  ' \
+                                       'The data should still be valid.')
 
         self.session_notes = None
 

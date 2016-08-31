@@ -6,8 +6,9 @@ import time
 import zmq
 import threading
 import json
+import traceback
 
-from dysense.core.utility import json_dumps_unicode
+from dysense.core.utility import json_dumps_unicode, make_unicode
 
 class ControllerConnection(object):
     
@@ -70,8 +71,23 @@ class ControllerManager(object):
 
         try:
             self.run_message_loop()
+        except Exception as e:
+            formatted_lines = traceback.format_exc().splitlines()
+            traceback_lines = formatted_lines[:-1] 
+
+            error_lines = []
+            error_lines.append("------------")
+            error_lines.append("{} - {}".format(type(e).__name__, make_unicode(e)))
+            for traceback_line in traceback_lines:
+                error_lines.append(traceback_line)
+            error_lines.append("------------")
+                
+            # Notify everyone that this manager crashed.
+            # TODO this isn't really a controller event
+            self.handle_controller_event(self.controllers[0], 'manager_crashed', error_lines)
         finally:
             self.close_down()
+
     
     def close_down(self):
         

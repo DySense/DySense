@@ -9,7 +9,7 @@ import os
 import logging
 import yaml
 
-from PyQt4.QtCore import QObject, QTimer
+from PyQt4.QtCore import QObject, QTimer, QCoreApplication
 
 from dysense.core.issue import Issue
 from dysense.core.utility import json_dumps_unicode, make_unicode, make_utf8
@@ -418,6 +418,25 @@ class GUIPresenter(QObject):
                     issue.level = issue_info['level']
                     issue.reason = issue_info['reason']
             self.view.refresh_current_issues(self.current_issues)
+        
+        if event_type == 'controller_crashed':
+
+            message = "Oh no! Part of the program has crashed. If you had a session active don't worry it will be saved when the program closes.\n" \
+                      "Please report the problem on the github issue tracker. To get a traceback of the problem " \
+                      "check either the most recent debug log (located at ~/dysense_debug_logs/) or the session log if you had a session active."
+            self.view.show_user_message(message, logging.CRITICAL)
+            # This will cause app.exec_() to return.
+            QCoreApplication.exit(1)
+            
+        if event_type == 'manager_crashed':
+            # TODO This isn't really a controller event 
+            message = "Oh no! Part of the program has crashed. If you had a session active don't worry it will be saved when the program closes.\n" \
+                      "Please report this error on the github issue tracker.\nPress Ctrl+C to copy text from this dialog."
+            for line in event_args:
+                message += '\n' + line
+            self.view.show_user_message(message, logging.CRITICAL)
+            # This will cause app.exec_() to return.
+            QCoreApplication.exit(1)
         
     def handle_controller_removed(self, controller_id):
         self.view.remove_sensor(controller_id)

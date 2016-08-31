@@ -5,17 +5,17 @@ import time
 import sys
 import traceback
 import cStringIO
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 from PyQt4.QtGui import QStyle
 
 from dysense.core.utility import utf_8_encoder, make_unicode
 from dysense.core.version import app_version
 
 def excepthook(excection_type, excection_value, traceback_object):
-    """Callback for any unhandled exceptions. To use set sys.excepthook = excepthook"""
+    """Callback for any unhandled exceptions in the main thread. To use set sys.excepthook = excepthook"""
     separator = '-' * 50
-    body_text = "An unhandled exception occurred.\nPlease report the problem on github issue tracker.\n" \
-                "(Hit Ctrl+C to copy text from dialog)"
+    body_text = "Oh no! Part of the program has crashed. If you had a session active don't worry it will be saved when the program closes.\n" \
+                "Please report this error on the github issue tracker.\nPress Ctrl+C to copy text from this dialog."
     current_time = time.strftime("%Y-%m-%d, %H:%M:%S")
     version_info = "DySense Version {}".format(app_version)
     
@@ -36,5 +36,6 @@ def excepthook(excection_type, excection_value, traceback_object):
     popup.setWindowTitle('Error')
     popup.setWindowIcon(popup.style().standardIcon(QStyle.SP_MessageBoxCritical))
     popup.exec_()
-    # TODO figure out why this hangs sometimes
-    #sys.exit(1)
+
+    # This will cause app.exec_() to return.
+    QtCore.QCoreApplication.exit(1)
