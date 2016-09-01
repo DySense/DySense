@@ -2,6 +2,9 @@
 from __future__ import unicode_literals
 
 from itertools import islice
+import time
+import sys
+import math
 
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import *
@@ -22,20 +25,40 @@ class MapWidget(QtGui.QWidget):
         
         self.presenter = presenter
         
-        # Default value for minimum amount of time to wait before drawing map updates.
-        self.default_min_update_period = 0.5
+        # Default and current value for minimum amount of time to wait before drawing map updates.
+        self.default_min_update_distance = 1
+        self.min_update_distance = self.default_min_update_distance
         
         # Actual widget where points are drawn.
         self.map_view = MapView(self)
         
         # Use to combine multiple sources into one position.
-        self.source_filter = MapSourceFilter(self.default_min_update_period)
+        self.source_filter = MapSourceFilter()
         
         # Use to move between different coordinate frames.
         self.converter = CoordinateConverter(self.map_view)
         
-        # List of MapPositions. These are converted to pixel coordinates and drawn on the map.
+        # List of saved MapPositions. These are converted to pixel coordinates and drawn on the map.
         self.positions = []
+        
+        # Map positions that have been filtered, but not yet processed.
+        self._cached_positions = []
+        
+        # Most recent position, regardless of whether or not it was saved in self.positions
+        self.most_recent_position = None
+        
+        # Maximum amount of positions to remember before thinning some of them out.
+        self.max_num_positions = 50
+        
+        # Flags to keep track of when to redraw all points. 
+        self._waiting_to_redraw = False
+        self._time_to_redraw = False
+        
+        # Amount of time that has elapsed since last time map was redrawn.
+        self._last_redraw_time = 0   
+   
+        # Set to true when widget is being shown on screen.
+        self._showing = False
    
         # Setup interface after map has been created.
         self._setup_ui()
@@ -43,12 +66,49 @@ class MapWidget(QtGui.QWidget):
         # Colors of different points.
         self.normal_point_color = Qt.green
         self.start_point_color = Qt.blue
-        self.last_point_color = Qt.red
+        self.current_position_color = Qt.red
         
         # Connect signals to slots
         self.clear_map_button.clicked.connect(self._clear_map_button_clicked)
         self.update_rate_line_edit.textChanged.connect(self._update_rate_changed)
         self.fix_aspect_checkbox.toggled.connect(self._fix_aspect_toggled)
+        
+    def _distance_from_last_saved_position(self, new_position):
+        try:
+            last_saved_position = self.positions[-1]
+        except IndexError:
+            # No reference position so return high value so will definitely get saved.
+            return sys.float_info.max
+        
+        diffx = last_saved_position.easting - new_position.easting
+        diffy = last_saved_position.northing - new_position.northing
+        return math.sqrt(diffx*diffx + diffy*diffy)
+        
+    @property
+    def _time_since_last_redraw(self):
+        return time.time() - self._last_redraw_time
+    
+    @property
+    def _min_time_between_redraws(self):
+        return 0 # TODO could base on # of positions
+    
+    def _time_since_most_recent_position(self, new_position):
+        if self.most_recent_position is None:
+            return new_position.utc_time
+        return new_position.utc_time - self.most_recent_position.utc_time
+    
+    def showEvent(self, *args, **kwargs):
+        QtGui.QWidget.showEvent(self, *args, **kwargs)
+        
+        self._showing = True
+        for position in self._cached_positions:
+            self._process_map_position(position)
+        self._cached_positions = []
+        
+    def hideEvent(self, *args, **kwargs):
+        QtGui.QWidget.hideEvent(self, *args, **kwargs)
+        
+        self._showing = False
         
     def update_for_new_position(self, controller_id, sensor_id, utc_time, sys_time, data, expected_sources):
         '''
@@ -69,18 +129,46 @@ class MapWidget(QtGui.QWidget):
         filtered_position = self.source_filter.filter(new_position, controller_id, sensor_id, expected_sources)
         
         if filtered_position is None:
-            return False
+            return False # not enough data to merge from sources yet
         
+        if self._time_since_most_recent_position(filtered_position) < 0.5:
+            return False # limit how quickly we process
+        
+        # Convert lat/lon to cartesian frame.
         map_position = self.converter.convert_to_map_position(filtered_position)
-        self.positions.append(map_position)
+        
+        # Save reference so we can still show most recent position if we need to redraw all positions 
+        self.most_recent_position = map_position
+        
+        if self._showing:
+            self._process_map_position(map_position)
+        else:
+            self._cached_positions.append(map_position)
+        
+    def _process_map_position(self, map_position):
+        
+        # Determine if should keep the point on the map.
+        save_position = self._distance_from_last_saved_position(map_position) > self.min_update_distance
+        
+        if save_position:
+            self.positions.append(map_position)
         
         need_to_rescale_map = self.converter.need_to_calculate_pixel_scale(map_position)
         
-        if need_to_rescale_map:
+        # Make sure enough time has elapsed to avoid redrawing a ton of points too often.
+        if need_to_rescale_map or self._waiting_to_redraw:
+            if self._time_since_last_redraw < self._min_time_between_redraws:
+                self._waiting_to_redraw = True
+            else:
+                self._time_to_redraw = True
+
+        if self._time_to_redraw:
             self._calculate_new_pixel_scale()
             self._redraw_all_positions()
+            self._time_to_redraw = False
+            self._waiting_to_redraw = False
         else:
-            self._draw_new_position(map_position)
+            self._draw_new_position(map_position, save_position)
         
         return True # position drawn successfully
         
@@ -93,18 +181,23 @@ class MapWidget(QtGui.QWidget):
         
     def _calculate_new_pixel_scale(self):
         
+        if not self._showing:
+            return # Don't 
+        
         self.converter.calculate_new_pixel_scale()
         
         self.map_view.update_pixels_per_meter(self.converter.pixels_per_meter_x)
         
-    def _draw_new_position(self, position):
+    def _draw_new_position(self, position, save_position):
         '''Convert MapPosition to pixels and add to map.'''
 
         if len(self.positions) == 0:
             self._draw_start_position(position)
-        else:
-            self.map_view.update_last_point_color(self.normal_point_color)
-            self._draw_map_position(position, self.last_point_color)
+        elif save_position:
+            self._draw_normal_position(position)
+            
+        # Always draw a temporary point showing the current position.
+        self._draw_current_position(position)    
         
     def _redraw_all_positions(self):
         '''Clear map and re-draw all saved positions.'''
@@ -116,18 +209,33 @@ class MapWidget(QtGui.QWidget):
         self._draw_start_position(self.positions[0])
         
         for position in islice(self.positions, 1, None):
-            self._draw_map_position(position, self.normal_point_color)
-    
-        self.map_view.update_last_point_color(self.last_point_color)
+            self._draw_normal_position(position)
+            
+        if self.most_recent_position is not None:
+            self._draw_current_position(self.most_recent_position)
+        
+        self._last_redraw_time = time.time()
     
     def _draw_start_position(self, position):
         
-        self._draw_map_position(position, self.start_point_color, radius=10, importance=1)
+        self._draw_map_position(position, temporary=False, color=self.start_point_color, radius=10, importance=1)
     
-    def _draw_map_position(self, position, color, radius=7, importance=0):
+    def _draw_current_position(self, position):
+        
+        self._draw_map_position(position, temporary=True, color=self.current_position_color, radius=10, importance=2)
+
+    def _draw_normal_position(self, position):
+        
+        self._draw_map_position(position, temporary=False, color=self.normal_point_color, radius=7)
+    
+    def _draw_map_position(self, position, temporary, color=Qt.black, radius=7, importance=0):
         
         x, y = self.converter.convert_to_pixel_position(position)
-        self.map_view.draw_point(x, y, color, radius, importance)
+        self.map_view.draw_point(x, y, temporary, color, radius, importance)
+    
+    def _thin_positions(self):
+        '''Remove every other position.'''
+        self.positions = self.positions[0::2]
     
     def resizeEvent(self, *args, **kwargs):
         '''Calculate new scale and redraw everything. Called when widget changes size.'''
@@ -146,8 +254,7 @@ class MapWidget(QtGui.QWidget):
     def _update_rate_changed(self):
         
         try:
-            update_rate = float(self.update_rate_line_edit.text())
-            self.source_filter.min_update_period = 1.0 / update_rate
+            self.min_update_distance = float(self.update_rate_line_edit.text())
         except (ZeroDivisionError, ValueError):
             pass
         
@@ -166,11 +273,11 @@ class MapWidget(QtGui.QWidget):
         
         # Create widgets
         self.update_rate_line_edit = QtGui.QLineEdit()
-        self.update_rate_line_edit.setText(make_unicode(1 / self.default_min_update_period))
-        self.update_rate_line_edit.setMaximumWidth((QFontMetrics(self.widget_font).width('1.23')))
-        self.update_rate_line_edit.setInputMask('0.0')
-        self.update_rate_label = QtGui.QLabel('Update Rate')
-        self.update_rate_units_label = QtGui.QLabel('Hz')
+        self.update_rate_line_edit.setText(make_unicode(self.default_min_update_distance))
+        self.update_rate_line_edit.setMaximumWidth((QFontMetrics(self.widget_font).width('01.23')))
+        #self.update_rate_line_edit.setInputMask('00.0')
+        self.update_rate_label = QtGui.QLabel('Update Distance')
+        self.update_rate_units_label = QtGui.QLabel('(meters)')
         self.spacer1 = QtGui.QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.spacer2 = QtGui.QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
         

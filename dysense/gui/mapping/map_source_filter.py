@@ -15,7 +15,7 @@ from dysense.core.utility import average
 
 class MapSourceFilter(QtGui.QWidget):
     
-    def __init__(self, min_update_period):
+    def __init__(self):
         '''Constructor'''
         QtGui.QWidget.__init__(self)
         
@@ -24,9 +24,6 @@ class MapSourceFilter(QtGui.QWidget):
         
         # The last system time that a point was returned by filter
         self.last_utc_time_update = 0
-        
-        # Minimum time to wait before adding new point.
-        self.min_update_period = min_update_period
         
     def reset(self):
         
@@ -46,18 +43,14 @@ class MapSourceFilter(QtGui.QWidget):
         
         source.add_position(position)
         
-        time_since_last_point = position.utc_time - self.last_utc_time_update
-        
-        if time_since_last_point < self.min_update_period:
-            return None # not enough time has elapsed.
-        
         if len(expected_sources) > 1:
             position = self._try_merge_positions(expected_sources)
+            if position is None:
+                return None 
         elif len(expected_sources) == 0:
             return None
         
-        if position is not None:
-            self.last_utc_time_update = position.utc_time
+        self.last_utc_time_update = position.utc_time
         
         return position
     

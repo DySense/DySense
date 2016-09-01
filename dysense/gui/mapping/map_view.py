@@ -30,8 +30,8 @@ class MapView(QtGui.QGraphicsView):
         # Amount of space in pixels to leave on each edge.
         self._edge_pad = 20
         
-        # The most recent point drawn by drawPoint()
-        self.last_point = None
+        # The most recent point drawn by drawPoint() that was marked as temporary
+        self.last_temporary_point = None
         
         self.reset_map()
         
@@ -64,13 +64,13 @@ class MapView(QtGui.QGraphicsView):
         '''Restore map to it's default state when the class was first created.'''
         self.scene().clear()
         self._draw_scale_bar()
-        self.last_point = None
+        self.last_temporary_point = None
         
     def update_after_resize(self):
         '''Should be called by parent whenever this view changes size.'''
         self._resize_scene_to_view()
      
-    def draw_point(self, x_pix, y_pix, color=Qt.green, radius=7, zvalue=0):
+    def draw_point(self, x_pix, y_pix, temporary=False, color=Qt.green, radius=7, zvalue=0):
         '''
         Draw new circle at specified (x,y) location where origin is in top left.
          If x or y is NaN then will draw in the center.
@@ -87,12 +87,12 @@ class MapView(QtGui.QGraphicsView):
         new_point.setBrush(color)
         new_point.setZValue(zvalue)
         
-        self.last_point = new_point
-        
-    def update_last_point_color(self, color):
-        
-        if self.last_point is not None:
-            self.last_point.setBrush(color)
+        if self.last_temporary_point is not None:
+            self.scene().removeItem(self.last_temporary_point)
+            self.last_temporary_point = None
+            
+        if temporary:
+            self.last_temporary_point = new_point
         
     def _draw_scale_bar(self):
         
