@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 # All versions follow the <major>.<minor>.<patch> scheme with Semantic Versioning.
 
-app_version = '1.0.0' # Version for entire application
+app_version = '1.1.0' # Version for entire application
 
 output_version = '2.0.0' # Version for session output structure / data.
 
