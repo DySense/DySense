@@ -24,7 +24,8 @@ if __name__ == "__main__":
               'pyserial',
 			  'pyyaml',
 			  'pyzmq',
-			  'utm' # for trimble GPS conversions
+			  'utm', # for trimble GPS conversions, should get rid of this eventually
+              'numpy'
 			  #'pyqt4' PyQt needs to be installed separately
           ],
           zip_safe=False)
