@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
@@ -17,6 +16,7 @@ class SessionOutputFactory(object):
     '''
     @classmethod
     def get_object(cls, session_path, log, default_version=SemanticVersion('1.0.0')):
+        '''Return SessionOutputX class where X corresponds to the detected output version in session_path.'''
         
         # Associate a 'major' version number with the class used to read the session contents.
         version_to_output_class = { 1: SessionOutputV1,
@@ -44,7 +44,8 @@ class SessionOutputFactory(object):
 
     @classmethod
     def _read_output_version(cls, session_path):
-    
+        '''Return SemanticVersion of session at session path or None if not found.'''
+        
         session_info_file_path = os.path.join(session_path, 'session_info.csv')
 
         with open(session_info_file_path, 'r') as session_info_file:

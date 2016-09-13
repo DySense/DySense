@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
@@ -7,19 +6,22 @@ import copy
 import csv
 from logging import getLogger
 
-from dysense.core.utility import wrap_angle_radians
+from dysense.core.utility import wrap_angle_degrees
 
-def standardize_to_radians(angles, source, angle_type):
-
-    # Set to false if already in radians.
-    need_to_convert = True
+def standardize_to_degrees(angles, source, angle_type):
+    '''
+    Return new list of angles of the specified type (e.g. 'roll') so that the angles are in degrees and within +/- 180.
+    Use the source metadata to determine if the angles need to be converted or if they're already in degrees.
+    ''' 
+    # Set to true if source is measured in radians.
+    need_to_convert = False
     
     try:
-        units = orientation_source_units(source)
+        units = source_units(source, 'orientation_index')
         
         if is_radians(units):
-            need_to_convert = False # already in radians
-        if not is_degrees(units):
+            need_to_convert = True 
+        elif not is_degrees(units):
             getLogger('processing').warn('{} units \'{}\' is not recognized. Assuming degrees.'.format(angle_type.title(), units))
         
     except KeyError:
@@ -29,19 +31,50 @@ def standardize_to_radians(angles, source, angle_type):
         # Make a copy so we don't modify the original.
         angles = copy.copy(angles)
         for angle in angles:
-            angle.angle *= math.pi / 180.0
+            angle.angle *= 180.0 / math.pi
 
     # Temporary debug output
     if need_to_convert:
-        getLogger('processing').debug('Converting {} angles to radians for geotagging.'.format(angle_type))
+        getLogger('processing').debug('Converting {} angles to degrees.'.format(angle_type))
     else:
-        getLogger('processing').debug('{} angles already in radians for geotagging.'.format(angle_type.title()))
+        getLogger('processing').debug('{} angles already in degrees.'.format(angle_type.title()))
         
-    # Make sure angles are between +/- PI.
+    # Make sure angles are between +/- 180
     for angle in angles:
-        angle.angle = wrap_angle_radians(angle.angle)
+        angle.angle = wrap_angle_degrees(angle.angle)
 
     return angles
+
+def standardize_to_meters(distances, source, source_type):
+    '''
+    Return new list of distances of the specified type (e.g. 'height') so that the distances are in meters.
+    Use the source metadata to determine if the distances need to be converted or if they're already in meters.
+    ''' 
+    # Set to a different value if we need to convert each distance (for example 0.01 if going from cm to meters)
+    scale_factor = 1
+    
+    try:
+        units = source_units(source, 'height_index')
+
+        if is_centimeters(units):
+            scale_factor = 0.01
+        elif is_millimeters(units):
+            scale_factor = 0.001
+        elif not is_meters(units):
+            getLogger('processing').warn('{} units \'{}\' is not recognized. Assuming meters.'.format(source_type.title(), units))
+        
+    except KeyError:
+        getLogger('processing').warn('Units not listed for {} source. Assuming meters.'.format(source_type))
+
+    need_to_convert = scale_factor != 1
+
+    if need_to_convert:
+        # Make a copy so we don't modify the original.
+        distances = copy.copy(distances)
+        for distance in distances:
+            distance.value *= scale_factor
+
+    return distances
 
 def is_degrees(units):
     return units.lower() in ['deg', 'degree', 'degrees']
@@ -49,14 +82,23 @@ def is_degrees(units):
 def is_radians(units):
     return units.lower() in ['rad', 'radian', 'radians']
 
-def orientation_source_units(orientation_source):
-    
-    metadata = orientation_source['metadata']
-    setting_idx = orientation_source['orientation_idx']
+def is_meters(units):
+    return units.lower() in ['m', 'meter', 'meters']
+
+def is_centimeters(units):
+    return units.lower() in ['cm', 'centimeter', 'centimeters']
+
+def is_millimeters(units):
+    return units.lower() in ['mm', 'millimeter', 'millimeters']
+
+def source_units(source, index_name):
+    '''Return units (e.g. 'meters) for source output data at specified index name or raise KeyError if not found.'''
+    metadata = source['metadata']
+    setting_idx = source[index_name]
     return metadata['data'][setting_idx]['units']
 
 def contains_measurements(lst):
-    
+    '''Return true if lst is a list that contains elements.'''
     return isinstance(lst, (list, tuple)) and len(lst) > 0
     
 def unicode_csv_reader(utf8_file, **kwargs):
@@ -65,14 +107,42 @@ def unicode_csv_reader(utf8_file, **kwargs):
     for row in csv_reader:
         yield [unicode(cell, 'utf-8') for cell in row]
 
+class ObjectState(object):
+    '''Represent the state of an object, such as a sensor or a platform.'''
+    
+    def __init__(self, utc_time, lat, long, alt, roll, pitch, yaw, height_above_ground):
+        '''Constructor'''
+        self.utc_time = utc_time
+        self.lat = lat
+        self.long = long
+        self.alt = alt
+        
+        self.roll = roll
+        self.pitch = pitch
+        self.yaw = yaw
+        
+        self.height_above_ground = height_above_ground
+
+    @property
+    def position(self):
+        return (self.lat, self.long, self.alt)
+    
+    @property
+    def orientation(self):
+        return (self.roll, self.pitch, self.yaw)
+
 class StampedPosition(object):
     '''Time stamped position measurement.'''
     
-    def __init__(self, utc_time, x, y, z):
+    def __init__(self, utc_time, lat, long, alt):
         self.utc_time = utc_time
-        self.x = x
-        self.y = y
-        self.z = z
+        self.lat = lat
+        self.long = long
+        self.alt = alt
+        
+    @property
+    def position_tuple(self):
+        return (self.lat, self.long, self.alt)
         
 class StampedAngle(object):
     '''Time stamped angle measurement.'''
@@ -80,3 +150,10 @@ class StampedAngle(object):
     def __init__(self, utc_time, angle):
         self.utc_time = utc_time
         self.angle = angle
+        
+class StampedHeight(object):
+    '''Time stamped height above ground measurement.'''
+    
+    def __init__(self, utc_time, height):
+        self.utc_time = utc_time
+        self.height = height

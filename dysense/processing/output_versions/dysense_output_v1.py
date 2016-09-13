@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
@@ -73,6 +72,10 @@ class SessionOutputV1(object):
     @property
     def yaw_source(self):
         return self.sources.get('yaw_source', None)
+
+    @property
+    def height_sources(self):
+        return None # not supported in this version
     
     @property
     def session_valid(self):
@@ -203,6 +206,14 @@ class SessionOutputV1(object):
                 yaw_values = read_angle(file_lines, self.yaw_source, ['y', 'yaw'])
     
         return roll_values, pitch_values, yaw_values
+    
+    def read_heights_above_ground(self):
+        '''Not supported in this version.'''
+        return {}
+    
+    def read_fixed_height_above_ground(self):
+        '''Not supported in this version.'''
+        return None
         
     def get_complete_sensors(self):
         

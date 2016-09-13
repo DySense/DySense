@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
@@ -8,7 +7,7 @@ from collections import defaultdict
 
 from dysense.core.utility import yaml_load_unicode, validate_type
 from dysense.processing.utility import unicode_csv_reader
-from dysense.processing.utility import StampedAngle, StampedPosition
+from dysense.processing.utility import StampedAngle, StampedPosition, StampedHeight
 
 class SessionOutputV2(object):
     '''
@@ -59,6 +58,10 @@ class SessionOutputV2(object):
         return self.sources.get('position_sources', [])
 
     @property
+    def position_sources_info(self):
+        return [self._find_matching_sensor_info(source) for source in self.position_sources]
+
+    @property
     def roll_source(self):
         return self.sources.get('roll_source', None)
     
@@ -107,17 +110,17 @@ class SessionOutputV2(object):
             sensor_log_data, _ = self._read_sensor_log_data(matching_sensor_info)
             
             if sensor_log_data is None:
-                raise ValueError('Position sensor {} does not have any log data'.format(matching_sensor['sensor_id']))
+                raise ValueError('Position sensor {} does not have any log data'.format(position_source_name))
 
             for data_entry in sensor_log_data:
             
                 utc_time = data_entry['time']
                 data = data_entry['data']
-                x = float(data[position_source['x_index']])
-                y = float(data[position_source['y_index']])
-                z = float(data[position_source['z_index']])
+                lat = float(data[position_source['x_index']])
+                long = float(data[position_source['y_index']])
+                alt = float(data[position_source['z_index']])
                 
-                new_position = StampedPosition(utc_time, x, y, z)
+                new_position = StampedPosition(utc_time, lat, long, alt)
                 
                 measurements_by_source[position_source_name].append(new_position)
                 
@@ -139,6 +142,48 @@ class SessionOutputV2(object):
         yaw_values = self._read_angle(self.yaw_source)
     
         return roll_values, pitch_values, yaw_values
+        
+    def read_heights_above_ground(self):
+        '''
+        Read time-stamped height information from height sensor logs.
+        
+        Return dictionary of height sources where each key is the height source name and
+         the value is a list of StampedHeight objects sorted by time.  
+
+        If there are any issues getting data from a height source will raise ValueError
+        '''
+            
+        # Dictionary that will be returned at end of method.
+        measurements_by_source = defaultdict(list)
+        
+        for height_source in self.height_sources:
+            
+            height_source_name = height_source['sensor_id']
+            
+            matching_sensor_info = self._find_matching_sensor_info(height_source)
+            
+            sensor_log_data, _ = self._read_sensor_log_data(matching_sensor_info)
+            
+            if sensor_log_data is None:
+                raise ValueError('Height sensor {} does not have any log data'.format(height_source_name))
+
+            for data_entry in sensor_log_data:
+            
+                utc_time = data_entry['time']
+                data = data_entry['data']
+                height_measurement = float(data[height_source['height_index']])
+                
+                new_height = StampedHeight(utc_time, height_measurement)
+                
+                measurements_by_source[height_source_name].append(new_height)
+                
+        # Data is already sorted by time-stamp.
+        
+        return measurements_by_source
+    
+    def read_fixed_height_above_ground(self):
+        '''Return fixed distance above ground in meters.'''
+        return self.fixed_height_source
         
     def get_complete_sensors(self):
         
@@ -186,7 +231,10 @@ class SessionOutputV2(object):
                 
                 session_info[info_name] = info_value
                 
-        return session_info    
+        return session_info
+    
+    def matching_height_source(self, source_name):
+        return [s for s in self.height_sources if source_name == s['sensor_id']][0]
         
     def _read_data_source_info(self):
 

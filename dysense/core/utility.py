@@ -18,6 +18,16 @@ def find_last_index(list_to_search, element):
     except ValueError:
         return -1 # element not found at all
     
+def element_index(value, lst):
+    '''Return index of 'value' in lst or raise IndexError if not found or ValueError if multiple matches.'''
+    matching_indices = [idx for idx, elem in enumerate(lst) if elem == value]
+    if len(matching_indices) > 1:
+        raise ValueError('Multiple values of "{}" found in list.'.format(value))
+    try:
+        return matching_indices[0]
+    except IndexError:
+        raise IndexError('Value {} not found in list.'.format(value))
+    
 def get_from_list(lst, idx):
     try:
         return lst[idx]
@@ -217,7 +227,7 @@ def closest_value(x_value, x_set, y_set, i1=None, max_x_diff=None):
     
     return y_set[closest_index]
 
-def interpolate(x_value, x_set, y_set, i1=None, max_x_diff=None):
+def interpolate(x_value, x_set, y_set, max_x_diff=None):
     '''
     Return y value corresponding to x value. If outside bounds of x_set then returns closest value. Assumes x_set is sorted ascending.
     x_set and y_set must have the same amounts of elements. If i1 isn't None then it's treated as the
@@ -228,9 +238,8 @@ def interpolate(x_value, x_set, y_set, i1=None, max_x_diff=None):
     if len(x_set) != len(y_set):
         raise ValueError('Sets must be same size to interpolate.')
     
-    if i1 is None:
-        # index of element in x_set right before or equal to x_value
-        i1 = find_less_than_or_equal(x_set, x_value)  
+    # index of element in x_set right before or equal to x_value
+    i1 = find_less_than_or_equal(x_set, x_value)  
     
     if i1 < 0:
         # specified x value occurs before any x's so return first y if it's close enough.
@@ -262,6 +271,48 @@ def interpolate(x_value, x_set, y_set, i1=None, max_x_diff=None):
     s = float(x_value - x_set[i1]) / (x_set[i2] - x_set[i1])
     
     y_set_interp = [(1-s)*v0 + s*v1 for v0, v1 in zip(y_set[i1], y_set[i2])]
+        
+    return y_set_interp 
+
+def interpolate_single(x_value, x_set, y_set, max_x_diff=None):
+    '''
+    '''
+    if len(x_set) != len(y_set):
+        raise ValueError('Sets must be same size to interpolate.')
+    
+    # index of element in x_set right before or equal to x_value
+    i1 = find_less_than_or_equal(x_set, x_value)  
+    
+    if i1 < 0:
+        # specified x value occurs before any x's so return first y if it's close enough.
+        if max_x_diff is not None and abs(x_value - x_set[0]) > max_x_diff:
+            return float('nan')
+        else:
+            return y_set[0]
+    
+    if i1 >= (len(x_set) - 1):
+        # specified x value occurs after all x's so return last y if it's close enough.
+        if max_x_diff is not None and abs(x_value - x_set[-1]) > max_x_diff:
+            return float('nan')
+        else:
+            return y_set[-1]
+    
+    if x_value == x_set[i1]:
+        # don't need to interpolate since match exactly.
+        return y_set[i1] 
+    
+    # i2 is the index of the element in x_set right after x_value.
+    # at this point x_set[i1] can't be equal to x_set[i2] or else
+    # i2 would have been returned instead of i1 above.
+    i2 = i1 + 1
+    
+    # Check to see if there's too large of separation in x that would make the interpolation unreliable.
+    if max_x_diff is not None and abs(x_set[i1] - x_set[i2]) > max_x_diff:
+        return float('nan')
+    
+    s = float(x_value - x_set[i1]) / (x_set[i2] - x_set[i1])
+    
+    y_set_interp = (1-s)*y_set[i1] + s*y_set[i2]
         
     return y_set_interp 
 
