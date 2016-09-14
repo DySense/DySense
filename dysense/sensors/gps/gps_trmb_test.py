@@ -31,6 +31,9 @@ class GpsTrimbleTest(GpsTrimble):
         
         self.test_file = None
 
+        # Set to true once told user that end of file has been reached.
+        self.warned_about_eof = False
+
     def is_closed(self):
         '''Return true if test file is closed.'''
         return self.closed
@@ -50,6 +53,14 @@ class GpsTrimbleTest(GpsTrimble):
         '''Read in new message from test file. Only called when not paused.'''
 
         nmea_string = self.test_file.readline().strip()
+        
+        if nmea_string == "": 
+            # Reached end of file.
+            if not self.warned_about_eof:
+                self.send_text('---')
+                self.send_text("Reached End of File.")
+                self.warned_about_eof = True
+            return 'timed_out'
         
         current_state = self.process_nmea_message(nmea_string, self.sys_time)
         

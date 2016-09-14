@@ -30,6 +30,9 @@ class GpsNmeaTest(GpsNmea):
         
         self.desired_read_period = self.output_period
         
+        # Set to true once told user that end of file has been reached.
+        self.warned_about_eof = False
+        
         self.test_file = None
         
         # Set to true to run image latency tests instead of reading from file.
@@ -67,6 +70,14 @@ class GpsNmeaTest(GpsNmea):
             return 'normal'
         
         nmea_string = self.test_file.readline().strip()
+        
+        if nmea_string == "":
+            # Reached end of file.
+            if not self.warned_about_eof:
+                self.send_text('---')
+                self.send_text("Reached End of File.")
+                self.warned_about_eof = True
+            return 'timed_out'
         
         current_state = self.process_nmea_message(nmea_string, self.sys_time)
         
