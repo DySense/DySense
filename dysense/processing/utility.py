@@ -106,6 +106,30 @@ def unicode_csv_reader(utf8_file, **kwargs):
     csv_reader = csv.reader(utf8_file, **kwargs)
     for row in csv_reader:
         yield [unicode(cell, 'utf-8') for cell in row]
+        
+def filter_down_platform_state(session, max_rate):
+    '''
+    Updates 'platform_state' key in session to not store any entries faster than specified rate.
+    If rate is less than or equal to zero then won't limit entries at all.
+    '''
+    states = session['platform_states']
+    
+    if max_rate <= 0.0 or len(states) == 0:
+        return # Don't limit platform state at all.
+    
+    min_time_between_states = 1.0 / max_rate
+    
+    # Add in a little wiggle room since time won't be exact. 
+    min_time_between_states *= 0.9
+    
+    filtered_states = []
+    last_state_time = states[0].utc_time
+    for state in states[1:]:
+        if state.utc_time - last_state_time >= min_time_between_states:
+            filtered_states.append(state)
+            last_state_time = state.utc_time
+
+    session['platform_states'] = filtered_states
 
 class ObjectState(object):
     '''Represent the state of an object, such as a sensor or a platform.'''

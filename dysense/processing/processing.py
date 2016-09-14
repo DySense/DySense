@@ -13,6 +13,7 @@ from dysense.processing.dysense_output import SessionOutputFactory
 from dysense.processing.geotagger import GeoTagger
 from dysense.processing.database import Database
 from dysense.processing.post_processor import PostProcessor
+from dysense.processing.utility import filter_down_platform_state
 from dysense.core.utility import write_args_to_file, decode_command_line_arg
 from dysense.core.utility import logging_string_to_level
 from dysense.core.csv_log import CSVLog
@@ -29,6 +30,7 @@ def main():
     
     # Optional arguments
     parser.add_argument('-u', dest='upload_to_database', default='true',  help='If true then will upload results to database. Default true.')
+    parser.add_argument('-r', dest='max_platform_rate', default=5,  help='Set this rate (in Hz) to limit the amount of platform state data that will be loaded into database. Default 5 Hz. If <= 0 then will store all data.')
     parser.add_argument('-m', dest='max_time_diff', default=1, help='Will only match sensor readings to a platform position/orientation if the difference in time '
                         '(in seconds) is less than this value. Default is 1 second.')
     parser.add_argument('-c', dest='console_log_level', default='info',  help='Either debug, info, warn, error, critical or none to disable. Default is info.')
@@ -55,6 +57,7 @@ def postprocess(**args):
     file_log_level = logging_string_to_level(decode_command_line_arg(args.pop('file_log_level')))
     console_log_level = logging_string_to_level(decode_command_line_arg(args.pop('console_log_level')))
     max_time_diff = float(args.pop('max_time_diff'))
+    max_platform_rate = float(args.pop('max_platform_rate'))
     upload_to_database = decode_command_line_arg(args.pop('upload_to_database')).lower() == 'true'
     
     if len(args) > 0:
@@ -91,6 +94,7 @@ def postprocess(**args):
     write_args_to_file('arguments.csv', processed_directory_path, args_copy)
     
     if upload_to_database:
+        filter_down_platform_state(processor.processed_session, max_platform_rate)
         database = Database(log)
         upload_success = database.upload(processor.processed_session)
     
