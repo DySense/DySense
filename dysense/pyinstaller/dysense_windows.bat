@@ -1,5 +1,5 @@
 
-pyinstaller ../../bin/DySense.py ^
+pyinstaller ../../scripts/DySense.py ^
 --clean ^
 --noconfirm ^
 --windowed ^
