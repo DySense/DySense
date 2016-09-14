@@ -74,6 +74,12 @@ class GpsNmea(SensorBase):
         
         # Notes to be saved with next 'logged position'. Reset to None after every log entry.
         self.next_log_notes = None
+        
+        # File that's kept open to write NMEA strings to.
+        self.raw_nmea_out_file = None
+        
+        # Keep track if data file directory changes (for example when session starts) so we can create it if we need to write files to it.
+        self.last_data_file_directory = None
               
     def process_nmea_message(self, nmea_string, message_read_sys_time):
         
@@ -84,12 +90,14 @@ class GpsNmea(SensorBase):
                 return 'normal' # first message is likely a fragment so don't treat it as an error
             else:
                 self.send_text("Invalid checksum.")
+                self._write_raw_string_to_file(nmea_string)
                 return 'error'
         
         try:
             sentence_type, parsed_sentence = parse_nmea_sentence(nmea_string)
         except ValueError:
             self.send_text("Failed to parse NMEA sentence. Sentence was: {}".format(nmea_string))
+            self._write_raw_string_to_file(nmea_string)
             return 'error'
 
         # Set below based on which message is processed.  Default to last GGA result since that's really the
@@ -118,6 +126,8 @@ class GpsNmea(SensorBase):
         # Make sure GST messages are being received if the user's trying to monitor fix accuracy.    
         if self.monitor_latlon_error and (self.gga_count > 0) and (self.gga_count % 100 == 0) and self.gst_count == 0:
             self.send_text('Received {} GGA messages without receiving a GST message'.format(self.gga_count))
+
+        self._write_raw_string_to_file(nmea_string)
 
         return current_state
                                                         
@@ -240,3 +250,25 @@ class GpsNmea(SensorBase):
         
         self.log_next_position = True
         self.next_log_notes = notes
+        
+    def _write_raw_string_to_file(self, nmea_string):
+
+        if not self.current_data_file_directory:
+            return # only log data when session is valid
+
+        if self.last_data_file_directory != self.current_data_file_directory:
+            # Output directory changed so make sure it exists.
+            if not os.path.exists(self.current_data_file_directory):
+                os.makedirs(self.current_data_file_directory)
+
+            self.last_data_file_directory = self.current_data_file_directory
+        
+            if self.raw_nmea_out_file is not None:
+                # Close old file so we can open a new one at the new path.
+                self.raw_nmea_out_file.close()
+
+        if self.raw_nmea_out_file is None:
+            raw_nmea_out_file_path = os.path.join(self.current_data_file_directory, 'raw_nmea_output.txt')
+            self.raw_nmea_out_file = open(raw_nmea_out_file_path, 'w')
+
+        self.raw_nmea_out_file.write(nmea_string + b'\n')
