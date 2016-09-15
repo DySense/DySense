@@ -7,7 +7,7 @@ import numpy as np
 from collections import defaultdict
 
 from dysense.processing.utility import standardize_to_degrees, standardize_to_meters, contains_measurements
-from dysense.processing.utility import StampedPosition, ObjectState, wrap_angle_degrees, sensor_units
+from dysense.processing.utility import StampedPosition, StampedAngle, ObjectState, wrap_angle_degrees, sensor_units
 from dysense.core.utility import interpolate, interpolate_single, closest_value
 
 class PostProcessor(object):
@@ -337,12 +337,11 @@ class PostProcessor(object):
         Use synced position sources to determine platform yaw. If there aren't multiple position sources then
         return None.  Otherwise angles returned as StampleAngles in degrees and +/- 180.
         '''
-        return None
         # Determine offsets for each position sources along the 'right direction' (y-axis)
         # so that we can figure out which source is on the left side and which is on the right side.
         source_names = self.synced_platform_positions.keys()
-        source_infos = [self.session_output.sensor_info_by_name(name) for name in source_names]
-        source_offsets = [info['platform_offsets'] for info in source_infos]
+        sensor_infos = [self.session_output.find_matching_sensor_info_by_name(name) for name in source_names]
+        source_offsets = [info['position_offsets'] for info in sensor_infos]
         offsets_right = [offsets[1] for offsets in source_offsets]
         
         if abs(min(offsets_right) - max(offsets_right)) < 0.01:
@@ -368,7 +367,9 @@ class PostProcessor(object):
             # and ensure it's within +/- 180 degrees.
             yaw = rel_bearing  - 90.0
             yaw = wrap_angle_degrees(yaw)
-            yaw_angles.append(yaw)
+            
+            # Both positions should be at same time so it doesn't matter which one we use.
+            yaw_angles.append(StampedAngle(left.utc_time, yaw))
     
         return yaw_angles
     
