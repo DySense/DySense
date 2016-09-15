@@ -8,25 +8,19 @@ from logging import getLogger
 
 from dysense.core.utility import wrap_angle_degrees
 
-def standardize_to_degrees(angles, source, angle_type):
+def standardize_to_degrees(angles, sensor_units, angle_type):
     '''
     Return new list of angles of the specified type (e.g. 'roll') so that the angles are in degrees and within +/- 180.
-    Use the source metadata to determine if the angles need to be converted or if they're already in degrees.
+    Use sensor units to determine if the distances need to be converted or if they're already in meters.
     ''' 
     # Set to true if source is measured in radians.
     need_to_convert = False
     
-    try:
-        units = source_units(source, 'orientation_index')
+    if is_radians(sensor_units):
+        need_to_convert = True 
+    elif not is_degrees(sensor_units):
+        getLogger('processing').warn('{} units \'{}\' is not recognized. Assuming degrees.'.format(angle_type.title(), sensor_units))
         
-        if is_radians(units):
-            need_to_convert = True 
-        elif not is_degrees(units):
-            getLogger('processing').warn('{} units \'{}\' is not recognized. Assuming degrees.'.format(angle_type.title(), units))
-        
-    except KeyError:
-        getLogger('processing').warn('Units not listed for {} source. Assuming degrees.'.format(angle_type))
-
     if need_to_convert:
         # Make a copy so we don't modify the original.
         angles = copy.copy(angles)
@@ -45,27 +39,21 @@ def standardize_to_degrees(angles, source, angle_type):
 
     return angles
 
-def standardize_to_meters(distances, source, source_type):
+def standardize_to_meters(distances, sensor_units, source_type):
     '''
     Return new list of distances of the specified type (e.g. 'height') so that the distances are in meters.
-    Use the source metadata to determine if the distances need to be converted or if they're already in meters.
+    Use sensor units to determine if the distances need to be converted or if they're already in meters.
     ''' 
     # Set to a different value if we need to convert each distance (for example 0.01 if going from cm to meters)
     scale_factor = 1
     
-    try:
-        units = source_units(source, 'height_index')
-
-        if is_centimeters(units):
-            scale_factor = 0.01
-        elif is_millimeters(units):
-            scale_factor = 0.001
-        elif not is_meters(units):
-            getLogger('processing').warn('{} units \'{}\' is not recognized. Assuming meters.'.format(source_type.title(), units))
+    if is_centimeters(sensor_units):
+        scale_factor = 0.01
+    elif is_millimeters(sensor_units):
+        scale_factor = 0.001
+    elif not is_meters(sensor_units):
+        getLogger('processing').warn('{} units \'{}\' is not recognized. Assuming meters.'.format(source_type.title(), sensor_units))
         
-    except KeyError:
-        getLogger('processing').warn('Units not listed for {} source. Assuming meters.'.format(source_type))
-
     need_to_convert = scale_factor != 1
 
     if need_to_convert:
@@ -91,11 +79,9 @@ def is_centimeters(units):
 def is_millimeters(units):
     return units.lower() in ['mm', 'millimeter', 'millimeters']
 
-def source_units(source, index_name):
-    '''Return units (e.g. 'meters) for source output data at specified index name or raise KeyError if not found.'''
-    metadata = source['metadata']
-    setting_idx = source[index_name]
-    return metadata['data'][setting_idx]['units']
+def sensor_units(sensor_info, data_index):
+    '''Return units (e.g. 'meters) for sensor output data at specified index or raise KeyError if not found.''' 
+    return sensor_info['metadata']['data'][data_index]['units']
 
 def contains_measurements(lst):
     '''Return true if lst is a list that contains elements.'''

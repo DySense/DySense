@@ -59,7 +59,7 @@ class SessionOutputV2(object):
 
     @property
     def position_sources_info(self):
-        return [self._find_matching_sensor_info(source) for source in self.position_sources]
+        return [self.find_matching_sensor_info(source) for source in self.position_sources]
 
     @property
     def roll_source(self):
@@ -105,7 +105,7 @@ class SessionOutputV2(object):
             
             position_source_name = position_source['sensor_id']
             
-            matching_sensor_info = self._find_matching_sensor_info(position_source)
+            matching_sensor_info = self.find_matching_sensor_info(position_source)
             
             sensor_log_data, _ = self._read_sensor_log_data(matching_sensor_info)
             
@@ -152,7 +152,6 @@ class SessionOutputV2(object):
 
         If there are any issues getting data from a height source will raise ValueError
         '''
-            
         # Dictionary that will be returned at end of method.
         measurements_by_source = defaultdict(list)
         
@@ -160,7 +159,7 @@ class SessionOutputV2(object):
             
             height_source_name = height_source['sensor_id']
             
-            matching_sensor_info = self._find_matching_sensor_info(height_source)
+            matching_sensor_info = self.find_matching_sensor_info(height_source)
             
             sensor_log_data, _ = self._read_sensor_log_data(matching_sensor_info)
             
@@ -183,6 +182,7 @@ class SessionOutputV2(object):
     
     def read_fixed_height_above_ground(self):
         '''Return fixed distance above ground in meters.'''
+        
         return self.fixed_height_source
         
     def get_complete_sensors(self):
@@ -233,7 +233,24 @@ class SessionOutputV2(object):
                 
         return session_info
     
-    def matching_height_source(self, source_name):
+    def find_matching_sensor_info_by_name(self, source_sensor_id):
+        
+        # TODO update for multiple controllers
+        matching_sensors = [s for s in self.sensor_info_list if s['sensor_id'] == source_sensor_id]
+        
+        if len(matching_sensors) > 1:
+            raise ValueError('More than 1 sensor found named {} with same controller ID {}'.format(source_sensor_id, 'TODO'))
+        elif len(matching_sensors) == 0:
+            raise ValueError('More than 1 sensor found named {} with same controller ID {}'.format(source_sensor_id, 'TODO'))
+        
+        return matching_sensors[0]
+    
+    def find_matching_sensor_info(self, source):
+        
+        return self.find_matching_sensor_info_by_name(source['sensor_id'])
+    
+    def find_matching_height_source(self, source_name):
+        
         return [s for s in self.height_sources if source_name == s['sensor_id']][0]
         
     def _read_data_source_info(self):
@@ -333,7 +350,7 @@ class SessionOutputV2(object):
         elif source['sensor_id'].lower() == 'derived':
             return 'derived'
         
-        matching_sensor_info = self._find_matching_sensor_info(source)
+        matching_sensor_info = self.find_matching_sensor_info(source)
         
         sensor_log_data, _ = self._read_sensor_log_data(matching_sensor_info)
         
@@ -348,17 +365,6 @@ class SessionOutputV2(object):
         
         # Angles already sorted by time.
         return measurements
-    
-    def _find_matching_sensor_info(self, source):
-        
-        matching_sensors = [s for s in self.sensor_info_list if _matches_source(s, source)]
-        
-        if len(matching_sensors) > 1:
-            raise ValueError('More than 1 sensor found named {} with some controller ID {}'.format(source['sensor_id'], source['controller_id']))
-        elif len(matching_sensors) == 0:
-            raise ValueError('More than 1 sensor found named {} with some controller ID {}'.format(source['sensor_id'], source['controller_id']))
-        
-        return matching_sensors[0]
     
 def _matches_source(sensor, source):
     

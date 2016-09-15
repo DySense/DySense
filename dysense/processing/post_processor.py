@@ -7,7 +7,7 @@ import numpy as np
 from collections import defaultdict
 
 from dysense.processing.utility import standardize_to_degrees, standardize_to_meters, contains_measurements
-from dysense.processing.utility import StampedPosition, ObjectState
+from dysense.processing.utility import StampedPosition, ObjectState, wrap_angle_degrees, sensor_units
 from dysense.core.utility import interpolate, interpolate_single, closest_value
 
 class PostProcessor(object):
@@ -121,13 +121,24 @@ class PostProcessor(object):
     
     def _standardize_angles(self):
         '''Ensure all platform Euler angles are in degrees and between +/- 180.'''
-
-        if contains_measurements(self.roll_angles):
-            self.roll_angles = standardize_to_degrees(self.roll_angles, self.session_output.roll_source, 'roll')
-        if contains_measurements(self.pitch_angles):
-            self.pitch_angles = standardize_to_degrees(self.pitch_angles, self.session_output.pitch_source, 'pitch')
-        if contains_measurements(self.yaw_angles):
-            self.yaw_angles = standardize_to_degrees(self.yaw_angles, self.session_output.yaw_source, 'yaw')
+    
+        self.roll_angles = self._standardize_angle(self.roll_angles, self.session_output.roll_source, 'roll')
+        self.pitch_angles = self._standardize_angle(self.pitch_angles, self.session_output.pitch_source, 'pitch')
+        self.yaw_angles = self._standardize_angle(self.yaw_angles, self.session_output.yaw_source, 'yaw')
+        
+    def _standardize_angle(self, angles, source, angle_type):
+        '''Return updated list of angles for the specified source that are in degrees and between +/- 180'''
+        
+        if contains_measurements(angles):
+            sensor_info = self.session_output.find_matching_sensor_info(source)
+            try:
+                units = sensor_units(sensor_info, source['orientation_index'])
+            except:
+                self.log.warn('Units not listed for {} source. Assuming degrees.'.format(angle_type))
+                units = 'degrees'
+            angles = standardize_to_degrees(angles, units, angle_type)
+            
+        return angles
         
     def _derive_angles(self):
         '''Use platform position source(s) to calculate any Euler angle marked as "derived"'''
@@ -152,9 +163,9 @@ class PostProcessor(object):
         
         # Make sure all units are in meters.
         for source_name, height_measurements in height_measurements_by_source.iteritems():
-            height_source = self.session_output.matching_height_source(source_name)
-            converted_measurements = standardize_to_meters(height_measurements, height_source, 'height')
-            height_measurements_by_source[source_name] = converted_measurements
+            height_source = self.session_output.find_matching_height_source(source_name)
+            standard_heights = self._standardize_heights(height_measurements, height_source) 
+            height_measurements_by_source[source_name] = standard_heights
             
         # TODO reference heights from platform origin.
             
@@ -174,6 +185,20 @@ class PostProcessor(object):
             self.fixed_height = None
             
         # TODO take into account sensor offset relative to GPS
+        
+    def _standardize_heights(self, distances, source):
+        '''Return updated list of height distances for the specified source that are in meters.'''
+        
+        if contains_measurements(distances):
+            sensor_info = self.session_output.find_matching_sensor_info(source)
+            try:
+                units = sensor_units(sensor_info, source['height_index'])
+            except:
+                self.log.warn('Units not listed for height source. Assuming meters.')
+                units = 'meters'
+            distances = standardize_to_meters(distances, units, 'height')
+            
+        return distances
     
     def _calculate_platform_state(self):
         '''
@@ -312,9 +337,40 @@ class PostProcessor(object):
         Use synced position sources to determine platform yaw. If there aren't multiple position sources then
         return None.  Otherwise angles returned as StampleAngles in degrees and +/- 180.
         '''
-        # TODO
-        #raise Exception("TODO")
         return None
+        # Determine offsets for each position sources along the 'right direction' (y-axis)
+        # so that we can figure out which source is on the left side and which is on the right side.
+        source_names = self.synced_platform_positions.keys()
+        source_infos = [self.session_output.sensor_info_by_name(name) for name in source_names]
+        source_offsets = [info['platform_offsets'] for info in source_infos]
+        offsets_right = [offsets[1] for offsets in source_offsets]
+        
+        if abs(min(offsets_right) - max(offsets_right)) < 0.01:
+            # We don't use offset spacing for determing yaw, but if we can't tell which is left/right
+            # reliably then we yaw could be flipped 180 degrees.
+            raise ValueError("Not enough spacing between position sources to derive yaw.")
+        
+        # Left most position source and right most position source.
+        left_source_name = source_names[np.argmin(offsets_right)]
+        right_source_name = source_names[np.argmax(offsets_right)]
+        
+        left_positions = self.synced_platform_positions[left_source_name]
+        right_positions = self.synced_platform_positions[right_source_name]
+        
+        yaw_angles = []
+                
+        for left, right in zip(left_positions, right_positions):
+            # First find relative bearing of vector from left position -> right position
+            diff_lat = right.lat - left.lat
+            diff_long = right.long - left.long
+            rel_bearing = math.atan2(diff_long, diff_lat) * 180.0 / math.pi
+            # Then find yaw of platform which is at 90 degrees to this relative bearing
+            # and ensure it's within +/- 180 degrees.
+            yaw = rel_bearing  - 90.0
+            yaw = wrap_angle_degrees(yaw)
+            yaw_angles.append(yaw)
+    
+        return yaw_angles
     
     def _derive_yaw_angles_single(self, platform_positions):
         '''
