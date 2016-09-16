@@ -256,7 +256,7 @@ class GpsTrimble(SensorBase):
         self.enough_satellites_last_message = enough_satellites
              
         self.handle_data(utc_time, sys_time, [corrected_lat, corrected_long, corrected_altitude, corrected_yaw * rad2deg,
-                                               num_sats, self.ggk['dop']], data_quality_ok)
+                                               num_sats, self.ggk['dop'], self.avr['tilt_deg']], data_quality_ok)
         
         return 'normal' if data_quality_ok else 'bad_data_quality'
                                                         

@@ -398,7 +398,7 @@ sensors:
           tags: [height]
         
     gps_trmb_test:
-      version: "1.0"
+      version: "1.1"
       type: TRMB
       settings:
         - name: test_file_path
@@ -447,11 +447,16 @@ sensors:
         - name: dop
           type: float
           decimal_places: 1
+        - name: roll
+          type: float
+          units: degrees
+          decimal_places: 1
+          tags: [roll]
       special_commands:
         - save_primary
 
     gps_trmb_serial:
-      version: "1.0"
+      version: "1.1"
       type: TRMB
       settings:
         - name: port
@@ -507,6 +512,11 @@ sensors:
         - name: dop
           type: float
           decimal_places: 1
+        - name: roll
+          type: float
+          units: degrees
+          decimal_places: 1
+          tags: [roll]
       special_commands:
         - save_primary
           
