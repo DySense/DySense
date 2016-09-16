@@ -80,7 +80,7 @@ class GpsNmea(SensorBase):
         
         # Keep track if data file directory changes (for example when session starts) so we can create it if we need to write files to it.
         self.last_data_file_directory = None
-              
+             
     def process_nmea_message(self, nmea_string, message_read_sys_time):
         
         self.num_messages_processed += 1
@@ -250,25 +250,43 @@ class GpsNmea(SensorBase):
         
         self.log_next_position = True
         self.next_log_notes = notes
+    
+    def close(self):
+        '''Should be called when driver closes.'''
+        
+        self.close_open_files()
+            
+    def close_open_files(self):
+        '''Close any file handles that are open.'''
+        
+        if self.raw_nmea_out_file is not None:
+            self.raw_nmea_out_file.close()
+            self.raw_nmea_out_file = None
+            
+    def driver_handle_new_setting(self, setting_name, setting_value):
+        '''Update settings to match new output data file directory.'''
+
+        if setting_name == 'data_file_directory':
+            output_directory = setting_value
+            
+            if not output_directory:
+                self.close_open_files()
+                return # wait until we have a valid session again.
+    
+            if self.last_data_file_directory != output_directory:
+                # Output directory changed so make sure it exists.
+                if not os.path.exists(output_directory):
+                    os.makedirs(output_directory)
+    
+                self.last_data_file_directory = output_directory
+            
+                # Close old file so we can open a new one at the new path.
+                self.close_open_files()
+    
+                raw_nmea_out_file_path = os.path.join(output_directory, 'raw_nmea_output.txt')
+                self.raw_nmea_out_file = open(raw_nmea_out_file_path, 'w')
         
     def _write_raw_string_to_file(self, nmea_string):
 
-        if not self.current_data_file_directory:
-            return # only log data when session is valid
-
-        if self.last_data_file_directory != self.current_data_file_directory:
-            # Output directory changed so make sure it exists.
-            if not os.path.exists(self.current_data_file_directory):
-                os.makedirs(self.current_data_file_directory)
-
-            self.last_data_file_directory = self.current_data_file_directory
-        
-            if self.raw_nmea_out_file is not None:
-                # Close old file so we can open a new one at the new path.
-                self.raw_nmea_out_file.close()
-
-        if self.raw_nmea_out_file is None:
-            raw_nmea_out_file_path = os.path.join(self.current_data_file_directory, 'raw_nmea_output.txt')
-            self.raw_nmea_out_file = open(raw_nmea_out_file_path, 'w')
-
-        self.raw_nmea_out_file.write(nmea_string + b'\n')
+        if self.raw_nmea_out_file is not None:
+            self.raw_nmea_out_file.write(nmea_string + b'\n')

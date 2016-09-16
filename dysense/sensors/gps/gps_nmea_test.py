@@ -47,6 +47,7 @@ class GpsNmeaTest(GpsNmea):
     
     def close(self):
         '''Set flag to signify that sensor is closed.'''
+        GpsNmea.close(self)
         self.closed = True
         
     def setup(self):

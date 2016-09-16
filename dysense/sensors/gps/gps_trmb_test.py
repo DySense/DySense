@@ -36,6 +36,7 @@ class GpsTrimbleTest(GpsTrimble):
 
     def is_closed(self):
         '''Return true if test file is closed.'''
+        GpsTrimble.close(self)
         return self.closed
     
     def close(self):

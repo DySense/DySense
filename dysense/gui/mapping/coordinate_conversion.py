@@ -40,8 +40,9 @@ class CoordinateConverter(object):
     def convert_to_map_position(self, position):
         '''Convert specified SourcePosition to a MapPosition and return the result.'''
         if self._need_to_calculate_deg_scale:
-            self.meters_per_deg_lat = (111132.92-559.82*math.cos(2*position.lat*math.pi / 180)+1.175*math.cos(4*position.lat*math.pi / 180))
-            self.meters_per_deg_long = (111412.84*math.cos(position.lat*math.pi / 180) - 93.5*math.cos(3*position.lat*math.pi / 180))
+            ref_lat = position.lat * math.pi / 180
+            self.meters_per_deg_lat = (111132.92-559.82*math.cos(2*ref_lat)+1.175*math.cos(4*ref_lat))
+            self.meters_per_deg_long = (111412.84*math.cos(ref_lat) - 93.5*math.cos(3*ref_lat))
             self._need_to_calculate_deg_scale = False
             
         # Convert to meters since we need to plot in 2D plane and meters are easy for user to understand.

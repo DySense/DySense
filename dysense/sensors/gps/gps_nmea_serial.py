@@ -53,6 +53,7 @@ class GpsNmeaSerial(GpsNmea):
     
     def close(self):
         '''Close serial port if it was open.'''
+        GpsNmea.close(self)
         try:
             self.connection.close()
         except (AttributeError, serial.SerialException):

@@ -52,6 +52,7 @@ class GpsTrimbleSerial(GpsTrimble):
     
     def close(self):
         '''Close serial port if it was open.'''
+        GpsTrimble.close(self)
         try:
             self.connection.close()
         except (AttributeError, serial.SerialException):
