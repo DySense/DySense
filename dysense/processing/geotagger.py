@@ -78,8 +78,7 @@ class GeoTagger(object):
         # Convert platform lat/long to NED (in meters) so we can add in sensor offsets which are also in meters.
         # This uses a linear approximation which changes based on the reference latitude.  
         # See: https://en.wikipedia.org/wiki/Geographic_coordinate_system#Expressing_latitude_and_longitude_as_linear_units
-        ref_lat = platform.lat
-        ref_long = platform.long
+        ref_lat = platform.lat * math.pi / 180.0
         meters_per_deg_lat = 111132.92 - 559.82*cos(2.0*ref_lat) + 1.175*cos(4.0*ref_lat) - 0.0023*cos(6.0*ref_lat)
         meters_per_deg_long = 111412.84*cos(ref_lat) - 93.5*cos(3.0*ref_lat) + 0.118*cos(5.0*ref_lat)
         
