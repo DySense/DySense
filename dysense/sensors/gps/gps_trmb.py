@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 import os
 import math
-import utm
 import csv
 
 from dysense.sensors.gps.nmea_parser import parse_nmea_sentence
@@ -191,36 +190,41 @@ class GpsTrimble(SensorBase):
         # the heading would read 90 degrees when facing north.
         measured_yaw = self.avr['yaw_deg'] * deg2rad
         corrected_yaw = measured_yaw - yaw_offset
-
-        # Need to flip sign since in ENU we should increase CCW but trimble measures CW
-        corrected_yaw *= -1.0
-
-        # Also need to permanently add 90 degrees since facing 'east' is zero degrees in ENU.
-        corrected_yaw += math.pi / 2
     
         # Cap corrected yaw between +/- PI
         while corrected_yaw > +math.pi: corrected_yaw -= 2 * math.pi
         while corrected_yaw < -math.pi: corrected_yaw += 2 * math.pi
 
-        # Convert to UTM so can do use easting/northing offsets reported by GPS.
-        easting, northing, zone_num, zone_letter = utm.from_latlon(self.ggk['latitude'], self.ggk['longitude'])
+        # Convert platform lat/long to NED (in meters) so we can add in secondary antenna offsets reported by GPS.
+        # This uses a linear approximation which changes based on the reference latitude.  
+        # See: https://en.wikipedia.org/wiki/Geographic_coordinate_system#Expressing_latitude_and_longitude_as_linear_units
+        lat_ref = self.ggk['latitude'] * deg2rad
+        meters_per_deg_lat = 111132.92 - 559.82*math.cos(2.0*lat_ref) + 1.175*math.cos(4.0*lat_ref) - 0.0023*math.cos(6.0*lat_ref)
+        meters_per_deg_long = 111412.84*math.cos(lat_ref) - 93.5*math.cos(3.0*lat_ref) + 0.118*math.cos(5.0*lat_ref)
+        
+        # These northing/easting are not geodetically meaningful (in an accuracy sense),
+        # since the linear approximation only applies to this degree of latitude, not all degrees..
+        # but that's ok since we're just dealing with small offsets.
+        northing = self.ggk['latitude'] * meters_per_deg_lat
+        easting = self.ggk['longitude'] * meters_per_deg_long
 
         # Take into account the fact the platform center is in between the two antennas and the
         # reported lat/lon is only for the primary receiver (which we mount on the right)
         ant1_offset = self.avr['range'] / 2.0 # antenna 1 offset in meters
-        east_antenna_offset = -math.sin(corrected_yaw) * ant1_offset
-        north_antenna_offset = math.cos(corrected_yaw) * ant1_offset
-        easting += east_antenna_offset
+        north_antenna_offset = math.sin(corrected_yaw) * ant1_offset
+        east_antenna_offset = -math.cos(corrected_yaw) * ant1_offset
+    
         northing += north_antenna_offset
-        
-        # Convert easting/northing back to lat/long since that's what needs to be uploaded to database.
+        easting += east_antenna_offset
 
         # Find altitude of center of antennas.  We don't know pitch so hopefully this is close enough.
         tilt_rad = self.avr['tilt_deg'] * deg2rad
-        altitude_offset = math.sin(tilt_rad) * self.avr['range'] / 2.0
+        altitude_offset = math.sin(tilt_rad) * ant1_offset
         corrected_altitude = self.ggk['altitude'] - altitude_offset
         
-        corrected_lat, corrected_long = utm.to_latlon(easting, northing, zone_num, zone_letter)
+        # Convert northing/easting back to lat/long since that's what the standard for DySense.
+        corrected_lat = northing / meters_per_deg_lat
+        corrected_long = easting / meters_per_deg_long
     
         # Monitor fix type.
         fix = str(self.ggk['gps_quality'])
