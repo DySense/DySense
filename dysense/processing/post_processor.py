@@ -7,8 +7,10 @@ import numpy as np
 from collections import defaultdict
 
 from dysense.processing.utility import standardize_to_degrees, standardize_to_meters, contains_measurements
-from dysense.processing.utility import StampedPosition, StampedAngle, ObjectState, wrap_angle_degrees, sensor_units
+from dysense.processing.utility import StampedPosition, StampedAngle, StampedHeight, ObjectState
+from dysense.processing.utility import wrap_angle_degrees, sensor_units
 from dysense.core.utility import interpolate, interpolate_single, closest_value
+from dysense.processing.geotagger import rot_parent_to_child
 
 class PostProcessor(object):
     '''
@@ -32,7 +34,7 @@ class PostProcessor(object):
         self.roll_angles = None
         self.pitch_angles = None
         self.yaw_angles = None
-        self.heights = None
+        self.platform_heights = None
         self.fixed_height = None
         
         # This will the hold the final results.
@@ -167,15 +169,30 @@ class PostProcessor(object):
             standard_heights = self._standardize_heights(height_measurements, height_source) 
             height_measurements_by_source[source_name] = standard_heights
             
-        # TODO reference heights from platform origin.
+        # Convert distance readings from sensor frame to platform frame.
+        for source_name, height_measurements in height_measurements_by_source.iteritems():
             
+            height_sensor = self.session_output.find_matching_sensor_info_by_name(source_name)
+    
+            # Determine rotation matrix to rotate vector in sensor (child) frame to platform (parent) frame.
+            offsets_in_radians = [angle * math.pi/180.0 for angle in height_sensor['orientation_offsets']]
+            platform_to_sensor_rot_matrix = rot_parent_to_child(*offsets_in_radians)
+            sensor_to_platform_rot_matrix = platform_to_sensor_rot_matrix.transpose()
+            
+            # Account for fact that platform positions and sensor offsets may not have the same origin.
+            position_offsets = np.asarray(height_sensor['position_offsets']) - np.asarray(self.platform_position_offset)
+            
+            for stamped_height in height_measurements:
+                stamped_height.height = self.geotagger.sensor_distance_to_platform_frame(stamped_height.height, sensor_to_platform_rot_matrix, position_offsets)
+
         num_height_sources = len(height_measurements_by_source)
                 
         if num_height_sources > 1:
-            self.log.warning('Multiple height sources detected but only 1 is supported right now.')
-            self.heights = height_measurements_by_source.values()[0]
+            # First need to get all heights to be relative to the same time stamps and then average.
+            synced_platform_heights = self._sync_platform_heights(height_measurements_by_source) 
+            self.platform_heights = self._average_multiple_height_sources(synced_platform_heights)
         elif num_height_sources == 1:
-            self.heights = height_measurements_by_source.values()[0]
+            self.platform_heights = height_measurements_by_source.values()[0]
             
         # User can also specify a fixed height above ground if no sensor is available or to use as a backup.
         self.fixed_height = self.session_output.read_fixed_height_above_ground()
@@ -183,8 +200,6 @@ class PostProcessor(object):
             self.fixed_height = float(self.fixed_height)
         except (ValueError, TypeError):
             self.fixed_height = None
-            
-        # TODO take into account sensor offset relative to GPS
         
     def _standardize_heights(self, distances, source):
         '''Return updated list of height distances for the specified source that are in meters.'''
@@ -209,7 +224,7 @@ class PostProcessor(object):
         valid_roll_angles = contains_measurements(self.roll_angles)
         valid_pitch_angles = contains_measurements(self.pitch_angles)
         valid_yaw_angles = contains_measurements(self.yaw_angles)
-        valid_height_measurements = contains_measurements(self.heights)
+        valid_height_measurements = contains_measurements(self.platform_heights)
         valid_fixed_height = self.fixed_height is not None and self.fixed_height >= 0
         
         # Separate into time/value parts to get ready to interpolate below.
@@ -223,8 +238,8 @@ class PostProcessor(object):
             yaw_values = [a.angle for a in self.yaw_angles]
             yaw_times = [a.utc_time for a in self.yaw_angles]
         if valid_height_measurements:
-            height_values = [height.height for height in self.heights]
-            height_times = [height.utc_time for height in self.heights]
+            height_values = [height.height for height in self.platform_heights]
+            height_times = [height.utc_time for height in self.platform_heights]
         
         # Calculate state at same time as each position.
         platform_states = []
@@ -261,6 +276,8 @@ class PostProcessor(object):
                 
             if math.isnan(height) and valid_fixed_height:
                 height = self.fixed_height
+                
+            # TODO describe height in world frame instead of platform frame.
                 
             platform_state = ObjectState(position.utc_time, position.lat, position.long, position.alt,
                                          roll, pitch, yaw, height_above_ground=height)
@@ -447,3 +464,55 @@ class PostProcessor(object):
             averaged_positions.append(avg_position)
         
         return averaged_positions
+    
+    def _sync_platform_heights(self, height_measurements_by_source):
+        '''
+        Return new dictionary of height measurements by source, but with each StampedHeight
+        being at the same UTC time between all sources.  Right now uses first height source as
+        reference times.
+        '''
+        synced_heights = defaultdict(list)
+        
+        source_names = height_measurements_by_source.keys()
+        
+        # Just use first source as reference source to match all the other height sources up to.
+        ref_source_name = source_names[0]
+        other_source_names = source_names[1:]
+        
+        synced_heights[ref_source_name] = height_measurements_by_source[ref_source_name]
+        
+        ref_source_times = [h.utc_time for h in height_measurements_by_source[ref_source_name]]
+        
+        for other_source_name in other_source_names:
+            
+            other_source_heights = height_measurements_by_source[other_source_name]
+            other_source_times = [h.utc_time for h in other_source_heights]
+            other_source_values = [h.height for h in other_source_heights]
+            
+            for ref_utc_time in ref_source_times:
+                height_at_ref_time = interpolate_single(ref_utc_time, other_source_times, other_source_values, max_x_diff=self.max_time_diff)
+  
+                synced_heights[other_source_name].append(StampedHeight(ref_utc_time, height_at_ref_time))
+            
+        return synced_heights
+    
+    def _average_multiple_height_sources(self, synced_platform_heights):
+        '''
+        Return list of StampedHeight's from averaging height from multiple sources.
+        If any averaging results in NaN then that result is excluded.
+        '''
+        averaged_heights = []
+
+        for heights in zip(*synced_platform_heights.values()):
+            
+            avg_height = np.mean([h.height for h in heights])
+            
+            if math.isnan(avg_height):
+                continue # sources didn't all have height at this time.
+            
+            # All heights should have the same time so it doesn't matter which we use.
+            avg_stamped_height = StampedHeight(heights[0].utc_time, avg_height)
+            
+            averaged_heights.append(avg_stamped_height)
+        
+        return averaged_heights

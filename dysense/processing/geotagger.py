@@ -30,7 +30,7 @@ class GeoTagger(object):
        
         # Determine rotation matrix to rotate vector from platform frame to sensor frame.
         # Do this once since it doesn't change between readings.
-        platform_to_sensor_rot_matrix = rot_parent_to_body(*orientation_offsets)
+        platform_to_sensor_rot_matrix = rot_parent_to_child(*orientation_offsets)
         
         for reading, platform_state_at_reading in zip(readings, platform_state_at_readings):
  
@@ -65,7 +65,7 @@ class GeoTagger(object):
         platform_yaw_rad = self._effective_angle_rad(platform.yaw)
         
         # Determine rotation matrix to convert between world and platform frames.
-        world_to_platform_rot_matrix = rot_parent_to_body(platform_roll_rad, platform_pitch_rad, platform_yaw_rad)
+        world_to_platform_rot_matrix = rot_parent_to_child(platform_roll_rad, platform_pitch_rad, platform_yaw_rad)
         
         # Combine rotation so we can extract Euler angles from rotation matrix to get sensor orientation relative to world frame.
         world_to_sensor_rot_matrix = np.dot(world_to_platform_rot_matrix, platform_to_sensor_rot_matrix)
@@ -107,6 +107,23 @@ class GeoTagger(object):
                                     sensor_roll, sensor_pitch, sensor_yaw, sensor_height)
         
         return sensor_state
+    
+    # TODO move this out of class
+    def sensor_distance_to_platform_frame(self, distance, sensor_to_platform_rot_matrix, position_offsets):
+        '''
+        Return new distance that is described in platform frame rather than sensor frame.
+        The specified rotation matrix should rotate a vector in the sensor frame to the platform frame. 
+        '''
+        # Sensor frame has positive 'z' in direction of reading.
+        distance_vector = np.array([0, 0, distance])
+        
+        # Describe vector in terms of FRD platform coordinate system.
+        forward, right, down = np.dot(sensor_to_platform_rot_matrix, distance_vector)
+    
+        # Account for additional 'down' offset due to sensor not being mounted at same height as platform.
+        distance_in_platform_frame = down + position_offsets[2]
+
+        return distance_in_platform_frame
     
     def _platform_state_at_times(self, platform_states, utc_times):
         '''Return list of platform states at the specified utc_times.'''
@@ -154,9 +171,9 @@ class GeoTagger(object):
    
         return actual_sensor_angles
   
-def rot_parent_to_body(roll, pitch, yaw):
+def rot_parent_to_child(roll, pitch, yaw):
     '''
-    Return 3x3 rotation matrix that will transform a vector in the parent frame to the body frame.
+    Return 3x3 rotation matrix that will transform a vector in the parent frame to the child frame.
     Specified angles should be in radians and represent a right-handed positive rotation.
     This is done in the sequence z->y'->x'' which is an active, intrinsic rotation commonly called Euler ZYX
     This matrix is equivalent to an x->y->z active, extrinsic rotation commonly called Roll-Pitch-Yaw matrix.
