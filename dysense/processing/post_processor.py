@@ -7,6 +7,7 @@ from dysense.processing.derive_angle import *
 from dysense.processing.source_filter import *
 from dysense.processing.platform_state import *
 from dysense.processing.geotagger import rot_parent_to_child
+from dysense.processing.log import log
 
 class PostProcessor(object):
     '''
@@ -14,13 +15,12 @@ class PostProcessor(object):
     This functionality is represented by a single public run() method.
     A new instance of this class should be created for each session to be processed.  
     '''
-    def __init__(self, session_output, geotagger, max_time_diff, log):
+    def __init__(self, session_output, geotagger, max_time_diff):
         '''Constructor'''
         
         self.session_output = session_output
         self.geotagger = geotagger
         self.max_time_diff = max_time_diff
-        self.log = log
         
         # Default values related to platform state that are calculated from session output.
         self.multiple_platform_positions = False
@@ -51,7 +51,7 @@ class PostProcessor(object):
         be postfixed with _rad (e.g. roll_angle_rad)
         '''
         if not self.session_output.session_valid:
-            self.log.error("Session marked as invalid. Delete invalidated.txt before processing.")
+            log().error("Session marked as invalid. Delete invalidated.txt before processing.")
             return PostProcessor.ExitReason.session_invalid
         
         # Read in generic session info (start time, end time, operator name, etc).
@@ -68,7 +68,7 @@ class PostProcessor(object):
         platform_states = self._calculate_platform_state()
         
         if len(platform_states) == 0:
-            self.log.critical("No platform states could be calculated.")
+            log().critical("No platform states could be calculated.")
             return self.ExitReason.no_platform_states
         
         # Read in sensor log data and use the time stamp of each entry to associate it with state of the sensor.
@@ -132,7 +132,7 @@ class PostProcessor(object):
             try:
                 units = sensor_units(sensor_info, source['orientation_index'])
             except:
-                self.log.warn('Units not listed for {} source. Assuming degrees.'.format(angle_type))
+                log().warn('Units not listed for {} source. Assuming degrees.'.format(angle_type))
                 units = 'degrees'
             angles = standardize_to_degrees(angles, units, angle_type)
             
@@ -207,7 +207,7 @@ class PostProcessor(object):
             try:
                 units = sensor_units(sensor_info, source['height_index'])
             except:
-                self.log.warn('Units not listed for height source. Assuming meters.')
+                log().warn('Units not listed for height source. Assuming meters.')
                 units = 'meters'
             distances = standardize_to_meters(distances, units, 'height')
             
@@ -325,7 +325,7 @@ class PostProcessor(object):
                     continue
                 
             if num_unmatched_states > 0:
-                self.log.warn("Removed {} readings from {} since no matching state.".format(num_unmatched_states, sensor['sensor_id']))
+                log().warn("Removed {} readings from {} since no matching state.".format(num_unmatched_states, sensor['sensor_id']))
                 
         return sensors
     

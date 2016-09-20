@@ -8,15 +8,15 @@ from math import cos
 from dysense.processing.platform_state import platform_state_at_times
 from dysense.processing.utility import ObjectState, effective_angle_rad, actual_angle_deg
 from dysense.processing.utility import rpy_from_rot_matrix, rot_parent_to_child
+from dysense.processing.log import log
         
 class GeoTagger(object):
     '''Determine state of sensor readings.'''
 
-    def __init__(self, max_time_diff, log):
+    def __init__(self, max_time_diff):
         '''Constructor.'''
         
         self.max_time_diff = max_time_diff
-        self.log = log
 
     def tag_all_readings(self, readings, position_offsets, orientation_offsets, platform_states):
         '''

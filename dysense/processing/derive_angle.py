@@ -6,13 +6,14 @@ import math
 import numpy as np
 
 from dysense.processing.utility import wrap_angle_degrees, StampedAngle
+from dysense.processing.log import log
 
 def derive_roll_angles(synced_position_sources):
     '''
     Use synced position sources to determine platform roll. If there aren't multiple position sources then
     return None.  Otherwise angles returned as StampleAngles in degrees and +/- 180.
     '''
-    self.log.warn("Deriving roll angles not currently supported.")
+    log().warn("Deriving roll angles not currently supported.")
     #raise ValueError('Unsupported setting.  Roll angles cannot be derived right now.')
     return None
 
@@ -21,7 +22,7 @@ def derive_pitch_angles(synced_position_sources):
     Use synced position sources to determine platform pitch. If there aren't multiple position sources then
     return None.  Otherwise angles returned as StampleAngles in degrees and +/- 180.
     '''        
-    self.log.warn("Deriving pitch angles not currently supported.")
+    log().warn("Deriving pitch angles not currently supported.")
     #raise ValueError('Unsupported setting.  Pitch angles cannot be derived right now.')
     return None
 
@@ -69,6 +70,6 @@ def derive_yaw_angles_single(platform_positions):
     '''
     Use change in platform position to determine platform yaw.
     '''
-    self.log.warn("Deriving yaw from single position source isn't supported yet.")
+    log().warn("Deriving yaw from single position source isn't supported yet.")
     #raise ValueError("Deriving yaw from single position source isn't supported yet.")
     return None

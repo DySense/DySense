@@ -7,6 +7,7 @@ from dysense.core.version import SemanticVersion
 from dysense.processing.utility import unicode_csv_reader
 from dysense.processing.output_versions.dysense_output_v1 import SessionOutputV1
 from dysense.processing.output_versions.dysense_output_v2 import SessionOutputV2
+from dysense.processing.log import log
 
 class SessionOutputFactory(object):
     '''
@@ -15,7 +16,7 @@ class SessionOutputFactory(object):
     All files are assumed to be saved in UTF8 format.
     '''
     @classmethod
-    def get_object(cls, session_path, log, default_version=SemanticVersion('1.0.0')):
+    def get_object(cls, session_path, default_version=SemanticVersion('1.0.0')):
         '''Return SessionOutputX class where X corresponds to the detected output version in session_path.'''
         
         # Associate a 'major' version number with the class used to read the session contents.
@@ -24,20 +25,20 @@ class SessionOutputFactory(object):
         
         try:
             output_version = cls._read_output_version(session_path)
-            log.debug('Output version {}'.format(output_version))
+            log().debug('Output version {}'.format(output_version))
         except IOError:
-            log.error("Session info file not found")
+            log().error("Session info file not found")
             return None
             
         if output_version is None:
-            log.warn("No output version detected. Using default version {}".format(default_version))
+            log().warn("No output version detected. Using default version {}".format(default_version))
             output_version = default_version
                 
         try:
             OutputClass = version_to_output_class[output_version.major]
-            session_output = OutputClass(session_path, output_version, log)
+            session_output = OutputClass(session_path, output_version)
         except KeyError:
-            log.error("Output version {} not supported by this version of DySense. Latest supported is {}.".format(output_version.major, max(version_to_output_class.keys())))
+            log().error("Output version {} not supported by this version of DySense. Latest supported is {}.".format(output_version.major, max(version_to_output_class.keys())))
             return None
         
         return session_output

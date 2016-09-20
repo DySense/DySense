@@ -8,6 +8,7 @@ from collections import defaultdict
 from dysense.core.utility import yaml_load_unicode, validate_type
 from dysense.processing.utility import unicode_csv_reader
 from dysense.processing.utility import StampedAngle, StampedPosition, StampedHeight
+from dysense.processing.log import log
 
 class SessionOutputV2(object):
     '''
@@ -15,11 +16,10 @@ class SessionOutputV2(object):
     Before using data user should verify that session_valid property is True.
     All files are assumed to be saved in UTF8 format.
     '''
-    def __init__(self, session_path, version, log):
+    def __init__(self, session_path, version):
         '''Constructor'''
         self.session_path = session_path
         self.version = version
-        self.log = log
         
         self.sources = self._read_data_source_info()
         
@@ -196,7 +196,7 @@ class SessionOutputV2(object):
                 log_data, log_file_name = self._read_sensor_log_data(sensor)
 
             except Exception as e:
-                self.log.error('Cannot read log for {} - reason: {}'.format(sensor['sensor_id'], str(e)))
+                log().error('Cannot read log for {} - reason: {}'.format(sensor['sensor_id'], str(e)))
                 log_data = None
                 log_file_name = None
 

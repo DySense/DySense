@@ -4,9 +4,9 @@ from __future__ import unicode_literals
 import math
 import copy
 import csv
-from logging import getLogger
 
 from dysense.core.utility import wrap_angle_degrees
+from dysense.processing.log import log
 import numpy as np
 from math import sin, cos, atan2, asin
 
@@ -21,7 +21,7 @@ def standardize_to_degrees(angles, sensor_units, angle_type):
     if is_radians(sensor_units):
         need_to_convert = True 
     elif not is_degrees(sensor_units):
-        getLogger('processing').warn('{} units \'{}\' is not recognized. Assuming degrees.'.format(angle_type.title(), sensor_units))
+        log().warn('{} units \'{}\' is not recognized. Assuming degrees.'.format(angle_type.title(), sensor_units))
         
     if need_to_convert:
         # Make a copy so we don't modify the original.
@@ -31,9 +31,9 @@ def standardize_to_degrees(angles, sensor_units, angle_type):
 
     # Temporary debug output
     if need_to_convert:
-        getLogger('processing').debug('Converting {} angles to degrees.'.format(angle_type))
+        log().debug('Converting {} angles to degrees.'.format(angle_type))
     else:
-        getLogger('processing').debug('{} angles already in degrees.'.format(angle_type.title()))
+        log().debug('{} angles already in degrees.'.format(angle_type.title()))
         
     # Make sure angles are between +/- 180
     for angle in angles:
@@ -54,7 +54,7 @@ def standardize_to_meters(distances, sensor_units, source_type):
     elif is_millimeters(sensor_units):
         scale_factor = 0.001
     elif not is_meters(sensor_units):
-        getLogger('processing').warn('{} units \'{}\' is not recognized. Assuming meters.'.format(source_type.title(), sensor_units))
+        log().warn('{} units \'{}\' is not recognized. Assuming meters.'.format(source_type.title(), sensor_units))
         
     need_to_convert = scale_factor != 1
 

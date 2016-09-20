@@ -8,6 +8,7 @@ from collections import defaultdict
 from dysense.core.utility import yaml_load_unicode, validate_type
 from dysense.processing.utility import unicode_csv_reader
 from dysense.processing.utility import StampedAngle, StampedPosition
+from dysense.processing.log import log
 
 class SessionOutputV1(object):
     '''
@@ -15,11 +16,10 @@ class SessionOutputV1(object):
     Before using data user should verify that session_valid property is True.
     All files are assumed to be saved in UTF8 format.
     '''
-    def __init__(self, session_path, version, log):
+    def __init__(self, session_path, version):
         '''Constructor'''
         self.session_path = session_path
         self.version = version
-        self.log = log
         
         self.sources = self._read_data_source_info()
         
@@ -119,7 +119,7 @@ class SessionOutputV1(object):
                     continue # blank or comment line
                 
                 if len(line) < minimum_fields_per_row:
-                    self.log.error('Position line #{} contains only {} elements.'.format(line_num, len(line)))
+                    log().error('Position line #{} contains only {} elements.'.format(line_num, len(line)))
                     continue
                 
                 if multiple_position_sources:
@@ -178,7 +178,7 @@ class SessionOutputV1(object):
                     continue # blank or comment line
                 
                 if len(line) < 3:
-                    self.log.error('Orientation line #{} contains only {} elements.'.format(line_num, len(line)))
+                    log().error('Orientation line #{} contains only {} elements.'.format(line_num, len(line)))
                     continue
 
                 utc_time = float(line[0])
@@ -226,7 +226,7 @@ class SessionOutputV1(object):
                 log_data, log_file_name = self._read_sensor_log_data(sensor)
 
             except Exception as e:
-                self.log.error('Cannot read log for {} - reason: {}'.format(sensor['sensor_id'], str(e)))
+                log().error('Cannot read log for {} - reason: {}'.format(sensor['sensor_id'], str(e)))
                 log_data = None
                 log_file_name = None
             

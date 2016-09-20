@@ -14,6 +14,7 @@ from dysense.processing.geotagger import GeoTagger
 from dysense.processing.database import Database
 from dysense.processing.post_processor import PostProcessor
 from dysense.processing.platform_state import filter_down_platform_state
+from dysense.processing.log import setup_logging, log
 from dysense.core.utility import write_args_to_file, decode_command_line_arg
 from dysense.core.utility import logging_string_to_level
 from dysense.core.csv_log import CSVLog
@@ -68,23 +69,23 @@ def postprocess(**args):
     
     processed_directory_path = create_output_directory(session_directory_path)
     
-    log = setup_logging(processed_directory_path, file_log_level, console_log_level)
+    setup_logging(processed_directory_path, file_log_level, console_log_level)
     
     # Determine SessionOutput type based on the output format version.
-    session_output = SessionOutputFactory.get_object(session_directory_path, log)
+    session_output = SessionOutputFactory.get_object(session_directory_path)
     
     if session_output is None:
         return None
     
-    geotagger = GeoTagger(max_time_diff, log)
-    processor = PostProcessor(session_output, geotagger, max_time_diff, log)
+    geotagger = GeoTagger(max_time_diff)
+    processor = PostProcessor(session_output, geotagger, max_time_diff)
     
     # Use processor to conceptually convert SessionOutput into a dictionary ('processed_session')
     # that can be written out to CSV files or uploaded to the database.
     result = processor.run()
     
     if result != PostProcessor.ExitReason.success:
-        log.critical("Processing failed.")
+        log().critical("Processing failed.")
         return None
     
     write_tagged_sensor_logs_to_file(processed_directory_path, processor.processed_session)
@@ -95,11 +96,12 @@ def postprocess(**args):
     
     if upload_to_database:
         filter_down_platform_state(processor.processed_session, max_platform_rate)
-        database = Database(log)
+        # TODO don't pass log(), but use it directly in Database class once Mark is finished.
+        database = Database(log())
         upload_success = database.upload(processor.processed_session)
     
-    log.info('Results are in {}/'.format(os.path.basename(os.path.normpath((processed_directory_path)))))
-    log.info('Finished')
+    log().info('Results are in {}/'.format(os.path.basename(os.path.normpath((processed_directory_path)))))
+    log().info('Finished')
     
     return processor.processed_session
     
@@ -112,24 +114,6 @@ def create_output_directory(session_directory_path):
     os.makedirs(processed_directory_path)
     
     return processed_directory_path
-    
-def setup_logging(output_path, file_log_level, console_log_level):
-    '''Setup logging. Always to log file, optionally to command line if console_level isn't None. Return log.'''
-    
-    log = logging.getLogger("processing")
-    log.setLevel(logging.DEBUG)
-    handler = logging.FileHandler(os.path.join(output_path, time.strftime("processing.log")))
-    handler.setLevel(file_log_level)
-    handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)-5.5s]  %(message)s'))
-    log.addHandler(handler)
-    
-    if console_log_level is not None:
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(console_log_level)
-        handler.setFormatter(logging.Formatter('[%(levelname)-5.5s] %(message)s'))
-        log.addHandler(handler)
-        
-    return log
  
 def write_tagged_sensor_logs_to_file(output_path, processed_session):
     '''Write sensor data + state out to individual CSV log files at the specified path.'''
