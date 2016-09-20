@@ -7,6 +7,8 @@ import csv
 from logging import getLogger
 
 from dysense.core.utility import wrap_angle_degrees
+import numpy as np
+from math import sin, cos, atan2, asin
 
 def standardize_to_degrees(angles, sensor_units, angle_type):
     '''
@@ -93,29 +95,68 @@ def unicode_csv_reader(utf8_file, **kwargs):
     for row in csv_reader:
         yield [unicode(cell, 'utf-8') for cell in row]
         
-def filter_down_platform_state(session, max_rate):
-    '''
-    Updates 'platform_state' key in session to not store any entries faster than specified rate.
-    If rate is less than or equal to zero then won't limit entries at all.
-    '''
-    states = session['platform_states']
+def effective_angle_rad(angle_deg):
+    '''Return angle converted to radians or 0 if angle is Nan'''
+     
+    if math.isnan(angle_deg):
+        return 0.0
+    else:
+        return angle_deg * math.pi / 180.0
+ 
+def actual_angle_deg(sensor_angles_rad, platform_angles):
+    '''Return angles where each angle is converted to degrees or NaN if the corresponding platform angle is NaN'''
     
-    if max_rate <= 0.0 or len(states) == 0:
-        return # Don't limit platform state at all.
-    
-    min_time_between_states = 1.0 / max_rate
-    
-    # Add in a little wiggle room since time won't be exact. 
-    min_time_between_states *= 0.9
-    
-    filtered_states = []
-    last_state_time = states[0].utc_time
-    for state in states[1:]:
-        if state.utc_time - last_state_time >= min_time_between_states:
-            filtered_states.append(state)
-            last_state_time = state.utc_time
+    actual_sensor_angles = []
+    for sensor_angle, platform_angle in zip(sensor_angles_rad, platform_angles):
+        if math.isnan(platform_angle):
+            actual_sensor_angles.append(float('NaN'))
+        else:
+            actual_sensor_angles.append(sensor_angle * 180.0 / math.pi)
 
-    session['platform_states'] = filtered_states
+    return actual_sensor_angles
+  
+def rot_parent_to_child(roll, pitch, yaw):
+    '''
+    Return 3x3 rotation matrix that will transform a vector in the parent frame to the child frame.
+    Specified angles should be in radians and represent a right-handed positive rotation.
+    This is done in the sequence z->y'->x'' which is an active, intrinsic rotation commonly called Euler ZYX
+    This matrix is equivalent to an x->y->z active, extrinsic rotation commonly called Roll-Pitch-Yaw matrix.
+    To go the opposite direction (body -> world) then take the transpose of this matrix which is equivalent to the inverse.
+    ''' 
+    rot_zy = np.dot(rot_z(yaw), rot_y(pitch))  
+    return np.dot(rot_zy, rot_x(roll))
+  
+def rot_x(a):
+    '''Return 3x3 positive rotation matrix about X axis by an angle 'a' specified in radians.'''
+    
+    return np.array([[1,   0,       0   ],
+                     [0, cos(a), -sin(a)],
+                     [0, sin(a),  cos(a)]])
+    
+def rot_y(a):
+    '''Return 3x3 positive rotation matrix about Y axis by an angle 'a' specified in radians.'''
+    
+    return np.array([[ cos(a), 0,  sin(a)],
+                     [   0,    1,    0   ],
+                     [-sin(a), 0,  cos(a)]])
+    
+def rot_z(a):
+    '''Return 3x3 positive rotation matrix about Z axis by an angle 'a' specified in radians.'''
+    
+    return np.array([[cos(a), -sin(a), 0],
+                     [sin(a),  cos(a), 0],
+                     [  0,       0,    1]])
+
+def rpy_from_rot_matrix(r):
+    '''
+    Return [roll, pitch, yaw] angles in radians associated with active, extrinsic Roll-Pitch-Yaw matrix 'r'.
+    Roll and yaw will be between +/- PI and pitch will be between +/- PI/2
+    '''
+    roll = atan2(r[2,1], r[2,2])
+    pitch = -asin(r[2,0])
+    yaw = atan2(r[1,0], r[0, 0])
+    
+    return [roll, pitch, yaw]
 
 class ObjectState(object):
     '''Represent the state of an object, such as a sensor or a platform.'''

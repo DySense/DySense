@@ -3,10 +3,11 @@ from __future__ import unicode_literals
 
 import math
 import numpy as np
-from math import sin, cos, atan2, asin
+from math import cos 
 
-from dysense.core.utility import closest_value, interpolate, interpolate_single
-from dysense.processing.utility import ObjectState
+from dysense.processing.platform_state import platform_state_at_times
+from dysense.processing.utility import ObjectState, effective_angle_rad, actual_angle_deg
+from dysense.processing.utility import rpy_from_rot_matrix, rot_parent_to_child
         
 class GeoTagger(object):
     '''Determine state of sensor readings.'''
@@ -26,7 +27,7 @@ class GeoTagger(object):
         '''
         reading_times = [reading['time'] for reading in readings]
        
-        platform_state_at_readings = self._platform_state_at_times(platform_states, reading_times)
+        platform_state_at_readings = platform_state_at_times(platform_states, reading_times, self.max_time_diff)
        
         # Determine rotation matrix to rotate vector from platform frame to sensor frame.
         # Do this once since it doesn't change between readings.
@@ -60,9 +61,9 @@ class GeoTagger(object):
         
         # If an angle wasn't measured by the platform then want to treat it as 0 for these calculations since that's our best guess.
         # This will also convert the angles to radians.
-        platform_roll_rad = self._effective_angle_rad(platform.roll) 
-        platform_pitch_rad = self._effective_angle_rad(platform.pitch)
-        platform_yaw_rad = self._effective_angle_rad(platform.yaw)
+        platform_roll_rad = effective_angle_rad(platform.roll) 
+        platform_pitch_rad = effective_angle_rad(platform.pitch)
+        platform_yaw_rad = effective_angle_rad(platform.yaw)
         
         # Determine rotation matrix to convert between world and platform frames.
         world_to_platform_rot_matrix = rot_parent_to_child(platform_roll_rad, platform_pitch_rad, platform_yaw_rad)
@@ -101,115 +102,9 @@ class GeoTagger(object):
         
         # Convert angles back to NaN if platform didn't actually record those angles (storing it as 0 would be misleading)
         # and also convert back to degrees since that's how angles are stored.
-        sensor_roll, sensor_pitch, sensor_yaw = self._actual_angle_deg(sensor_orientation_rad, platform.orientation)
+        sensor_roll, sensor_pitch, sensor_yaw = actual_angle_deg(sensor_orientation_rad, platform.orientation)
         
         sensor_state = ObjectState(utc_time, sensor_lat, sensor_long, sensor_alt,
                                     sensor_roll, sensor_pitch, sensor_yaw, sensor_height)
         
         return sensor_state
-    
-    # TODO move this out of class
-    def sensor_distance_to_platform_frame(self, distance, sensor_to_platform_rot_matrix, position_offsets):
-        '''
-        Return new distance that is described in platform frame rather than sensor frame.
-        The specified rotation matrix should rotate a vector in the sensor frame to the platform frame. 
-        '''
-        # Sensor frame has positive 'z' in direction of reading.
-        distance_vector = np.array([0, 0, distance])
-        
-        # Describe vector in terms of FRD platform coordinate system.
-        forward, right, down = np.dot(sensor_to_platform_rot_matrix, distance_vector)
-    
-        # Account for additional 'down' offset due to sensor not being mounted at same height as platform.
-        distance_in_platform_frame = down + position_offsets[2]
-
-        return distance_in_platform_frame
-    
-    def _platform_state_at_times(self, platform_states, utc_times):
-        '''Return list of platform states at the specified utc_times.'''
-    
-        # TODO - once interpolate orientation using quaternians could interpolate everything at once in one big list
-        platform_times = [state.utc_time for state in platform_states]
-        platform_positions = [state.position for state in platform_states]
-        platform_roll_angles = [state.roll for state in platform_states]
-        platform_pitch_angles = [state.pitch for state in platform_states]
-        platform_yaw_angles = [state.yaw for state in platform_states]
-        platform_heights = [state.height_above_ground for state in platform_states]  
-        
-        platform_states_at_times = []
-
-        for utc_time in utc_times:
-            lat, long, alt = interpolate(utc_time, platform_times, platform_positions)
-            roll = closest_value(utc_time, platform_times, platform_roll_angles, max_x_diff=self.max_time_diff)
-            pitch = closest_value(utc_time, platform_times, platform_pitch_angles, max_x_diff=self.max_time_diff)
-            yaw = closest_value(utc_time, platform_times, platform_yaw_angles, max_x_diff=self.max_time_diff)
-            height = interpolate_single(utc_time, platform_times, platform_heights)
-    
-            new_state = ObjectState(utc_time, lat, long, alt, roll, pitch, yaw, height)
-            
-            platform_states_at_times.append(new_state)
-    
-        return platform_states_at_times
-    
-    def _effective_angle_rad(self, angle_deg):
-        '''Return angle converted to radians or 0 if angle is Nan'''
-        
-        if math.isnan(angle_deg):
-            return 0.0
-        else:
-            return angle_deg * math.pi / 180.0
-    
-    def _actual_angle_deg(self, sensor_angles_rad, platform_angles):
-        '''Return angles where each angle is converted to degrees or NaN if the corresponding platform angle is NaN'''
-        
-        actual_sensor_angles = []
-        for sensor_angle, platform_angle in zip(sensor_angles_rad, platform_angles):
-            if math.isnan(platform_angle):
-                actual_sensor_angles.append(float('NaN'))
-            else:
-                actual_sensor_angles.append(sensor_angle * 180.0 / math.pi)
-   
-        return actual_sensor_angles
-  
-def rot_parent_to_child(roll, pitch, yaw):
-    '''
-    Return 3x3 rotation matrix that will transform a vector in the parent frame to the child frame.
-    Specified angles should be in radians and represent a right-handed positive rotation.
-    This is done in the sequence z->y'->x'' which is an active, intrinsic rotation commonly called Euler ZYX
-    This matrix is equivalent to an x->y->z active, extrinsic rotation commonly called Roll-Pitch-Yaw matrix.
-    To go the opposite direction (body -> world) then take the transpose of this matrix which is equivalent to the inverse.
-    ''' 
-    rot_zy = np.dot(rot_z(yaw), rot_y(pitch))  
-    return np.dot(rot_zy, rot_x(roll))
-  
-def rot_x(a):
-    '''Return 3x3 positive rotation matrix about X axis by an angle 'a' specified in radians.'''
-    
-    return np.array([[1,   0,       0   ],
-                     [0, cos(a), -sin(a)],
-                     [0, sin(a),  cos(a)]])
-    
-def rot_y(a):
-    '''Return 3x3 positive rotation matrix about Y axis by an angle 'a' specified in radians.'''
-    
-    return np.array([[ cos(a), 0,  sin(a)],
-                     [   0,    1,    0   ],
-                     [-sin(a), 0,  cos(a)]])
-    
-def rot_z(a):
-    '''Return 3x3 positive rotation matrix about Z axis by an angle 'a' specified in radians.'''
-    
-    return np.array([[cos(a), -sin(a), 0],
-                     [sin(a),  cos(a), 0],
-                     [  0,       0,    1]])
-
-def rpy_from_rot_matrix(r):
-    '''
-    Return [roll, pitch, yaw] angles in radians associated with active, extrinsic Roll-Pitch-Yaw matrix 'r'.
-    Roll and yaw will be between +/- PI and pitch will be between +/- PI/2
-    '''
-    roll = atan2(r[2,1], r[2,2])
-    pitch = -asin(r[2,0])
-    yaw = atan2(r[1,0], r[0, 0])
-    
-    return [roll, pitch, yaw]

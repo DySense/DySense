@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import math
-import numpy as np
-
-from collections import defaultdict
-
 from dysense.processing.utility import standardize_to_degrees, standardize_to_meters, contains_measurements
-from dysense.processing.utility import StampedPosition, StampedAngle, StampedHeight, ObjectState
-from dysense.processing.utility import wrap_angle_degrees, sensor_units
-from dysense.core.utility import interpolate, interpolate_single, closest_value
+from dysense.processing.utility import sensor_units
+from dysense.processing.derive_angle import *
+from dysense.processing.source_filter import *
+from dysense.processing.platform_state import *
 from dysense.processing.geotagger import rot_parent_to_child
 
 class PostProcessor(object):
@@ -97,12 +93,12 @@ class PostProcessor(object):
         
         if self.multiple_position_sensors:
             # First need to get all positions to be relative to the same time stamps.
-            self.synced_platform_positions = self._sync_platform_positions(position_measurements_by_source)
-            self.synced_platform_positions = self._remove_unmatched_positions(self.synced_platform_positions)
+            self.synced_platform_positions = sync_platform_positions(position_measurements_by_source, self.max_time_diff)
+            self.synced_platform_positions = remove_unmatched_positions(self.synced_platform_positions)
             
             # Average positions and account for platform offset which is the difference between the
             # platform origin (0,0,0) and the averaged position.  
-            self.platform_positions = self._average_platform_positions(self.synced_platform_positions)
+            self.platform_positions = average_platform_positions(self.synced_platform_positions)
             self.platform_position_offsets = [source['position_offsets'] for source in self.session_output.position_sources_info]
             self.platform_position_offset = np.mean(self.platform_position_offsets, axis=0)
         else:
@@ -146,14 +142,16 @@ class PostProcessor(object):
         '''Use platform position source(s) to calculate any Euler angle marked as "derived"'''
         
         if self.roll_angles == 'derived':
-            self.roll_angles = self._derive_roll_angles()
+            self.roll_angles = derive_roll_angles(self.synced_platform_positions)
         if self.pitch_angles == 'derived':
-            self.pitch_angles = self._derive_pitch_angles()
+            self.pitch_angles = derive_pitch_angles(self.synced_platform_positions)
         if self.yaw_angles == 'derived':
             if self.multiple_position_sensors:
-                self.yaw_angles = self._derive_yaw_angles_multi()
+                position_source_names = self.synced_platform_positions.keys()
+                position_sensor_infos = [self.session_output.find_matching_sensor_info_by_name(name) for name in position_source_names]
+                self.yaw_angles = derive_yaw_angles_multi(self.synced_platform_positions, position_sensor_infos)
             else:
-                self.yaw_angles = self._derive_yaw_angles_single()
+                self.yaw_angles = derive_yaw_angles_single(self.platform_positions)
     
     def _calculate_platform_height(self):
         '''
@@ -183,14 +181,14 @@ class PostProcessor(object):
             position_offsets = np.asarray(height_sensor['position_offsets']) - np.asarray(self.platform_position_offset)
             
             for stamped_height in height_measurements:
-                stamped_height.height = self.geotagger.sensor_distance_to_platform_frame(stamped_height.height, sensor_to_platform_rot_matrix, position_offsets)
+                stamped_height.height = sensor_distance_to_platform_frame(stamped_height.height, sensor_to_platform_rot_matrix, position_offsets)
 
         num_height_sources = len(height_measurements_by_source)
                 
         if num_height_sources > 1:
             # First need to get all heights to be relative to the same time stamps and then average.
-            synced_platform_heights = self._sync_platform_heights(height_measurements_by_source) 
-            self.platform_heights = self._average_multiple_height_sources(synced_platform_heights)
+            synced_platform_heights = sync_platform_heights(height_measurements_by_source, self.max_time_diff) 
+            self.platform_heights = average_multiple_height_sources(synced_platform_heights)
         elif num_height_sources == 1:
             self.platform_heights = height_measurements_by_source.values()[0]
             
@@ -330,189 +328,5 @@ class PostProcessor(object):
                 self.log.warn("Removed {} readings from {} since no matching state.".format(num_unmatched_states, sensor['sensor_id']))
                 
         return sensors
-            
-    def _derive_roll_angles(self):
-        '''
-        Use synced position sources to determine platform roll. If there aren't multiple position sources then
-        return None.  Otherwise angles returned as StampleAngles in degrees and +/- 180.
-        '''
-        self.log.warn("Deriving roll angles not currently supported.")
-        #raise ValueError('Unsupported setting.  Roll angles cannot be derived right now.')
-        return None
-
-    def _derive_pitch_angles(self):
-        '''
-        Use synced position sources to determine platform pitch. If there aren't multiple position sources then
-        return None.  Otherwise angles returned as StampleAngles in degrees and +/- 180.
-        '''        
-        self.log.warn("Deriving pitch angles not currently supported.")
-        #raise ValueError('Unsupported setting.  Pitch angles cannot be derived right now.')
-        return None
     
-    def _derive_yaw_angles_multi(self):
-        '''
-        Use synced position sources to determine platform yaw. If there aren't multiple position sources then
-        return None.  Otherwise angles returned as StampleAngles in degrees and +/- 180.
-        '''
-        # Determine offsets for each position sources along the 'right direction' (y-axis)
-        # so that we can figure out which source is on the left side and which is on the right side.
-        source_names = self.synced_platform_positions.keys()
-        sensor_infos = [self.session_output.find_matching_sensor_info_by_name(name) for name in source_names]
-        source_offsets = [info['position_offsets'] for info in sensor_infos]
-        offsets_right = [offsets[1] for offsets in source_offsets]
-        
-        if abs(min(offsets_right) - max(offsets_right)) < 0.01:
-            # We don't use offset spacing for determing yaw, but if we can't tell which is left/right
-            # reliably then we yaw could be flipped 180 degrees.
-            raise ValueError("Not enough spacing between position sources to derive yaw.")
-        
-        # Left most position source and right most position source.
-        left_source_name = source_names[np.argmin(offsets_right)]
-        right_source_name = source_names[np.argmax(offsets_right)]
-        
-        left_positions = self.synced_platform_positions[left_source_name]
-        right_positions = self.synced_platform_positions[right_source_name]
-        
-        yaw_angles = []
-                
-        for left, right in zip(left_positions, right_positions):
-            # First find relative bearing of vector from left position -> right position
-            diff_lat = right.lat - left.lat
-            diff_long = right.long - left.long
-            rel_bearing = math.atan2(diff_long, diff_lat) * 180.0 / math.pi
-            # Then find yaw of platform which is at 90 degrees to this relative bearing
-            # and ensure it's within +/- 180 degrees.
-            yaw = rel_bearing  - 90.0
-            yaw = wrap_angle_degrees(yaw)
-            
-            # Both positions should be at same time so it doesn't matter which one we use.
-            yaw_angles.append(StampedAngle(left.utc_time, yaw))
     
-        return yaw_angles
-    
-    def _derive_yaw_angles_single(self, platform_positions):
-        '''
-        Use change in platform position to determine platform yaw.
-        '''
-        self.log.warn("Deriving yaw from single position source isn't supported yet.")
-        #raise ValueError("Deriving yaw from single position source isn't supported yet.")
-        return None
-    
-    def _sync_platform_positions(self, position_measurements_by_source):
-        '''
-        Return new dictionary of position measurements by source, but with each StampedPosition
-        being at the same UTC time between all sources.  Right now uses first position source as
-        reference times.
-        '''
-        synced_positions = defaultdict(list)
-        
-        source_names = position_measurements_by_source.keys()
-        
-        # Just use first source as reference source to match all the other position sources up to.
-        ref_source_name = source_names[0]
-        other_source_names = source_names[1:]
-        
-        synced_positions[ref_source_name] = position_measurements_by_source[ref_source_name]
-        
-        ref_source_times = [p.utc_time for p in position_measurements_by_source[ref_source_name]]
-        
-        for other_source_name in other_source_names:
-            
-            other_source_positions = position_measurements_by_source[other_source_name]
-            other_source_times = [p.utc_time for p in other_source_positions]
-            other_source_values = [(p.lat, p.long, p.alt) for p in other_source_positions]
-            
-            for ref_utc_time in ref_source_times:
-                lat, long, alt = interpolate(ref_utc_time, other_source_times, other_source_values, max_x_diff=self.max_time_diff)
-  
-                synced_positions[other_source_name].append(StampedPosition(ref_utc_time, lat, long, alt))
-            
-        return synced_positions
-    
-    def _remove_unmatched_positions(self, synced_platform_positions):
-        '''Return new dictionary that only includes positions which are are matched (i.e. not NaN) for all sources.'''
-        
-        filtered_positions = {}
-        
-        positions_by_time = zip(*synced_platform_positions.values())
-        
-        matched_indices = []
-        for idx, positions in enumerate(positions_by_time):
-            if float('NaN') not in [p.lat for p in positions]:
-                matched_indices.append(idx)
-        
-        for source_name, source_positions in synced_platform_positions.iteritems():
-            matched_positions = [source_positions[i] for i in matched_indices]
-            filtered_positions[source_name] = matched_positions
-        
-        return filtered_positions
-    
-    def _average_platform_positions(self, synced_platform_positions):
-        '''Return list of StampedPositions from averaging lat/long/alt from multiple positions sources'''
-        
-        averaged_positions = []
-
-        for positions in zip(*synced_platform_positions.values()):
-            
-            avg_lat, avg_long, avg_alt = np.mean([p.position_tuple for p in positions], axis=0)
-            
-            # All positions should have the same time so it doesn't matter which we use.
-            utc_time = positions[0].utc_time
-            
-            avg_position = StampedPosition(utc_time, avg_lat, avg_long, avg_alt)
-            
-            averaged_positions.append(avg_position)
-        
-        return averaged_positions
-    
-    def _sync_platform_heights(self, height_measurements_by_source):
-        '''
-        Return new dictionary of height measurements by source, but with each StampedHeight
-        being at the same UTC time between all sources.  Right now uses first height source as
-        reference times.
-        '''
-        synced_heights = defaultdict(list)
-        
-        source_names = height_measurements_by_source.keys()
-        
-        # Just use first source as reference source to match all the other height sources up to.
-        ref_source_name = source_names[0]
-        other_source_names = source_names[1:]
-        
-        synced_heights[ref_source_name] = height_measurements_by_source[ref_source_name]
-        
-        ref_source_times = [h.utc_time for h in height_measurements_by_source[ref_source_name]]
-        
-        for other_source_name in other_source_names:
-            
-            other_source_heights = height_measurements_by_source[other_source_name]
-            other_source_times = [h.utc_time for h in other_source_heights]
-            other_source_values = [h.height for h in other_source_heights]
-            
-            for ref_utc_time in ref_source_times:
-                height_at_ref_time = interpolate_single(ref_utc_time, other_source_times, other_source_values, max_x_diff=self.max_time_diff)
-  
-                synced_heights[other_source_name].append(StampedHeight(ref_utc_time, height_at_ref_time))
-            
-        return synced_heights
-    
-    def _average_multiple_height_sources(self, synced_platform_heights):
-        '''
-        Return list of StampedHeight's from averaging height from multiple sources.
-        If any averaging results in NaN then that result is excluded.
-        '''
-        averaged_heights = []
-
-        for heights in zip(*synced_platform_heights.values()):
-            
-            avg_height = np.mean([h.height for h in heights])
-            
-            if math.isnan(avg_height):
-                continue # sources didn't all have height at this time.
-            
-            # All heights should have the same time so it doesn't matter which we use.
-            avg_stamped_height = StampedHeight(heights[0].utc_time, avg_height)
-            
-            averaged_heights.append(avg_stamped_height)
-        
-        return averaged_heights

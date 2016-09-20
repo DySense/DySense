@@ -13,7 +13,7 @@ from dysense.processing.dysense_output import SessionOutputFactory
 from dysense.processing.geotagger import GeoTagger
 from dysense.processing.database import Database
 from dysense.processing.post_processor import PostProcessor
-from dysense.processing.utility import filter_down_platform_state
+from dysense.processing.platform_state import filter_down_platform_state
 from dysense.core.utility import write_args_to_file, decode_command_line_arg
 from dysense.core.utility import logging_string_to_level
 from dysense.core.csv_log import CSVLog
