@@ -326,7 +326,10 @@ namespace DySense
 	        {
                 State = "error";
 		        SendText(e.ToString());
-	        }
+
+                // Also print in case exception had to do with ZMQ and SendText() never went through.
+                System.Console.WriteLine(e.ToString());
+            }
             finally
             {
                 if (Health != "bad")
