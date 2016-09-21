@@ -7,7 +7,6 @@ import os
 import argparse
 import datetime
 import time
-import logging
 
 from dysense.processing.dysense_output import SessionOutputFactory
 from dysense.processing.geotagger import GeoTagger

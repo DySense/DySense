@@ -152,9 +152,20 @@ def rpy_from_rot_matrix(r):
     Return [roll, pitch, yaw] angles in radians associated with active, extrinsic Roll-Pitch-Yaw matrix 'r'.
     Roll and yaw will be between +/- PI and pitch will be between +/- PI/2
     '''
-    roll = atan2(r[2,1], r[2,2])
     pitch = -asin(r[2,0])
-    yaw = atan2(r[1,0], r[0, 0])
+
+    if r[2,0] == 1:
+        # Negative gimbal lock (pitch at -90 deg), fix yaw and solve for roll.
+        yaw = 0
+        roll = atan2(-r[0,1], -r[0,2])
+    elif r[2,0] == -1:
+        # Positive gimbal lock (pitch at 90 deg), fix yaw and solve for roll.
+        yaw = 0
+        roll = atan2(+r[0,1], +r[0,2])
+    else:
+        # General solution.
+        roll = atan2(r[2,1], r[2,2])
+        yaw = atan2(r[1,0], r[0, 0])
     
     return [roll, pitch, yaw]
 
