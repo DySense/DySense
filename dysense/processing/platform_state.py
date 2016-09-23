@@ -57,17 +57,17 @@ def filter_down_platform_state(session, max_rate):
     session['platform_states'] = filtered_states
     
 def sensor_distance_to_platform_frame(distance, sensor_to_platform_rot_matrix, position_offsets):
-        '''
-        Return new distance that is described in platform frame rather than sensor frame.
-        The specified rotation matrix should rotate a vector in the sensor frame to the platform frame. 
-        '''
-        # Sensor frame has positive 'z' in direction of reading.
-        distance_vector = np.array([0, 0, distance])
-        
-        # Describe vector in terms of FRD platform coordinate system.
-        forward, right, down = np.dot(sensor_to_platform_rot_matrix, distance_vector)
+    '''
+    Return new distance that is described in platform frame rather than sensor frame.
+    The specified rotation matrix should rotate a vector in the sensor frame to the platform frame. 
+    '''
+    # Sensor frame has positive 'z' in direction of reading.
+    distance_vector = np.array([0, 0, distance])
     
-        # Account for additional 'down' offset due to sensor not being mounted at same height as platform.
-        distance_in_platform_frame = down + position_offsets[2]
+    # Describe vector in terms of FRD platform coordinate system.
+    forward, right, down = np.dot(sensor_to_platform_rot_matrix, distance_vector)
 
-        return distance_in_platform_frame
+    # Account for additional 'down' offset due to sensor not being mounted at same height as platform.
+    distance_in_platform_frame = down + position_offsets[2]
+
+    return distance_in_platform_frame
