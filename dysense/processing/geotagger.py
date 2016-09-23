@@ -56,9 +56,6 @@ class GeoTagger(object):
         'position_offsets' should be a numpy array and are measured in meters in the platform_frame. 
         'platform' is the platform state at the specified utc_time
         '''
-
-        # TODO account for no yaw
-        
         # If an angle wasn't measured by the platform then want to treat it as 0 for these calculations since that's our best guess.
         # This will also convert the angles to radians.
         platform_roll_rad = effective_angle_rad(platform.roll) 
@@ -76,6 +73,29 @@ class GeoTagger(object):
         platform_to_world_rot_matrix = world_to_platform_rot_matrix.transpose()
         sensor_north_offset, sensor_east_offset, sensor_down_offset_world = np.dot(platform_to_world_rot_matrix, position_offsets)
     
+        if math.isnan(platform.yaw):
+            # Easting and northing offsets won't be accurate so don't take them into account.
+            sensor_lat = platform.lat
+            sensor_long = platform.long
+        else:
+            # Use easting and northing offsets to calculate more accurate lat/long.
+            sensor_lat, sensor_long = self._sensor_position_using_offsets(sensor_north_offset, sensor_east_offset, platform)
+        
+        # Need to subtract offset since it's positive in the down direction.
+        sensor_alt = platform.alt - sensor_down_offset_world
+        sensor_height = platform.height_above_ground - sensor_down_offset_world
+        
+        # Convert angles back to NaN if platform didn't actually record those angles (storing it as 0 would be misleading)
+        # and also convert back to degrees since that's how angles are stored.
+        sensor_roll, sensor_pitch, sensor_yaw = actual_angle_deg(sensor_orientation_rad, platform.orientation)
+        
+        sensor_state = ObjectState(utc_time, sensor_lat, sensor_long, sensor_alt,
+                                    sensor_roll, sensor_pitch, sensor_yaw, sensor_height)
+        
+        return sensor_state
+    
+    def _sensor_position_using_offsets(self, sensor_north_offset, sensor_east_offset, platform):
+        
         # Convert platform lat/long to NED (in meters) so we can add in sensor offsets which are also in meters.
         # This uses a linear approximation which changes based on the reference latitude.  
         # See: https://en.wikipedia.org/wiki/Geographic_coordinate_system#Expressing_latitude_and_longitude_as_linear_units
@@ -88,23 +108,12 @@ class GeoTagger(object):
         # but that's ok since we're just dealing with small, temporary position offsets.
         platform_northing = platform.lat * meters_per_deg_lat
         platform_easting = platform.long * meters_per_deg_long
-        platform_down = -platform.alt
         
         # Find sensor position in NED and then convert back to LLA.
         sensor_northing = platform_northing + sensor_north_offset
         sensor_easting = platform_easting + sensor_east_offset
-        sensor_down_world = platform_down + sensor_down_offset_world
-
+        
         sensor_lat = sensor_northing / meters_per_deg_lat
         sensor_long = sensor_easting / meters_per_deg_long
-        sensor_alt = -sensor_down_world
-        sensor_height = platform.height_above_ground - sensor_down_offset_world
         
-        # Convert angles back to NaN if platform didn't actually record those angles (storing it as 0 would be misleading)
-        # and also convert back to degrees since that's how angles are stored.
-        sensor_roll, sensor_pitch, sensor_yaw = actual_angle_deg(sensor_orientation_rad, platform.orientation)
-        
-        sensor_state = ObjectState(utc_time, sensor_lat, sensor_long, sensor_alt,
-                                    sensor_roll, sensor_pitch, sensor_yaw, sensor_height)
-        
-        return sensor_state
+        return sensor_lat, sensor_long
