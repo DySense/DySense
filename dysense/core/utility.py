@@ -184,137 +184,111 @@ def find_less_than_or_equal(a, x):
     i = bisect.bisect_right(a, x)
     return i - 1
 
-def closest_value(x_value, x_set, y_set, i1=None, max_x_diff=None):
+def closest_indices(x_value, x_set, max_x_diff=None):
     '''
-    Return y corresponding to x_value such that it matches with the closest value in x_set. 
-    If i1 isn't None then it's treated as the rightmost index in x_set where x_set[i1] is less than or equal to x_value.
-    If max_x_diff is specified then if the difference between x_value and the closest value in x_set exceeds this value then
-    return NaN (not a number). Return None on failure.  
+    Return 3 values (s, i1, i2) described below.
+    
+    First return value is normalized difference (0 to 1) in x_value found between two elements in x_set, which is assumed to be increasing.
+    x_set is usually time. For example if x_value is 3.75 and x_set is [3, 4] then first return value will return 0.75.
+    If the closest value in x_set to x_value is more than max_x_diff away then will return s=NaN. 
+    If max_x_diff is None then it's treated as infinitely.
+    
+    Second return value is the index of x_set element right before x_value and the third is the index of the x_set element right after x_value.
     '''
-    if len(x_set) != len(y_set):
-        return None
-    
-    if i1 is None:
-        # index of element in x_set right before or equal to x_value
-        i1 = find_less_than_or_equal(x_set, x_value)  
-    
-    if i1 < 0:
-        # specified x value occurs before any x's so return first y if it's close enough.
-        if max_x_diff is not None and abs(x_value - x_set[0]) > max_x_diff:
-            return float('nan')
-        else:
-            return y_set[0]
-    
-    if i1 >= (len(x_set) - 1):
-        # specified x value occurs after all x's so return last y if it's close enough.
-        if max_x_diff is not None and abs(x_value - x_set[-1]) > max_x_diff:
-            return float('nan')
-        else:
-            return y_set[-1]
-    
-    # i2 is the index of the element in x_set right after x_value.
-    i2 = i1 + 1
-    
-    # Find the magnitude difference between specified x value and 2 closest values in x set.
-    i1_mag = abs(x_set[i1] - x_value)
-    i2_mag = abs(x_set[i2] - x_value)
-    
-    closest_index = i1 if (i1_mag < i2_mag) else i2
-    
-    # Make sure closest index is close enough to x_value to be reliable.
-    if max_x_diff is not None and abs(x_set[closest_index] - x_value) > max_x_diff:
-        return float('nan')
-    
-    return y_set[closest_index]
-
-def interpolate(x_value, x_set, y_set, max_x_diff=None):
-    '''
-    Return y value corresponding to x value. If outside bounds of x_set then returns closest value. Assumes x_set is sorted ascending.
-    x_set and y_set must have the same amounts of elements. If i1 isn't None then it's treated as the
-    rightmost index in x_set where x_set[i1] is less than or equal to x_value.  If max_x_diff is specified
-    then if abs(x_set[i1] - x_set[i2]) exceeds this value OR if x_value is outside x_set and the closest value 
-    is outside max_x_diff away then NaN (not a number) is returned. Raise ValueError if sets aren't same size.
-    '''
-    if len(x_set) != len(y_set):
-        raise ValueError('Sets must be same size to interpolate.')
-    
     # index of element in x_set right before or equal to x_value
     i1 = find_less_than_or_equal(x_set, x_value)  
     
     if i1 < 0:
         # specified x value occurs before any x's so return first y if it's close enough.
         if max_x_diff is not None and abs(x_value - x_set[0]) > max_x_diff:
-            return [float('nan')] * len(y_set[0])
+            s = float('NaN') # not close enough
         else:
-            return y_set[0]
+            s = 0.0 # first element
+        return (s, 0, 1)
     
     if i1 >= (len(x_set) - 1):
         # specified x value occurs after all x's so return last y if it's close enough.
         if max_x_diff is not None and abs(x_value - x_set[-1]) > max_x_diff:
-            return [float('nan')] * len(y_set[0])
+            s = float('NaN') # not close enough
         else:
-            return y_set[-1]
-    
-    if x_value == x_set[i1]:
-        # don't need to interpolate since match exactly.
-        return y_set[i1] 
+            s = 1.0 # last element
+        return (s, len(x_set)-2, len(x_set)-1)
     
     # i2 is the index of the element in x_set right after x_value.
     # at this point x_set[i1] can't be equal to x_set[i2] or else
     # i2 would have been returned instead of i1 above.
     i2 = i1 + 1
     
+    if x_value == x_set[i1]:
+        # don't need to interpolate since match exactly.
+        return (0.0, i1, i2)
+    
     # Check to see if there's too large of separation in x that would make the interpolation unreliable.
     if max_x_diff is not None and abs(x_set[i1] - x_set[i2]) > max_x_diff:
-        return [float('nan')] * len(y_set[0])
+        return (float('NaN'), i1, i2)
     
     s = float(x_value - x_set[i1]) / (x_set[i2] - x_set[i1])
     
-    y_set_interp = [(1-s)*v0 + s*v1 for v0, v1 in zip(y_set[i1], y_set[i2])]
-        
-    return y_set_interp 
+    return (s, i1, i2)
 
-def interpolate_single(x_value, x_set, y_set, max_x_diff=None):
+def interp_list_from_set(x_value, x_set, y_set, max_x_diff=None):
     '''
+    Return interpolated element in y_set corresponding to x value. Each element in y_set should be a list or tuple of values to be interpolated.
+    Assumes x_set is sorted ascending.  If x_value outside bounds of x_set then returns closest value unless the distance is larger than
+    max_x_diff, then will return list of NaN the same size of the element of y_set.
+    x_set and y_set must have the same amounts of elements. Raise ValueError if sets aren't same size.
     '''
     if len(x_set) != len(y_set):
-        raise ValueError('Sets must be same size to interpolate.')
+        raise ValueError("Sets must be same size to interpolate.")
     
-    # index of element in x_set right before or equal to x_value
-    i1 = find_less_than_or_equal(x_set, x_value)  
+    s, i1, i2 = closest_indices(x_value, x_set, max_x_diff)
     
-    if i1 < 0:
-        # specified x value occurs before any x's so return first y if it's close enough.
-        if max_x_diff is not None and abs(x_value - x_set[0]) > max_x_diff:
-            return float('nan')
-        else:
-            return y_set[0]
+    if math.isinf(s):
+        return [float('NaN')] * len(y_set[0])
+    else:  
+        return [(1-s)*v0 + s*v1 for v0, v1 in zip(y_set[i1], y_set[i2])]
+
+def interp_single_from_set(x_value, x_set, y_set, max_x_diff=None):
+    '''
+    Return interpolated element in y_set corresponding to x value. Each element in y_set should be a scalar value.
+    Assumes x_set is sorted ascending.  If x_value outside bounds of x_set then returns closest value unless the distance is larger than
+    max_x_diff, then will return NaN.
+    x_set and y_set must have the same amounts of elements. Raise ValueError if sets aren't same size.
+    '''
+    if len(x_set) != len(y_set):
+        raise ValueError("Sets must be same size to interpolate.")
     
-    if i1 >= (len(x_set) - 1):
-        # specified x value occurs after all x's so return last y if it's close enough.
-        if max_x_diff is not None and abs(x_value - x_set[-1]) > max_x_diff:
-            return float('nan')
-        else:
-            return y_set[-1]
+    s, i1, i2 = closest_indices(x_value, x_set, max_x_diff)
     
-    if x_value == x_set[i1]:
-        # don't need to interpolate since match exactly.
-        return y_set[i1] 
+    if math.isinf(s):
+        return float('NaN')
+    else:  
+        return (1-s)*y_set[i1] + s*y_set[i2]
+
+def interp_angle_deg_from_set(x_value, x_set, angles, max_x_diff=None):
+    '''
+    Return interpolated angle in 'angles' corresponding to x value and wrapped between +/- 180.  All angles should be in degrees. 
+    Assumes x_set is sorted ascending.  If x_value outside bounds of x_set then returns closest angle unless the distance is larger than
+    max_x_diff, then will return NaN.
+    x_set and angles must have the same amounts of elements. Raise ValueError if sets aren't same size.
+    '''
+    if len(x_set) != len(angles):
+        raise ValueError("Sets must be same size to interpolate.")
     
-    # i2 is the index of the element in x_set right after x_value.
-    # at this point x_set[i1] can't be equal to x_set[i2] or else
-    # i2 would have been returned instead of i1 above.
-    i2 = i1 + 1
+    s, i1, i2 = closest_indices(x_value, x_set, max_x_diff)
     
-    # Check to see if there's too large of separation in x that would make the interpolation unreliable.
-    if max_x_diff is not None and abs(x_set[i1] - x_set[i2]) > max_x_diff:
-        return float('nan')
-    
-    s = float(x_value - x_set[i1]) / (x_set[i2] - x_set[i1])
-    
-    y_set_interp = (1-s)*y_set[i1] + s*y_set[i2]
-        
-    return y_set_interp 
+    if math.isinf(s):
+        return float('NaN')
+    else:  
+        return wrap_angle_degrees(interp_angle_deg(angles[i1], angles[i2], s))
+
+def interp_angle_deg(a0, a1, s):
+    '''Return interpolated angle between a0 and a1 by a factor s in range[0..1]'''
+ 
+    max_range = 360.0
+    angle_diff = (a1 - a0) % max_range
+    shortest_angle = 2*angle_diff % max_range - angle_diff
+    return a0 + s*shortest_angle
 
 def wrap_angle_degrees(angle):
     

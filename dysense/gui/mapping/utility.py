@@ -10,7 +10,7 @@ from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from dysense.core.utility import interpolate, find_less_than_or_equal
+from dysense.core.utility import interp_list_from_set, find_less_than_or_equal
 
 class SourcePosition(object):
     '''Time stamped position measurement.'''
@@ -83,5 +83,5 @@ class SourcePositionManager():
     
     def position_at(self, utc_time):
 
-        return interpolate(utc_time, self._position_times, self._position_coordinates)
+        return interp_list_from_set(utc_time, self._position_times, self._position_coordinates, max_x_diff=2)
   

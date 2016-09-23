@@ -3,13 +3,12 @@ from __future__ import unicode_literals
 
 import numpy as np
 
-from dysense.core.utility import interpolate, interpolate_single, closest_value
+from dysense.core.utility import interp_list_from_set, interp_single_from_set, interp_angle_deg_from_set
 from dysense.processing.utility import ObjectState
 
 def platform_state_at_times(platform_states, utc_times, max_time_diff):
     '''Return list of platform states at the specified utc_times.'''
 
-    # TODO - once interpolate orientation using quaternians could interpolate everything at once in one big list
     platform_times = [state.utc_time for state in platform_states]
     platform_positions = [state.position for state in platform_states]
     platform_roll_angles = [state.roll for state in platform_states]
@@ -20,11 +19,12 @@ def platform_state_at_times(platform_states, utc_times, max_time_diff):
     platform_states_at_times = []
 
     for utc_time in utc_times:
-        lat, long, alt = interpolate(utc_time, platform_times, platform_positions)
-        roll = closest_value(utc_time, platform_times, platform_roll_angles, max_x_diff=max_time_diff)
-        pitch = closest_value(utc_time, platform_times, platform_pitch_angles, max_x_diff=max_time_diff)
-        yaw = closest_value(utc_time, platform_times, platform_yaw_angles, max_x_diff=max_time_diff)
-        height = interpolate_single(utc_time, platform_times, platform_heights)
+        # Interpolate all values so they occur at 'utc_time'
+        lat, long, alt = interp_list_from_set(utc_time, platform_times, platform_positions, max_x_diff=max_time_diff)
+        roll = interp_angle_deg_from_set(utc_time, platform_times, platform_roll_angles, max_x_diff=max_time_diff)
+        pitch = interp_angle_deg_from_set(utc_time, platform_times, platform_pitch_angles, max_x_diff=max_time_diff)
+        yaw = interp_angle_deg_from_set(utc_time, platform_times, platform_yaw_angles, max_x_diff=max_time_diff)
+        height = interp_single_from_set(utc_time, platform_times, platform_heights, max_x_diff=max_time_diff)
 
         new_state = ObjectState(utc_time, lat, long, alt, roll, pitch, yaw, height)
         

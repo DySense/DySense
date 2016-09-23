@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from dysense.core.utility import interp_angle_deg_from_set
 from dysense.processing.utility import standardize_to_degrees, standardize_to_meters, contains_measurements
 from dysense.processing.utility import sensor_units
 from dysense.processing.derive_angle import *
@@ -245,28 +246,28 @@ class PostProcessor(object):
         for position in self.platform_positions:
             
             if valid_roll_angles:
-                roll = closest_value(position.utc_time, roll_times, roll_values, max_x_diff=self.max_time_diff)
+                roll = interp_angle_deg_from_set(position.utc_time, roll_times, roll_values, max_x_diff=self.max_time_diff)
                 if math.isnan(roll):
                     continue # don't use this position because it's missing roll information
             else:
                 roll = float('NaN')
             
             if valid_pitch_angles:
-                pitch = closest_value(position.utc_time, pitch_times, pitch_values, max_x_diff=self.max_time_diff)
+                pitch = interp_angle_deg_from_set(position.utc_time, pitch_times, pitch_values, max_x_diff=self.max_time_diff)
                 if math.isnan(pitch):
                     continue # don't use this position because it's missing pitch information
             else:
                 pitch = float('NaN')
                 
             if valid_yaw_angles:
-                yaw = closest_value(position.utc_time, yaw_times, yaw_values, max_x_diff=self.max_time_diff)
+                yaw = interp_angle_deg_from_set(position.utc_time, yaw_times, yaw_values, max_x_diff=self.max_time_diff)
                 if math.isnan(yaw):
                     continue # don't use this position because it's missing yaw information
             else:
                 yaw = float('NaN')
 
             if valid_height_measurements:
-                height = interpolate_single(position.utc_time, height_times, height_values, max_x_diff=self.max_time_diff)
+                height = interp_single_from_set(position.utc_time, height_times, height_values, max_x_diff=self.max_time_diff)
                 if math.isnan(height) and not valid_fixed_height:
                     continue # don't use this position because it's missing height information and no fixed height to use as backup
             else:

@@ -7,7 +7,7 @@ import math
 import numpy as np
 
 from dysense.processing.utility import StampedPosition, StampedHeight
-from dysense.core.utility import interpolate, interpolate_single
+from dysense.core.utility import interp_single_from_set, interp_list_from_set
 
 def sync_platform_positions(position_measurements_by_source, max_time_diff):
     '''
@@ -34,7 +34,7 @@ def sync_platform_positions(position_measurements_by_source, max_time_diff):
         other_source_values = [(p.lat, p.long, p.alt) for p in other_source_positions]
         
         for ref_utc_time in ref_source_times:
-            lat, long, alt = interpolate(ref_utc_time, other_source_times, other_source_values, max_x_diff=max_time_diff)
+            lat, long, alt = interp_list_from_set(ref_utc_time, other_source_times, other_source_values, max_x_diff=max_time_diff)
     
             synced_positions[other_source_name].append(StampedPosition(ref_utc_time, lat, long, alt))
         
@@ -101,7 +101,7 @@ def sync_platform_heights(height_measurements_by_source, max_time_diff):
         other_source_values = [h.height for h in other_source_heights]
         
         for ref_utc_time in ref_source_times:
-            height_at_ref_time = interpolate_single(ref_utc_time, other_source_times, other_source_values, max_x_diff=max_time_diff)
+            height_at_ref_time = interp_single_from_set(ref_utc_time, other_source_times, other_source_values, max_x_diff=max_time_diff)
 
             synced_heights[other_source_name].append(StampedHeight(ref_utc_time, height_at_ref_time))
         
