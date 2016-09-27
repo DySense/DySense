@@ -114,35 +114,86 @@ def actual_angle_deg(sensor_angles_rad, platform_angles):
             actual_sensor_angles.append(sensor_angle * 180.0 / math.pi)
 
     return actual_sensor_angles
-  
+
+def rot_child_to_parent(roll, pitch, yaw):
+    '''
+    Return 3x3 rotation matrix that will transform a vector in the child frame to the parent frame.
+    Roll, pitch, yaw are the relative orientation of the child frame with respect to the parent frame.
+    Specified angles should be in radians and represent a right-handed positive rotation.
+    In terms of passive rotations (which this is because it's changing coordinate frames)
+       [1] this is intrinsically (-x) then (-y) then (-z) intrinsically = about intermediate frames
+       [2] this is extrinsically (-Z) then (-Y) then (-X) extrinsically = all rotations are about parent frame.
+    In terms of active rotations (rotating a vector within the parent frame)
+       [3] this is intrinsically (z) then (y) then (x) 
+       [4] this is extrinsically (X) then (Y) then (Z) 
+
+    To go the opposite direction (parent -> child) then take the transpose of this matrix which is equivalent to the inverse.
+    '''
+    # Pre-compute sines and cosines.
+    sr = sin(roll)
+    cr = cos(roll)
+    sp = sin(pitch)
+    cp = cos(pitch)
+    sy = sin(yaw)
+    cy = cos(yaw)
+
+    return np.array([[cp*cy,  sr*sp*cy - cr*sy,  sr*sy + cr*sp*cy],
+                     [cp*sy,  cr*cy + sr*sp*sy,  cr*sp*sy - sr*cy],
+                     [ -sp,         sr*cp,             cr*cp     ]])    
+
+
 def rot_parent_to_child(roll, pitch, yaw):
     '''
     Return 3x3 rotation matrix that will transform a vector in the parent frame to the child frame.
+    Roll, pitch, yaw are the relative orientation of the child frame with respect to the parent frame.
     Specified angles should be in radians and represent a right-handed positive rotation.
-    This is done in the sequence z->y'->x'' which is an active, intrinsic rotation commonly called Euler ZYX
-    This matrix is equivalent to an x->y->z active, extrinsic rotation commonly called Roll-Pitch-Yaw matrix.
-    To go the opposite direction (body -> world) then take the transpose of this matrix which is equivalent to the inverse.
-    ''' 
-    rot_zy = np.dot(rot_z(yaw), rot_y(pitch))  
-    return np.dot(rot_zy, rot_x(roll))
+    In terms of passive rotations (which this is because it's changing coordinate frames)
+       [1] this is intrinsically (z) then (y) then (x) intrinsically = about intermediate frames
+       [2] this is extrinsically (X) then (Y) then (Z) extrinsically = all rotations are about parent frame.
+    In terms of active rotations (rotating a vector within the parent frame)
+       [3] this is intrinsically (-x) then (-y) then (-z)
+       [4] this is extrinsically (-Z) then (-Y) then (-X)
+    
+    [1] is commonly referred to as Euler ZYX matrix.
+    [2] is commonly referred to as Roll-Pitch-Yaw matrix.
+
+    To go the opposite direction (child -> parent) then take the transpose of this matrix which is equivalent to the inverse.
+    '''
+    # Pre-compute sines and cosines.
+    sr = sin(roll)
+    cr = cos(roll)
+    sp = sin(pitch)
+    cp = cos(pitch)
+    sy = sin(yaw)
+    cy = cos(yaw)
+    
+    return np.array([[     cp*cy,             cp*sy,          -sp ],
+                     [sr*sp*cy - cr*sy,  cr*cy + sr*sp*sy,   sr*cp],
+                     [sr*sy + cr*sp*cy,  cr*sp*sy - sr*cy,   cr*cp]])
   
 def rot_x(a):
-    '''Return 3x3 positive rotation matrix about X axis by an angle 'a' specified in radians.'''
-    
+    '''
+    Return 3x3 positive rotation matrix about X axis by an angle 'a' specified in radians.
+    This represents an active rotation, that is it will rotate a vector within a frame.
+    '''
     return np.array([[1,   0,       0   ],
                      [0, cos(a), -sin(a)],
                      [0, sin(a),  cos(a)]])
     
 def rot_y(a):
-    '''Return 3x3 positive rotation matrix about Y axis by an angle 'a' specified in radians.'''
-    
+    '''
+    Return 3x3 positive rotation matrix about Y axis by an angle 'a' specified in radians.
+    This represents an active rotation, that is it will rotate a vector within a frame.
+    '''
     return np.array([[ cos(a), 0,  sin(a)],
                      [   0,    1,    0   ],
                      [-sin(a), 0,  cos(a)]])
     
 def rot_z(a):
-    '''Return 3x3 positive rotation matrix about Z axis by an angle 'a' specified in radians.'''
-    
+    '''
+    Return 3x3 positive rotation matrix about Z axis by an angle 'a' specified in radians.
+    This represents an active rotation, that is it will rotate a vector within a frame.
+    '''
     return np.array([[cos(a), -sin(a), 0],
                      [sin(a),  cos(a), 0],
                      [  0,       0,    1]])

@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 import numpy as np
 
 from dysense.core.utility import interp_list_from_set, interp_single_from_set, interp_angle_deg_from_set
-from dysense.processing.utility import ObjectState
+from dysense.processing.utility import ObjectState, effective_angle_rad, rot_child_to_parent
 
 def platform_state_at_times(platform_states, utc_times, max_time_diff):
     '''Return list of platform states at the specified utc_times.'''
@@ -55,6 +55,28 @@ def filter_down_platform_state(session, max_rate):
             last_state_time = state.utc_time
 
     session['platform_states'] = filtered_states
+    
+def effective_platform_orientation(platform_orientation_deg):
+    
+    roll_rad = effective_angle_rad(platform_orientation_deg[0]) 
+    pitch_rad = effective_angle_rad(platform_orientation_deg[1])
+    yaw_rad = effective_angle_rad(platform_orientation_deg[2])
+    
+    return roll_rad, pitch_rad, yaw_rad
+    
+def rotate_platform_vector_to_world_frame(vector, platform_orientation_deg):
+    '''
+    Return new numpy vector (np.array) that is specified in world frame (NED) rather than platform frame.
+    '''
+    # If an angle wasn't measured by the platform then want to treat it as 0 for these calculations since that's our best guess.
+    # This will also convert the angles to radians.
+    roll_rad, pitch_rad, yaw_rad = effective_platform_orientation(platform_orientation_deg)
+    
+    # Rotate vector to be in world frame.
+    platform_to_world_rot_matrix = rot_child_to_parent(roll_rad, pitch_rad, yaw_rad)
+    vector_in_world_frame = np.dot(platform_to_world_rot_matrix, vector)
+
+    return vector_in_world_frame
     
 def sensor_distance_to_platform_frame(distance, sensor_to_platform_rot_matrix, position_offsets):
     '''

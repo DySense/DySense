@@ -5,9 +5,9 @@ import math
 import numpy as np
 from math import cos 
 
-from dysense.processing.platform_state import platform_state_at_times
-from dysense.processing.utility import ObjectState, effective_angle_rad, actual_angle_deg
-from dysense.processing.utility import rpy_from_rot_matrix, rot_parent_to_child
+from dysense.processing.platform_state import platform_state_at_times, effective_platform_orientation
+from dysense.processing.utility import ObjectState, actual_angle_deg
+from dysense.processing.utility import rpy_from_rot_matrix, rot_child_to_parent
 from dysense.processing.log import log
         
 class GeoTagger(object):
@@ -28,18 +28,18 @@ class GeoTagger(object):
         reading_times = [reading['time'] for reading in readings]
        
         platform_state_at_readings = platform_state_at_times(platform_states, reading_times, self.max_time_diff)
-       
-        # Determine rotation matrix to rotate vector from platform frame to sensor frame.
+        
+        # Determine rotation matrix to rotate vector from sensor frame to platform frame.
         # Do this once since it doesn't change between readings.
-        platform_to_sensor_rot_matrix = rot_parent_to_child(*orientation_offsets)
+        sensor_to_platform_rot_matrix = rot_child_to_parent(*orientation_offsets)
         
         for reading, platform_state_at_reading in zip(readings, platform_state_at_readings):
  
-            sensor_state = self.caculate_sensor_state(reading['time'], position_offsets, platform_to_sensor_rot_matrix, platform_state_at_reading)
+            sensor_state = self.caculate_sensor_state(reading['time'], position_offsets, sensor_to_platform_rot_matrix, platform_state_at_reading)
     
             reading['state'] = sensor_state
     
-    def caculate_sensor_state(self, utc_time, position_offsets, platform_to_sensor_rot_matrix, platform):
+    def caculate_sensor_state(self, utc_time, position_offsets, sensor_to_platform_rot_matrix, platform):
         '''
         Return ObjectState associated with sensor at the specified UTC time.
         
@@ -56,21 +56,16 @@ class GeoTagger(object):
         'position_offsets' should be a numpy array and are measured in meters in the platform_frame. 
         'platform' is the platform state at the specified utc_time
         '''
-        # If an angle wasn't measured by the platform then want to treat it as 0 for these calculations since that's our best guess.
-        # This will also convert the angles to radians.
-        platform_roll_rad = effective_angle_rad(platform.roll) 
-        platform_pitch_rad = effective_angle_rad(platform.pitch)
-        platform_yaw_rad = effective_angle_rad(platform.yaw)
+        effective_platform_rpy_rad = effective_platform_orientation(platform.orientation)
         
         # Determine rotation matrix to convert between world and platform frames.
-        world_to_platform_rot_matrix = rot_parent_to_child(platform_roll_rad, platform_pitch_rad, platform_yaw_rad)
+        platform_to_world_rot_matrix = rot_child_to_parent(*effective_platform_rpy_rad)
         
         # Combine rotation so we can extract Euler angles from rotation matrix to get sensor orientation relative to world frame.
-        world_to_sensor_rot_matrix = np.dot(world_to_platform_rot_matrix, platform_to_sensor_rot_matrix)
-        sensor_orientation_rad = rpy_from_rot_matrix(world_to_sensor_rot_matrix)
+        sensor_to_world_rot_matrix = np.dot(platform_to_world_rot_matrix, sensor_to_platform_rot_matrix)
+        sensor_orientation_rad = rpy_from_rot_matrix(sensor_to_world_rot_matrix)
         
         # Rotate sensor offsets to be in world (NED) frame.
-        platform_to_world_rot_matrix = world_to_platform_rot_matrix.transpose()
         sensor_north_offset, sensor_east_offset, sensor_down_offset_world = np.dot(platform_to_world_rot_matrix, position_offsets)
     
         if math.isnan(platform.yaw):

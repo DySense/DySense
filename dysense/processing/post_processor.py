@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from dysense.core.utility import interp_angle_deg_from_set
 from dysense.processing.utility import standardize_to_degrees, standardize_to_meters, contains_measurements
 from dysense.processing.utility import sensor_units
 from dysense.processing.derive_angle import *
 from dysense.processing.source_filter import *
 from dysense.processing.platform_state import *
-from dysense.processing.geotagger import rot_parent_to_child
 from dysense.processing.log import log
 
 class PostProcessor(object):
@@ -63,8 +61,7 @@ class PostProcessor(object):
         # and it would get messy to pass everything around as local references.
         self._calculate_platform_positions()
         self._calculate_platform_orientation()
-        self._calculate_platform_height()
-                
+
         # Determine platform state at common time stamps.  
         platform_states = self._calculate_platform_state()
         
@@ -154,11 +151,11 @@ class PostProcessor(object):
             else:
                 self.yaw_angles = derive_yaw_angles_single(self.platform_positions)
     
-    def _calculate_platform_height(self):
+    def _update_platform_states_to_include_heights(self, platform_states, correct_for_platform_orientation):
         '''
-        Read in height above ground measurements for each height sensor, adjust the heights to be relative
-        to platform origin and average them.  The fixed height will also be read in which will be None
-        if not specified by user or not valid.
+        This will update the height of each state in platform_states to be the height above the ground measured
+        at same point that the platform state position is measured at. 
+        If correct_for_platform_orientation is true then will use platform roll/pitch to adjust height measurements. 
         '''
         height_measurements_by_source = self.session_output.read_heights_above_ground()
         
@@ -168,22 +165,33 @@ class PostProcessor(object):
             standard_heights = self._standardize_heights(height_measurements, height_source) 
             height_measurements_by_source[source_name] = standard_heights
             
-        # Convert distance readings from sensor frame to platform frame.
+        # Convert distance (height) readings from sensor frame to world frame so they can be treated as "height above ground"
+        # relative to the same point that platform positions are measured from. 
         for source_name, height_measurements in height_measurements_by_source.iteritems():
             
             height_sensor = self.session_output.find_matching_sensor_info_by_name(source_name)
     
             # Determine rotation matrix to rotate vector in sensor (child) frame to platform (parent) frame.
             offsets_in_radians = [angle * math.pi/180.0 for angle in height_sensor['orientation_offsets']]
-            platform_to_sensor_rot_matrix = rot_parent_to_child(*offsets_in_radians)
-            sensor_to_platform_rot_matrix = platform_to_sensor_rot_matrix.transpose()
+            sensor_to_platform_rot_matrix = rot_child_to_parent(*offsets_in_radians)
             
             # Account for fact that platform positions and sensor offsets may not have the same origin.
             position_offsets = np.asarray(height_sensor['position_offsets']) - np.asarray(self.platform_position_offset)
             
-            for stamped_height in height_measurements:
+            height_measurement_times = [h.utc_time for h in height_measurements]
+            platform_state_at_same_times = platform_state_at_times(platform_states, height_measurement_times, self.max_time_diff)
+            
+            for stamped_height, platform_state in zip(height_measurements, platform_state_at_same_times):
+                # Convert height to platform frame, this accounts for sensor orientation offsets and 'down' offset relative to platform positions.
                 stamped_height.height = sensor_distance_to_platform_frame(stamped_height.height, sensor_to_platform_rot_matrix, position_offsets)
 
+                # Convert height measurements to world frame measured at where platform positions are measured at by treating the distance measurement
+                # as a vector with <forward offset, right offset, height measurement>.
+                if correct_for_platform_orientation:
+                    vector = (position_offsets[0], position_offsets[1], stamped_height.height)
+                    _, _, correct_height = rotate_platform_vector_to_world_frame(vector, platform_state.orientation)
+                    stamped_height.height = correct_height
+                
         num_height_sources = len(height_measurements_by_source)
                 
         if num_height_sources > 1:
@@ -199,6 +207,34 @@ class PostProcessor(object):
             self.fixed_height = float(self.fixed_height)
         except (ValueError, TypeError):
             self.fixed_height = None
+            
+        valid_height_measurements = num_height_sources >= 1
+        valid_fixed_height = self.fixed_height is not None and self.fixed_height >= 0
+        
+        # Split values from times so can interpolate below.
+        if valid_height_measurements:
+            height_values = [height.height for height in self.platform_heights]
+            height_times = [height.utc_time for height in self.platform_heights]
+            
+        for platform_state in platform_states:
+            
+            if valid_height_measurements:
+                height = interp_single_from_set(platform_state.utc_time, height_times, height_values, max_x_diff=self.max_time_diff)
+            else:
+                height = float('NaN')
+                    
+            # Use fixed height as a backup if no valid height measurements.
+            if math.isnan(height) and valid_fixed_height:
+                if correct_for_platform_orientation:
+                    # This is the same thing we did above for sensor measurements, but since fixed height was measured by user already
+                    # at the platform position, then the forward and right offsets are zero.
+                    vector = (0.0, 0.0, self.fixed_height)
+                    _, _, corrected_fixed_height = rotate_platform_vector_to_world_frame(vector, platform_state.orientation)
+                    height = corrected_fixed_height
+                else:
+                    height = self.fixed_height
+                    
+            platform_state.height_above_ground = height
         
     def _standardize_heights(self, distances, source):
         '''Return updated list of height distances for the specified source that are in meters.'''
@@ -219,12 +255,10 @@ class PostProcessor(object):
         Synchronize different parts of platform state (position, orientation, etc) to occur at
         the same time-stamps and return results as a list of ObjectStates.
         '''
-        # Determine if Euler angles and height measurements are available to use.
+        # Determine if Euler angles are available to use.
         valid_roll_angles = contains_measurements(self.roll_angles)
         valid_pitch_angles = contains_measurements(self.pitch_angles)
         valid_yaw_angles = contains_measurements(self.yaw_angles)
-        valid_height_measurements = contains_measurements(self.platform_heights)
-        valid_fixed_height = self.fixed_height is not None and self.fixed_height >= 0
         
         # Separate into time/value parts to get ready to interpolate below.
         if valid_roll_angles:
@@ -236,9 +270,7 @@ class PostProcessor(object):
         if valid_yaw_angles:
             yaw_values = [a.angle for a in self.yaw_angles]
             yaw_times = [a.utc_time for a in self.yaw_angles]
-        if valid_height_measurements:
-            height_values = [height.height for height in self.platform_heights]
-            height_times = [height.utc_time for height in self.platform_heights]
+
         
         # Calculate state at same time as each position.
         platform_states = []
@@ -266,23 +298,19 @@ class PostProcessor(object):
             else:
                 yaw = float('NaN')
 
-            if valid_height_measurements:
-                height = interp_single_from_set(position.utc_time, height_times, height_values, max_x_diff=self.max_time_diff)
-                if math.isnan(height) and not valid_fixed_height:
-                    continue # don't use this position because it's missing height information and no fixed height to use as backup
-            else:
-                height = float('NaN')
-                
-            if math.isnan(height) and valid_fixed_height:
-                height = self.fixed_height
-                
-            # TODO describe height in world frame instead of platform frame.
-                
+            # The height above ground depends on knowing the platform orientation, which we do at this point, but it's much faster
+            # and easier to calculate these heights once we know all the platform states, so this will be updated after this for loop.
+            height = 0.0
+
             platform_state = ObjectState(position.utc_time, position.lat, position.long, position.alt,
                                          roll, pitch, yaw, height_above_ground=height)
 
             
             platform_states.append(platform_state)
+            
+        # Only account for platform orientation if we have valid readings.
+        correct_for_platform_orientation = valid_pitch_angles or valid_roll_angles
+        self._update_platform_states_to_include_heights(platform_states, correct_for_platform_orientation)
             
         return platform_states
     

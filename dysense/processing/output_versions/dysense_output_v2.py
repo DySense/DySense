@@ -183,7 +183,7 @@ class SessionOutputV2(object):
     def read_fixed_height_above_ground(self):
         '''Return fixed distance above ground in meters.'''
         
-        return self.fixed_height_source
+        return self.fixed_height_source.get('height', None)
         
     def get_complete_sensors(self):
         

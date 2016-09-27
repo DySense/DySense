@@ -15,7 +15,7 @@ class TestRPYFromRotationMatrix(unittest.TestCase):
         roll = math.pi/5
         pitch = -math.pi/10
         yaw = math.pi/4
-        rot_matrix = rot_parent_to_child(roll, pitch, yaw)
+        rot_matrix = rot_child_to_parent(roll, pitch, yaw)
         returned_roll, returned_pitch, returned_yaw = rpy_from_rot_matrix(rot_matrix)
         self.assertAlmostEqual(roll, returned_roll, 10)
         self.assertAlmostEqual(pitch, returned_pitch, 10)
@@ -26,7 +26,7 @@ class TestRPYFromRotationMatrix(unittest.TestCase):
         roll = math.radians(210)
         pitch = math.radians(135)
         yaw = math.radians(-190)
-        rot_matrix = rot_parent_to_child(roll, pitch, yaw)
+        rot_matrix = rot_child_to_parent(roll, pitch, yaw)
         returned_roll, returned_pitch, returned_yaw = rpy_from_rot_matrix(rot_matrix)
         expected_roll = math.radians(30)
         expected_pitch = math.radians(45)
@@ -40,7 +40,7 @@ class TestRPYFromRotationMatrix(unittest.TestCase):
         roll = math.radians(0)
         pitch = math.radians(90)
         yaw = math.radians(15)
-        rot_matrix = rot_parent_to_child(roll, pitch, yaw)
+        rot_matrix = rot_child_to_parent(roll, pitch, yaw)
         returned_roll, returned_pitch, returned_yaw = rpy_from_rot_matrix(rot_matrix)
         expected_roll = math.radians(-15)
         expected_pitch = math.radians(90)
@@ -54,7 +54,7 @@ class TestRPYFromRotationMatrix(unittest.TestCase):
         roll = math.radians(0)
         pitch = math.radians(-90)
         yaw = math.radians(135)
-        rot_matrix = rot_parent_to_child(roll, pitch, yaw)
+        rot_matrix = rot_child_to_parent(roll, pitch, yaw)
         returned_roll, returned_pitch, returned_yaw = rpy_from_rot_matrix(rot_matrix)
         expected_roll = math.radians(135)
         expected_pitch = math.radians(-90)
@@ -63,30 +63,36 @@ class TestRPYFromRotationMatrix(unittest.TestCase):
         self.assertAlmostEqual(expected_pitch, returned_pitch, 10)
         self.assertAlmostEqual(expected_yaw, returned_yaw, 10)
 
-class TestRotateParentToChild(unittest.TestCase):
+class TestRotateChildVectorToParentFrame(unittest.TestCase):
 
     def test_zero_rotation(self):
         
-        np_test.assert_equal(rot_parent_to_child(0, 0, 0), np.identity(3))
+        np_test.assert_equal(rot_child_to_parent(0, 0, 0), np.identity(3))
         
     def test_pointing_straight_up(self):
-        # Rotate positive X by 90, 90, 90 deg. and that should be the vector pointing
-        # out the bottom of the child frame (positive z)
-        rotation_matrix = rot_parent_to_child(math.pi/2, math.pi/2, math.pi/2)
+        # Rotate positive x by 90, 90, 90 deg. and that should be the vector pointing
+        # out the top of the parent frame (negative Z since Z is positive downwards)
+        rotation_matrix = rot_child_to_parent(math.pi/2, math.pi/2, math.pi/2)
         rotated_vec = np.dot(rotation_matrix, np.array([1, 0, 0]))
         np_test.assert_almost_equal(rotated_vec, np.array([0, 0, -1]))
 
     def test_pointing_straight_down(self):
-        # Rotate positive X by 90, -90, 90 deg. and that should be the vector pointing
-        # out the top of the child frame (negative z)
-        rotation_matrix = rot_parent_to_child(math.pi/2, -math.pi/2, math.pi/2)
+        # Rotate positive x by 90, -90, 90 deg. and that should be the vector pointing
+        # out the bottom of the parent frame (positive Z since Z is positive downwards)
+        rotation_matrix = rot_child_to_parent(math.pi/2, -math.pi/2, math.pi/2)
         rotated_vec = np.dot(rotation_matrix, np.array([1, 0, 0]))
         np_test.assert_almost_equal(rotated_vec, np.array([0, 0, 1]))
+        
+    def test_pitch_only(self):
+
+        rotation_matrix = rot_child_to_parent(0, math.pi/4, 0)
+        rotated_vec = np.dot(rotation_matrix, np.array([1, 0, 1]))
+        np_test.assert_almost_equal(rotated_vec, np.array([math.sqrt(2), 0, 0]))
         
     def test_arbitrary_rotation(self):
         # Expected matrix taken from:
         # http://danceswithcode.net/engineeringnotes/rotations_in_3d/demo3D/rotations_in_3d_tool.html
-        actual_matrix = rot_parent_to_child(math.radians(66), math.radians(50), math.radians(45))
+        actual_matrix = rot_child_to_parent(math.radians(66), math.radians(50), math.radians(45))
         expected_matrix = np.array([[.4545, .2072, .8662],
                                     [.4545, .7824, -.4257],
                                     [-.7661, .5872, .2614]])
