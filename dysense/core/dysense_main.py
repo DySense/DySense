@@ -25,6 +25,9 @@ from dysense.core.controller_manager import ControllerManager
 from dysense.core.sensor_controller import SensorController
 from dysense.core.utility import yaml_load_unicode, make_unicode
 
+from dysense.interfaces.server_interface import ServerInterface
+from dysense.interfaces.client_interface import ClientInterface
+
 def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=False):
     
     # This program uses relative paths for finding sensors, so make sure the working directory
@@ -50,12 +53,23 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     # Load sensor metadata
     with open("../metadata/sensor_metadata.yaml", 'r') as stream:
         sensor_metadata = yaml_load_unicode(stream)
+
+    # Servers for controllers to talk to sensors and managers
+    c2s_server = ServerInterface(zmq_context, 'controller', 'c2s', ports=range(60110, 60120), all_addresses=False)
+    #c2m_server = ServerInterface(client='manager', server='controller', ports=range(60120, 60130), all_addresses=True)
     
+    # Server for manager to talk to presenters, and client so managers can talk to controllers.
+    #m2p_server = ServerInterface(client='presenter', server='manager', ports=None)
+    #m2c_client = ClientInterface(c2m_server.local_endpoint)
+    
+    # Client for presenter to talk to managers.
+    #p2m_client = ClientInterface(m2p_server.local_endpoint)
+
     # Configure system.
     controller_manager = ControllerManager(zmq_context)
     gui_presenter = GUIPresenter(zmq_context, controller_manager, sensor_metadata)
     main_window = DysenseMainWindow(gui_presenter, sensor_metadata['sensors'])   
-    sensor_controller = SensorController(zmq_context, sensor_metadata, main_window.local_controller_name)
+    sensor_controller = SensorController(zmq_context, sensor_metadata, main_window.local_controller_name, c2s_server)
     
     gui_presenter.setup_view(main_window)
     

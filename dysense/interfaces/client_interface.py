@@ -5,6 +5,7 @@ import zmq
 import json
 
 from dysense.interfaces.component_interface import ComponentInterface
+from dysense.interfaces.component_connection import ComponentConnection
 
 class ClientInterface(ComponentInterface):
     '''
@@ -25,6 +26,7 @@ class ClientInterface(ComponentInterface):
         
         self._wired_local_server_info = None
         self._wired_remote_server_info = []
+        self._wired_endpoint_info = []
         
     def wire_locally_to(self, server):
         '''Save server info so that when client is setup() it will automatically connect.'''
@@ -35,6 +37,11 @@ class ClientInterface(ComponentInterface):
         '''Same as wire_locally_to, but allows to connect to a server running in a different process.'''
         
         self._wired_remote_server_info.append((server.component_id, ip, server.ports))
+
+    def wire_to_endpoint(self, server_id, endpoint):
+        '''Wire to specified custom endpoint that will automatically connected when interface is setup().'''
+        
+        self._wired_endpoint_info.append((server_id, endpoint))
         
     def connect_locally_to(self, server):
         '''Connect to server running in same process.  setup() must be called before this method.'''
@@ -64,6 +71,15 @@ class ClientInterface(ComponentInterface):
             endpoint = 'tcp://{}:{}'.format(ip, ports[0])
             self.connect_to_endpoint(server_id, endpoint)
             
+        for server_id, endpoint in self._wired_endpoint_info:
+            self.connect_to_endpoint(server_id, endpoint)
+            
+    def close_connection(self, component_id):
+        
+        self._server_id_to_socket.pop(component_id, None)
+        
+        ComponentInterface.close_connection(self, component_id)
+            
     def close(self):
         '''Close the socket used to talk to each server.'''
         
@@ -92,6 +108,16 @@ class ClientInterface(ComponentInterface):
         socket.connect(endpoint)
         self._server_id_to_socket[server_id] = socket
         
+        try:
+            connection = self.lookup_connection(server_id)
+        except KeyError:
+            # No connection registered yet, so create one automatically.
+            connection = ComponentConnection(self, server_id)
+            self.register_connection(connection)
+ 
+        # Set the initial state to 'setup' because we're about to send an introduction message.
+        connection.update_connection_state('setup')
+        
         self._send_introduction_message(server_id)
             
     def _receive_new_message(self):
@@ -99,7 +125,7 @@ class ClientInterface(ComponentInterface):
         for server_id, server_socket in self._server_id_to_socket.iteritems():
             try:
                 new_message = json.loads(server_socket.recv(zmq.NOBLOCK))
-                return new_message
+                return new_message, server_id
             except zmq.ZMQError:
                 # Server didn't have a message waiting so try next one.
                 pass
@@ -116,4 +142,3 @@ class ClientInterface(ComponentInterface):
         except KeyError:
             # TODO log some kind of error message
             return # haven't connected to the server yet
-        

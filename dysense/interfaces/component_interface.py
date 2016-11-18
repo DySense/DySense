@@ -46,18 +46,16 @@ class ComponentInterface(object):
     connection that is made through the interface using ComponentConnection objects.  Part of this 
     connection tracking is using a heartbeat message to ensure the other component hasn't crashed.
     '''
-    def __init__(self, context, component_id, heartbeart_period = 2):
+    def __init__(self, context, component_id):
         '''
         Constructor.  
         
         :param context: ZMQ context object.  This is threadsafe.
         :param str component_id: unique ID of component (e.g. 'test_server_1')
-        :param float heartbeat_period: Expected interval (in seconds) that this component will try
-                to send heartbeat messages at.
         '''
         self._context = context
         self.component_id = component_id
-        self.heartbeat_period = heartbeart_period
+        self.heartbeat_period = 2 # (seconds) how quickly heartbeat messages should be sent out.
         
         # Dictionary holding user-defined callbacks for when a certain type of message is received.
         self._message_type_to_callback = {}
@@ -83,14 +81,22 @@ class ComponentInterface(object):
         '''
         component_id = connection.connected_component_id
         self._component_id_to_connection[component_id] = connection
+        
+    def close_connection(self, component_id):
+        
+        self._component_id_to_connection.pop(component_id, None)
+        
+    def lookup_connection(self, component_id):
+        
+        return self._component_id_to_connection[component_id]
 
     def process_new_messages(self):
         '''Receive all buffered messages and call their associated callback.'''
         
         while True:
             try:
-                message = self._receive_new_message()
-                self._process_new_message(message)
+                message, sender_id = self._receive_new_message()
+                self._process_new_message(message, sender_id)
             except zmq.ZMQError:
                 break # no more messages
             
@@ -105,7 +111,7 @@ class ComponentInterface(object):
         
         Example:  interface.send_message('sensor123', 'command_message', 'some_command')  
         '''
-        message = {'type': message_type, 'body': message_body, 'sender_id': self.component_id}
+        message = {'type': message_type, 'body': message_body}
 
         try:
             json_message = json_dumps_unicode(message)
@@ -125,7 +131,7 @@ class ComponentInterface(object):
         for connection in self._component_id_to_connection.values():
             connection.refresh_state()
             
-    def _process_new_message(self, message):
+    def _process_new_message(self, message, sender_id):
         '''
         Invoke the callback corresponding to the new message. If the callback arguments are
         a list or tuple then they'll automatically be expanded when calling the callback.
@@ -134,11 +140,11 @@ class ComponentInterface(object):
 
         if is_introduction_message:
             # Standard callback to create a new component connection.
-            self._handle_introduction_message(message)
+            self._handle_introduction_message(message, sender_id)
 
         try:
             # Lookup connection for component that sent message.
-            component = self._component_id_to_connection[message['sender_id']]
+            component = self._component_id_to_connection[sender_id]
         except KeyError:
             return # component doesn't exist, it was likely recently removed.
         
@@ -168,31 +174,33 @@ class ComponentInterface(object):
         
         if self.heartbeat_period is None:
             raise Exception("Setup error: Heartbeat period not set.")
+       
+        message_body = {'sender_id': self.component_id, 'heartbeat_period': self.heartbeat_period}
         
-        self.send_message(recipient_id, 'introduction', {'heartbeat_period': self.heartbeat_period})
+        self.send_message(recipient_id, 'introduction', message_body)
         
-    def _handle_introduction_message(self, message):
+    def _handle_introduction_message(self, message, sender_id):
         '''
         Handle new component connection.  If a connection object hasn't been registered for the 
         new component_id, then a new generic one will be created automatically.
         '''     
-        # Who sent the message.
-        sender_id = message['sender_id']
-        
         # The rate at which the sending component will send heartbeat messages.
         heartbeat_period = float(message['body']['heartbeat_period'])
+        
+        # The sender_id that is specified in the message may be different.  
+        _ = message['body']['sender_id']
         
         try: 
             connection = self._component_id_to_connection[sender_id]
         except KeyError:
             # No connection object has been registered for this ID so create a generic one.
             # The connection will register itself.
-            connection = ComponentConnection(self, heartbeat_period, sender_id)
+            connection = ComponentConnection(self, sender_id)
             
-        connection.heartbeat_period = heartbeat_period 
+        connection.update_heartbeat_period(heartbeat_period) 
         
         self._post_introduction_hook(message)
         
     def _post_introduction_hook(self, message):
-        '''Allow ServerInterface chance to automatically send return introduction message.'''
+        '''Subclass can override to execute code after introduction message is received.'''
         return

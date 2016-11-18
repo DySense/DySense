@@ -9,13 +9,15 @@ import traceback
 import sys
 
 from dysense.core.utility import make_unicode
+from dysense.interfaces.client_interface import ClientInterface
+from dysense.interfaces.component_connection import ComponentConnection
 
 class SensorBase(object):
     '''
     Base class for all sensor drivers.
     
     All sensor drivers written in python should inherit from this class. Most of its public interface
-    is over sockets where inputs are time/commands and outputs are data/messages/status. The only
+    is over a socket where inputs are time/commands and outputs are data/messages/status. The only
     public method is run() which handles everything.
     '''
     
@@ -43,11 +45,9 @@ class SensorBase(object):
         '''
         self.sensor_id = make_unicode(sensor_id)
         self.instrument_id = make_unicode(instrument_id)
-        self.context = context
-        self.connect_endpoint = make_unicode(connect_endpoint)
+
         self.desired_read_period = max(0, desired_read_period)
         self.max_closing_time = max(0.1, max_closing_time)
-        self.heartbeat_period = max(0.1, heartbeat_period)
         self.wait_for_valid_time = wait_for_valid_time
         self.throttle_sensor_read = throttle_sensor_read
         
@@ -60,7 +60,8 @@ class SensorBase(object):
         
         # How often the main processing in run() should be executed. At least run
         # at 5Hz to keep things responsive.
-        self.main_loop_processing_period = min(self.heartbeat_period, 0.2)
+        heartbeat_period = max(0.1, heartbeat_period)
+        self.main_loop_processing_period = min(heartbeat_period, 0.2)
         
         # How long the read_new_data() method is allowed to run without returning.
         self.max_read_new_data_period = self.main_loop_processing_period * .9
@@ -77,7 +78,7 @@ class SensorBase(object):
         self._last_received_sys_time = 0
         self._last_received_utc_time = 0
         
-        # Where the controller wants 
+        # Where the controller wants to save data files.
         self.override_data_file_directory = None
         
         # If set to false then any directory specified by controller will be ignored.  
@@ -89,13 +90,9 @@ class SensorBase(object):
         self.default_data_file_directory = None
         
         # Associate callback methods with different message types.
-        self.message_table = { 'command': self.handle_command, 
-                               'time': self.handle_new_time,
-                               'heartbeat': self.handle_new_heartbeat,
-                               'change_setting': self.handle_change_setting }
-        
-        # ZMQ socket for communicating with sensor controller.
-        self.socket = None
+        self.message_callbacks = {'command': self.handle_command, 
+                                  'time': self.handle_new_time,
+                                  'change_setting': self.handle_change_setting}
         
         # The time to run next run each loop.  Used to figure out how long to wait after each run.
         self.next_processing_loop_start_time = 0;
@@ -104,32 +101,22 @@ class SensorBase(object):
         # System time that data was last received from the sensor.
         self.last_received_data_time = 0
         
-        # If we don't receive a new message in this time then consider controller dead. (in seconds) 
-        self.client_timeout_thresh = self.heartbeat_period * 10
-        
-        # How long to wait for controller to send first message before timing out. (in seconds)
-        self.max_time_to_receive_message = self.client_timeout_thresh * 1.5
-        
-        # Last system time that we tried to process new messages from controller.
-        self.last_message_processing_time = 0
-        
-        # Last system time that we received a new message from controller.
-        self.last_received_message_time = 0
-        
-        # Last time sensor sent out heartbeat message.
-        self.last_sent_heartbeat_time = 0
-        
-        # Time that interface was connected to controller.
-        self.interface_connection_time = 0
-    
-        # How many message have been received from controller.
-        self.num_messages_received = 0
-        
         # How many message 'data' messages have been sent to controller.
         self.num_data_messages_sent = 0
         
         # System time when sensor was setup.
         self.sensor_setup_sys_time = 0
+
+        # Setup interface used for communicating with controller.
+        self.interface = ClientInterface(context, sensor_id)
+        self.interface.register_callbacks(self.message_callbacks)
+        self.interface.heartbeat_period = heartbeat_period
+        self.interface.wire_to_endpoint('controller', connect_endpoint)
+        
+        # Register connection instead of having one created automatically so can monitor it
+        # easier and don't have to track server id (which is arbitrary anyways)
+        self.controller_connection = ComponentConnection(self.interface, 'controller')
+        self.interface.register_connection(self.controller_connection)
         
     @property
     def utc_time(self):
@@ -199,31 +186,28 @@ class SensorBase(object):
         '''Set everything up, collect data and then close everything down when finished.'''
         try:
             # Setup ZMQ sockets and then give sensor driver a chance to set itself up.
-            self.setup_interface()
+            self.interface.setup()
+            self.send_status_update()
             self.setup()
             self.sensor_setup_sys_time = self.sys_time
     
             while True:
                 
-                if self.need_to_run_processing_loop():
+                if self._need_to_run_processing_loop():
                     
                     # Save off time so we can limit how fast the loop runs.
                     self.next_processing_loop_start_time = self.sys_time + self.main_loop_processing_period
                     
                     # Handle any messages received over ZMQ socket.
-                    self.process_new_messages()
+                    self.interface.process_new_messages()
     
-                    if self.client_timed_out():
+                    if self.controller_connection.connection_state == 'timed_out':
                         raise Exception("Controller connection timed out.") 
                     
                     if self.received_close_request:
                         break # end main loop
-
-                    if self.need_to_send_heartbeat():
-                        self.send_message('new_sensor_heartbeat', ' ')
-                        self.last_sent_heartbeat_time = self.sys_time
                     
-                if self.need_to_run_sensor_loop() or not self.throttle_sensor_read:
+                if self._need_to_run_sensor_loop() or not self.throttle_sensor_read:
                     
                     # Save off time so we can limit how fast the loop runs.
                     self.next_sensor_loop_start_time = self.sys_time + self.desired_read_period
@@ -278,7 +262,7 @@ class SensorBase(object):
             self.paused = True
             self.pause()
             self.close()
-            self.close_interface()
+            self.interface.close()
         
     def close(self):
         '''Stop reading sensor data and close down any resources. Sensor must override.'''
@@ -315,39 +299,18 @@ class SensorBase(object):
     def driver_handle_new_setting(self, setting_name, setting_value):
         '''Override to allow certain settings to be changed as driver is open.'''
         return
-    
-    def should_have_new_reading(self):
-        '''Return true if enough time has elapsed that the sensor should have returned a new reading.'''
-        time_since_last_data = self.sys_time - self.last_received_data_time
-        return time_since_last_data >= self.desired_read_period
-        
-    def setup_interface(self):
-        '''Set up controller socket and then send status update to controller.'''
-        self.socket = self.context.socket(zmq.DEALER)
-        self.socket.connect(self.connect_endpoint)
-
-        self.send_status_update()
-        
-        self.interface_connection_time = self.sys_time
-        
-    def close_interface(self):
-        '''Close down socket.'''
-        if self.socket:
-            self.socket.close()
         
     def send_status_update(self):
         '''
         Notify controller of status change (status = state + health + paused)
         This is called automatically when class fields change.
         '''
-        self.send_message('new_sensor_status', (self.state, self.health, self.paused))
-        
-    def handle_data(self, utc_time, sys_time, data, data_ok=True):
-        '''Send data to controller.  If data_ok is false then that indicates the data shouldn't be trusted or logged.'''
-        self.last_received_data_time = self.sys_time
-        # Make sure data is sent as a tuple.
-        self.send_message('new_sensor_data', (utc_time, sys_time, data, data_ok))
-        self.num_data_messages_sent += 1
+        self._send_message('new_sensor_status', (self.state, self.health, self.paused))
+
+    def should_have_new_reading(self):
+        '''Return true if enough time has elapsed that the sensor should have returned a new reading.'''
+        time_since_last_data = self.sys_time - self.last_received_data_time
+        return time_since_last_data >= self.desired_read_period
         
     def should_record_data(self):
         '''Return true if the sensor is in a state where it should be trying to record data.'''
@@ -356,53 +319,29 @@ class SensorBase(object):
 
     def send_text(self, text):
         '''Send text message to controller (like print)'''
-        self.send_message('new_sensor_text', text)
+        self._send_message('new_sensor_text', text)
         
     def send_event(self, event_name, event_args=None):
         '''Send event to notify controller something important happened.'''
-        self.send_message('new_sensor_event', (event_name, event_args))
+        self._send_message('new_sensor_event', (event_name, event_args))
 
-    def send_message(self, message_type, message_body):
-        '''
-        Send message to controller in JSON format.
-        
-        Args:
-            message_type - provide context of message being sent (e.g. 'text')
-            message_body - tuple or simple type.  All elements must be JSON serializable.
-        '''
-        try:
-            msg = {'sensor_id': self.sensor_id, 'type': message_type, 'body': message_body }
-            msg_json = json.dumps(msg, ensure_ascii=False).encode('utf8')
-            self.socket.send(msg_json)
-        except AttributeError:
-            pass # socket isn't created so can't send message
-    
-    def process_new_messages(self):
-        '''Receive and process all messages in socket queue.'''
-        while True:
-            
-            try:
-                message = json.loads(self.socket.recv(zmq.NOBLOCK))
-            except zmq.ZMQError:
-                break # no more messages
+    def _send_message(self, message_type, message_body):
+        '''Send message to controller.'''
+        self.controller_connection.send_message(message_type, message_body)
 
-            message_callback = self.message_table[message['type']]
-            message_callback(message['body'])
-            
-            self.num_messages_received += 1
-            self.last_received_message_time = self.sys_time
-            
-        self.last_message_processing_time = self.sys_time
+    def handle_data(self, utc_time, sys_time, data, data_ok=True):
+        '''Send data to controller.  If data_ok is false then that indicates the data shouldn't be trusted or logged.'''
+        self.last_received_data_time = self.sys_time
+        # Make sure data is sent as a tuple.
+        self._send_message('new_sensor_data', (utc_time, sys_time, data, data_ok))
+        self.num_data_messages_sent += 1
 
-    def handle_command(self, command):
+    def handle_command(self, connection, command_name, command_args):
         '''
         Deal with a new command (e.g. 'close') received from controller.
         
         If the command isn't a generic one then it will be passed to handle_special_command.
         '''
-        
-        command_name, command_args = command
-        
         if command_name == 'close':
             self.received_close_request = True
         elif command_name == 'pause':
@@ -414,30 +353,19 @@ class SensorBase(object):
         else:
             self.handle_special_command(command_name, command_args)
             
-    def handle_new_time(self, times):
+    def handle_new_time(self, connection, new_utc_time, new_sys_time):
         '''
         Process new time reference received from controller.
         
         Correct for any time that has elapsed since utc_time was last updated.
         Save this time off so we can use it to calculate a more precise timestamp later.
-        
-        Args:
-            times - tuple of (utc_time, sys_time) where sys_time is the system time from time.time()
-                    when utc_time was last updated.
         '''
-        new_utc_time, new_sys_time = times
-        
         self._last_received_sys_time = self.sys_time
         corrected_utc_time = new_utc_time + (self._last_received_sys_time - new_sys_time)
         self._last_received_utc_time = corrected_utc_time
-            
-    def handle_new_heartbeat(self, unused):
-        # Don't need to do anything since all messages are treated as heartbeats.
-        pass
     
-    def handle_change_setting(self, setting):
-        setting_name, setting_value = setting
-        
+    def handle_change_setting(self, connection, setting_name, setting_value):
+
         # All drivers need to support setting a data file directory so handle that here in base class.
         if setting_name == 'data_file_directory':
             self.override_data_file_directory = setting_value
@@ -445,30 +373,10 @@ class SensorBase(object):
         # Allow driver a chance to deal with setting.
         self.driver_handle_new_setting(setting_name, setting_value)
             
-    def client_timed_out(self):
-        '''Return true if it's been too long since we've received a new message from controller.'''
-        if self.interface_connection_time == 0 or self.last_message_processing_time == 0:
-            # Haven't tried to receive any messages yet so can't know if we're timed out.
-            return False 
-        
-        if self.num_messages_received == 0:
-            # Give controller more time to send first message.
-            time_since_connecting = self.last_message_processing_time - self.interface_connection_time
-            return time_since_connecting > self.max_time_to_receive_message
-            
-        # We're getting messages so use normal timeout.
-        time_since_last_message = self.last_message_processing_time - self.last_received_message_time
-        return time_since_last_message > self.client_timeout_thresh
-            
-    def need_to_run_processing_loop(self):
+    def _need_to_run_processing_loop(self):
         '''Return true if it's time to run interface processing loop.'''
         return self.sys_time >= self.next_processing_loop_start_time
             
-    def need_to_run_sensor_loop(self):
+    def _need_to_run_sensor_loop(self):
         '''Return true if it's time to run sensor processing loop.'''
         return self.sys_time >= self.next_sensor_loop_start_time
-            
-    def need_to_send_heartbeat(self):
-        '''Return true if it's time to send a heartbeat message to controller.'''
-        time_since_last_heartbeat = self.sys_time - self.last_sent_heartbeat_time 
-        return time_since_last_heartbeat >= self.heartbeat_period

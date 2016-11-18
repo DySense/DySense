@@ -22,8 +22,6 @@ from dysense.core.utility import format_id, json_dumps_unicode, utf_8_encoder
 from dysense.core.utility import make_unicode, make_utf8, validate_type, make_filename_unique
 from dysense.core.version import app_version, output_version
 
-SENSOR_HEARTBEAT_PERIOD = 0.5 # how long to wait between sending/expecting heartbeats from sensors (in seconds)
-
 class ManagerConnection(object):
     
     def __init__(self, router_id, is_on_different_computer):
@@ -33,7 +31,7 @@ class ManagerConnection(object):
 
 class SensorController(object):
     
-    def __init__(self, context, metadata, controller_id):
+    def __init__(self, context, metadata, controller_id, sensor_interface):
         
         self.setup_logging()
         
@@ -58,6 +56,8 @@ class SensorController(object):
         self._fixed_height_source = None
         
         self.controller_id = format_id(controller_id) 
+        
+        self.sensor_interface = sensor_interface
         
         self.active_issues = []
         self.resolved_issues = []        
@@ -94,7 +94,7 @@ class SensorController(object):
         self.last_utc_time = 0.0
         self.last_sys_time_update = 0.0
         
-        # Used for testing message passing timing.
+        # Used for timing test dealing with message passing.
         self.time_test_durations = []
         
         # Used for creating new sensor drivers. Can't instantiate it until we know what endpoints we're bound to.
@@ -105,17 +105,11 @@ class SensorController(object):
         
         # Endpoints for sensors and managers to connect to.
         # Need to bind to all interfaces for managers since they can connect from another computer.
-        self.sensor_local_endpoint = 'inproc://sensors'
-        self.sensor_remote_endpoints = ['tcp://127.0.0.1:{}'.format(p) for p in range(60110, 60120)]
         self.manager_local_endpoint = 'inproc://managers'
         self.manager_remote_endpoints = ['tcp://0.0.0.0:{}'.format(p) for p in range(60120, 60130)]
         
         # ZMQ sockets aren't threadsafe so need to wait until thread starts to create them.
         self.manager_socket = None
-        self.sensor_socket = None
-        
-        # Lookup tables of {client_id: router_id} so we can figure out how to address clients.
-        self.sensor_router_ids = {}
         
         self.message_callbacks = { # From Managers
                                   'request_connect': self.handle_request_connect,
@@ -138,6 +132,14 @@ class SensorController(object):
                                   'new_sensor_heartbeat': self.handle_new_sensor_heartbeat,
                                   'new_sensor_event': self.handle_new_sensor_event,
                                   }
+        
+        # Register callbacks with interface.
+        self.sensor_interface.register_callbacks(self.message_callbacks)
+        self.sensor_interface.heartbeat_period = 0.5 # seconds
+        
+        # TODO should this be in main? 
+        # |
+        # V
         
         # Time is treated as a double-precision floating point number which should always be true.
         # If for some reason it's not then notify a user that all times will be incorrect.
@@ -344,22 +346,26 @@ class SensorController(object):
     def setup(self):
         
         self.manager_socket = self.context.socket(zmq.ROUTER)
-        self.sensor_socket = self.context.socket(zmq.ROUTER)
         
         self.manager_socket.bind(self.manager_local_endpoint)
-        self.bind_to_first_open_endpoint(self.manager_socket, self.manager_remote_endpoints)
-        self.sensor_socket.bind(self.sensor_local_endpoint)
-        self.sensor_remote_endpoint = self.bind_to_first_open_endpoint(self.sensor_socket, self.sensor_remote_endpoints)
-
-        self.sensor_driver_factory = SensorDriverFactory(self.context, self.sensor_local_endpoint, self.sensor_remote_endpoint)
+        self.manager_socket.bind(self.manager_remote_endpoints[0])
+        #self.bind_to_first_open_endpoint(self.manager_socket, self.manager_remote_endpoints)
+        
+        # Now that thread is started can setup interface.
+        self.sensor_interface.setup()
+        
+        # Need to do this after remote endpoint is determined.
+        self.sensor_driver_factory = SensorDriverFactory(self.context,
+                                                         self.sensor_interface.local_endpoint,
+                                                         self.sensor_interface.remote_endpoint)
 
     def run_message_loop(self):
     
         # Use a poller so we can use timeout to check if any sensors aren't responding.
-        timeout = SENSOR_HEARTBEAT_PERIOD * 1000  # milliseconds
+        timeout = 500  # milliseconds
         poller = zmq.Poller()
         poller.register(self.manager_socket, zmq.POLLIN)
-        poller.register(self.sensor_socket, zmq.POLLIN)
+        poller.register(self.sensor_interface._socket, zmq.POLLIN)
     
         # How often to run slower rate 'update' loop.
         update_loop_interval = 0.1
@@ -374,24 +380,10 @@ class SensorController(object):
 
             current_time = time.time()
             if current_time >= next_update_loop_time:
-
+                
                 for sensor in self.sensors:
-                    # Mark that we've tried to receive message from sensor.
-                    sensor.last_message_processing_time = time.time()
+                    sensor.refresh_state()
                     
-                    if sensor.stopped_responding() and not sensor.closing:
-                        sensor.update_connection_state('timed_out')
-                    else:
-                        if sensor.need_to_send_heartbeat():
-                            self._send_sensor_message(sensor.sensor_id, 'heartbeat', '')
-                            sensor.last_sent_heartbeat_time = time.time()
-                        if (sensor.connection_state != 'opened') and sensor.num_messages_received > 0 and not sensor.closing:
-                            # Just started receiving sensor messages.
-                            sensor.update_connection_state('opened')
-                            if self.session_active:
-                                # Update any session-dependent settings that were lost when sensor was closed.
-                                self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', sensor.data_file_path))
-
                 for issue in self.active_issues[:]:
                     if issue.expired:
                         self.active_issues.remove(issue)
@@ -399,7 +391,7 @@ class SensorController(object):
                         self.send_controller_issue_event('issue_resolved', issue)
                         self.send_entire_controller_info()
 
-                # TODO make this more efficient when receiving sources were not constantly trying to resolve issues that don't exist.
+                # TODO make this more efficient when receiving sources we're not constantly trying to resolve issues that don't exist.
                 if self.session_active:
                     if self.time_source and not self.time_source.receiving:
                         self.try_create_issue(self.controller_id, self.time_source.sensor_id, 'lost_time_source', 'Not receiving data from time source.', 'critical')
@@ -421,7 +413,7 @@ class SensorController(object):
                         else:
                             self.try_resolve_issue(source.sensor_id, 'lost_height_source')
                 else: 
-                    # TODO make this more efficient when receiving sources were not constantly trying to resolve issues that don't exist. 
+                    # TODO make this more efficient when receiving sources we're not constantly trying to resolve issues that don't exist. 
                     if self.time_source:
                         self.try_resolve_issue(self.time_source.sensor_id, 'lost_time_source')
                     for source in self.position_sources:
@@ -448,12 +440,10 @@ class SensorController(object):
         if self.manager_socket:
             self.manager_socket.close()
             
-        if self.sensor_socket:
-            self.sensor_socket.close()
+        self.sensor_interface.close()
             
     def close_down_sensor(self, sensor):
         
-        self.send_command_to_sensor(sensor.sensor_id, 'close')
         try:
             sensor.close()
         except SensorCloseTimeout:
@@ -463,36 +453,14 @@ class SensorController(object):
 
         msgs = dict(poller.poll(timeout)) 
 
-        if self.sensor_socket in msgs and msgs[self.sensor_socket] == zmq.POLLIN:
+        if self.sensor_interface._socket in msgs and msgs[self.sensor_interface._socket] == zmq.POLLIN:
             # New message is waiting.
-            self.process_new_message_from_sensor()
+            self.sensor_interface.process_new_messages()
             
         if self.manager_socket in msgs and msgs[self.manager_socket] == zmq.POLLIN:
             # New message is waiting.
             self.process_new_message_from_manager()
-            
-    def process_new_message_from_sensor(self):
-        
-        router_id, message = self.sensor_socket.recv_multipart()
-        message = json.loads(message)
-        sensor_id = message['sensor_id']
-        self.sensor_router_ids[sensor_id] = router_id 
-        try:
-            sensor = self.find_sensor(sensor_id)
-        except ValueError:
-            return # sensor doesn't exist, it was likely recently removed.
-        
-        message_callback = self.message_callbacks[message['type']]
-        message_body = message['body']
-        if isinstance(message_body, (tuple, list)):
-            message_callback(sensor, *message_body)
-        else:
-            message_callback(sensor, message_body)
-            
-        sensor.last_received_message_time = time.time()
-        sensor.last_message_processing_time = time.time()
-        sensor.num_messages_received += 1
-        
+      
     def process_new_message_from_manager(self):
         
         router_id, message = self.manager_socket.recv_multipart()
@@ -511,18 +479,7 @@ class SensorController(object):
             message_callback(manager, *message_body)
         else:
             message_callback(manager, message_body)
-        
-    def bind_to_first_open_endpoint(self, socket, endpoints):
-        
-        for endpoint in endpoints:
-            try:
-                socket.bind(endpoint)
-                return endpoint
-            except (zmq.ZMQBindError, zmq.ZMQError):
-                continue  # Try next endpoint
-  
-        raise Exception("Failed to bind to any of the following endpoints {}".format(endpoints))
-        
+
     def send_entire_controller_info(self):
     
         self._send_manager_message('all', 'entire_controller_update', self.public_info)
@@ -595,17 +552,16 @@ class SensorController(object):
             self.log_message("Cannot add sensor '{}' because there's already a sensor with that name.".format(sensor_name), logging.ERROR, manager)
             return
             
-        new_sensor = SensorConnection(metadata['version'], sensor_name, self.controller_id, sensor_type,
-                                      SENSOR_HEARTBEAT_PERIOD, settings, position_offsets, orientation_offsets,
-                                      instrument_type, instrument_tag, metadata, self, self.sensor_driver_factory)
+        new_sensor = SensorConnection(self.sensor_interface, metadata['version'], sensor_name, self.controller_id, sensor_type,
+                                      settings, position_offsets, orientation_offsets, instrument_type, instrument_tag,
+                                      metadata, self, self.sensor_driver_factory)
         
         self.sensors.append(new_sensor)
         
         self.send_entire_sensor_info('all', new_sensor)
         
         # Validate all settings once sensor has been sent to all managers.
-        for setting_name, setting_value in new_sensor.settings.items():
-            new_sensor.update_setting(setting_name, setting_value)
+        new_sensor.validate_settings()
         
         self.log_message("Added new sensor {} ({}).".format(sensor_name, sensor_type), logging.DEBUG)
 
@@ -684,7 +640,6 @@ class SensorController(object):
         try:
             new_value = make_unicode(new_value).strip()
             sensor.update_setting(setting_name, new_value)
-            self._send_sensor_message(sensor.sensor_id, 'change_setting', (setting_name, new_value))
         except ValueError as e:
             self.log_message(make_unicode(e), logging.ERROR, manager)
             self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
@@ -719,20 +674,20 @@ class SensorController(object):
         if info_name == 'instrument_tag':
             value = format_id(make_unicode(value))
             if value != '':
-                sensor.update_instrument_tag(value)
+                sensor.instrument_tag = value
             else:
                 self.log_message("Instrument tag can't be empty.", logging.ERROR, manager)
                 self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
             
         elif info_name == 'position_offsets':
             try:
-                sensor.update_position_offsets(value)
+                sensor.position_offsets = value
             except ValueError:
                 self.log_message('Invalid position offset.', logging.ERROR, manager)
                 self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
         elif info_name == 'orientation_offsets':
             try:
-                sensor.update_orientation_offsets(value)
+                sensor.orientation_offsets = value
             except ValueError:
                 self.log_message('Invalid orientation offset.', logging.ERROR, manager)
                 self.send_entire_sensor_info(manager.router_id, sensor) # so user can be notified setting didn't change.
@@ -753,7 +708,7 @@ class SensorController(object):
             if command_name == 'close':
                 self.close_down_sensor(sensor)
             else:
-                self.send_command_to_sensor(sensor.sensor_id, command_name, command_args)
+                sensor.send_command(command_name, command_args)
     
     def handle_change_controller_info(self, manager, info_name, info_value):
 
@@ -901,8 +856,9 @@ class SensorController(object):
             sys_time = time.time()
             
         new_time = (utc_time, sys_time)
-        self._send_sensor_message('all', 'time', new_time)
-        
+        for sensor in self.sensors:
+            sensor.send_time(new_time)
+
         self.last_utc_time = utc_time
         self.last_sys_time_update = time.time()
         
@@ -944,8 +900,8 @@ class SensorController(object):
             self.session_pause_on_resume = True
                 
             # Make sure sensors aren't saving data files.
-            for sensor in self.sensors:
-                self.send_command_to_sensor(sensor.sensor_id, 'pause')
+            self.send_command_to_all_sensors('pause')
+            
         elif command_name == 'stop_session':
             self.session_notes = command_args
             self.stop_session(manager)
@@ -965,9 +921,9 @@ class SensorController(object):
     
     def handle_new_sensor_status(self, sensor, state, health, paused):
 
-        sensor.update_sensor_state(state)
-        sensor.update_sensor_health(health)
-        sensor.update_sensor_paused(paused)
+        sensor.sensor_state = state
+        sensor.sensor_health = health
+        sensor.sensor_paused = paused
         
     def handle_new_sensor_heartbeat(self, sensor, unused):
         # Don't need to do anything since all sensor messages are treated as heartbeats.
@@ -1007,8 +963,7 @@ class SensorController(object):
                 self.log_message('Session resumed.', logging.INFO)
             
             # Already have a session started, so make sure all sensors are un-paused.
-            for sensor in self.sensors:
-                self.send_command_to_sensor(sensor.sensor_id, 'resume')
+            self.send_command_to_all_sensors('resume')
                 
             return True # session already setup and in a good state so consider successful
         
@@ -1094,16 +1049,14 @@ class SensorController(object):
 
             if still_have_critical_issue:
                 # Make sure all sensors aren't saving data files because data isn't being logged.
-                for sensor in self.sensors:
-                    self.send_command_to_sensor(sensor.sensor_id, 'pause')
+                self.send_command_to_all_sensors('pause')
             else: 
                 if self.session_pause_on_resume:
                     self.session_state = 'paused'
                 else:
                     # Automatically resume session.
                     self.session_state = 'started'
-                    for sensor in self.sensors:
-                        self.send_command_to_sensor(sensor.sensor_id, 'resume')
+                    self.send_command_to_all_sensors('resume')
                     
     def verify_controller_settings(self, manager):
         
@@ -1147,9 +1100,7 @@ class SensorController(object):
         for sensor in self.sensors:
             sensor_data_file_directory = "{}_{}_{}".format(sensor.sensor_id, sensor.instrument_type, sensor.instrument_tag)
             sensor_data_file_path = os.path.join(data_files_path, sensor_data_file_directory)
-            self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', sensor_data_file_path))
-            # Save this path in case sensor closes so we can tell it where to save when it re-opens if session is still active.
-            sensor.data_file_path = sensor_data_file_path
+            sensor.update_data_file_directory(sensor_data_file_path)
 
         data_logs_path = os.path.join(self.session_path, 'data_logs/')
         
@@ -1176,12 +1127,12 @@ class SensorController(object):
             
         # Start all other sensors now that session is started.
         self.log_message("Starting all sensors.")
-        for sensor in self.sensors:
-            self.send_command_to_sensor(sensor.sensor_id, 'resume')
+        self.send_command_to_all_sensors('resume')
 
-    def send_command_to_sensor(self, sensor_id, command_name, command_args=None):
+    def send_command_to_all_sensors(self, command_name, command_args=None):
         
-        self._send_sensor_message(sensor_id, 'command', (command_name, command_args))
+        for sensor in self.sensors:
+            sensor.send_command(command_name, command_args)
 
     def stop_session(self, manager, interrupted=False):
 
@@ -1196,16 +1147,14 @@ class SensorController(object):
             self.session_state = 'closed' # make sure state is reset
             return # already closed
         
-        for sensor in self.sensors:
-            self.send_command_to_sensor(sensor.sensor_id, 'pause')
+        self.send_command_to_all_sensors('pause')
         
         for sensor in self.sensors:
             sensor.output_file.terminate()
             
         # Go through and tell every sensor to stop saving data files to the current session.
         for sensor in self.sensors:
-            self._send_sensor_message(sensor.sensor_id, 'change_setting', ('data_file_directory', None))
-            sensor.data_file_path = None
+            sensor.update_data_file_directory(None)
         
         self.close_session_logging()
         self.session_active = False
@@ -1406,20 +1355,6 @@ class SensorController(object):
                 self.manager_socket.send_multipart([router_id, json_dumps_unicode(message)])
         else:  # just send to a single manager
             self.manager_socket.send_multipart([router_id, json_dumps_unicode(message)])
-
-    def _send_sensor_message(self, sensor_id, message_type, message_body):
-        
-        message = {'type': message_type, 'body': message_body}
-
-        if sensor_id == 'all':  # send to all sensors
-            for router_id in self.sensor_router_ids.values():
-                self.sensor_socket.send_multipart([router_id, json_dumps_unicode(message)])
-        else:  # just send to single sensor
-            try:
-                router_id = self.sensor_router_ids[sensor_id]
-                self.sensor_socket.send_multipart([router_id, json_dumps_unicode(message)])
-            except KeyError:
-                pass  # haven't received message from sensor yet so don't know how to address it.
 
     def _make_sensor_name_unique(self, sensor_name, sensor_id='none'):
         

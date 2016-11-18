@@ -5,87 +5,50 @@ import time
 
 from dysense.core.sensor_creation import SensorCloseTimeout
 from dysense.core.utility import validate_setting, validate_type, pretty, make_unicode
+from dysense.interfaces.component_connection import ComponentConnection
 
-class SensorConnection(object):
+class SensorConnection(ComponentConnection):
     
-    # The keys are the possible states the connection can be in.
-    # The values are the 'health' associated with each state.
-    possible_states = {'closed': 'neutral',
-                       'setup': 'neutral',
-                       'opened': 'good',
-                       'timed_out': 'bad',
-                       'error': 'bad',
-                       }
-    
-    def __init__(self, version, sensor_id, controller_id, sensor_type, heartbeat_period, settings,
-                 position_offsets, orientation_offsets, instrument_type, instrument_tag, metadata, observer, driver_factory):
+    def __init__(self, interface, version, sensor_id, controller_id, sensor_type, settings, position_offsets, 
+                 orientation_offsets, instrument_type, instrument_tag, metadata, controller, driver_factory):
         '''Constructor'''
+        
+        super(SensorConnection, self).__init__(interface, sensor_id)
         
         self.version = version
         self.sensor_id = sensor_id # same as sensor name
         self.controller_id = controller_id
-        self.sensor_type = sensor_type
-        self.settings = settings
+        self._sensor_type = sensor_type
+        self._settings = settings
         self.metadata = metadata
-        #self.parameters = self.load_parameters(metadata)
 
-        self.connection_state = 'closed'
-        self.connection_health = SensorConnection.possible_states[self.connection_state]
-        
-        self.sensor_state = 'closed'
-        self.sensor_health = 'neutral'
-        self.sensor_paused = True
+        self._sensor_state = 'closed'
+        self._sensor_health = 'neutral'
+        self._sensor_paused = True
         
         self.overall_health = 'neutral'
         
         self.text_messages = []
         
         # Sensor offsets relative to vehicle position.
-        self.position_offsets = position_offsets # Forward right down - meters
-        self.orientation_offsets = orientation_offsets # Roll pitch yaw - degrees
+        self._position_offsets = position_offsets # Forward right down - meters
+        self._orientation_offsets = orientation_offsets # Roll pitch yaw - degrees
         
         # ID of the sensor itself, not the one assigned by the program.
-        self.instrument_type = instrument_type
-        self.instrument_tag = instrument_tag
+        self._instrument_type = instrument_type
+        self._instrument_tag = instrument_tag
         
         # Where to save data files (e.g. images) to. Only valid when session is active.
-        self.data_file_path = None
-        
-        # Set to true when the sensor reports that it's closing down.
-        self.closing = False
+        self._desired_data_file_path = None
         
         # Either thread or process object that sensor driver runs in.
         self.sensor_driver = None
         
-        # Notified when one of the public connection fields change.
-        self.observer = observer
+        # Notified when one of the public sensor fields change.
+        self.controller = controller
         
         # Used to create new sensors.
         self.driver_factory = driver_factory
-        
-        # How often (in seconds) we should receive a new message from sensor and how often we should send one back.
-        self.heartbeat_period = heartbeat_period
-        
-        # If we don't receive a new message in this time then consider sensor dead. (in seconds) 
-        self.sensor_timeout_thresh = self.heartbeat_period * 10
-        
-        # How long to wait for sensor to send first message before timing out. (in seconds)
-        self.max_time_to_receive_message = self.sensor_timeout_thresh * 1.5
-        
-        # Last system time that we tried to process new messages from sensor.
-        self.last_message_processing_time = 0
-        
-        # Last system time that we received a new message from sensor.
-        self.last_received_message_time = 0
-        
-        # Last time we sent out a heartbeat message.
-        self.last_sent_heartbeat_time = 0
-        
-        # Time that interface was connected to sensor.
-        self.interface_connection_time = 0
-    
-        # How many message have been received from sensor.
-        self.num_messages_received = 0
         
     @property
     def public_info(self):
@@ -93,10 +56,9 @@ class SensorConnection(object):
         return {'sensor_id': self.sensor_id,
                 'controller_id': self.controller_id,
                 'sensor_type': self.sensor_type,
-                'settings': self.settings,
-                #'parameters': self.parameters,
-                'connection_state': self.connection_state,
-                'connection_health': self.connection_health,
+                'settings': self._settings,
+                'connection_state': self._connection_state,
+                'connection_health': self._connection_health,
                 'sensor_state': self.sensor_state,
                 'sensor_health': self.sensor_health,
                 'sensor_paused': self.sensor_paused,
@@ -106,15 +68,86 @@ class SensorConnection(object):
                 'orientation_offsets': self.orientation_offsets,
                 'instrument_type': self.instrument_type,
                 'instrument_tag': self.instrument_tag,
-                'metadata': self.metadata}
+                'metadata': self.metadata
+                }
         
     @property
     def instrument_id(self):
         return '{}_{}'.format(self.instrument_type, self.instrument_tag)
         
-    def update_sensor_type(self, new_value):
-        self.sensor_type = new_value
-        self.observer.notify_sensor_changed(self.sensor_id, 'sensor_type', self.sensor_type)
+    @property
+    def sensor_type(self):
+        return self._sensor_type
+    @sensor_type.setter
+    def sensor_type(self, new_value):
+        self._sensor_type = new_value
+        self.notify_controller('sensor_type', self._sensor_type)
+        
+    @property
+    def sensor_state(self):
+        return self._sensor_state
+    @sensor_state.setter
+    def sensor_state(self, new_value):
+        self._sensor_state = new_value
+        self.notify_controller('sensor_state', self._sensor_state)
+        
+    @property
+    def sensor_health(self):
+        return self._sensor_health
+    @sensor_health.setter
+    def sensor_health(self, new_value):
+        self._sensor_health = new_value
+        self.notify_controller('sensor_health', self._sensor_health)
+        self.update_overall_health()
+        
+    @property
+    def sensor_paused(self):
+        return self._sensor_paused
+    @sensor_paused.setter
+    def sensor_paused(self, new_value):
+        self._sensor_paused = new_value
+        self.notify_controller('sensor_paused', self._sensor_paused)
+        
+    @property
+    def position_offsets(self):
+        return self._position_offsets
+    @position_offsets.setter
+    def position_offsets(self, new_value):
+        validated_offsets = []
+        for offset in new_value:
+            validated_offsets.append(validate_type(offset, 'float'))
+        self._position_offsets = validated_offsets
+        self.notify_controller('position_offsets', self._position_offsets)
+        
+    @property
+    def orientation_offsets(self):
+        return self._orientation_offsets
+    @orientation_offsets.setter
+    def orientation_offsets(self, new_value):
+        validated_offsets = []
+        for offset in new_value:
+            validated_offsets.append(validate_type(offset, 'float'))
+        self._orientation_offsets = validated_offsets
+        self.notify_controller('orientation_offsets', self._orientation_offsets)
+
+    @property
+    def instrument_type(self):
+        return self._instrument_type
+    @instrument_type.setter
+    def instrument_type(self, new_value):
+        self._instrument_type = new_value
+        self.notify_controller('instrument_type', self._instrument_type)
+
+    @property
+    def instrument_tag(self):
+        return self._instrument_tag
+    @instrument_tag.setter
+    def instrument_tag(self, new_value):
+        self._instrument_tag = new_value
+        self.notify_controller('instrument_tag', self._instrument_tag)
+        
+    def notify_controller(self, info_name, new_info_value):
+        self.controller.notify_sensor_changed(self.sensor_id, info_name, new_info_value)
         
     def update_setting(self, setting_name, new_value):
 
@@ -122,132 +155,92 @@ class SensorConnection(object):
         
         new_value = validate_setting(new_value, setting_metadata)
         
-        self.settings[setting_name] = new_value
+        self._settings[setting_name] = new_value
         
-        self.observer.notify_sensor_changed(self.sensor_id, 'settings', self.settings)
+        self.notify_controller('settings', self._settings)
         
-    def update_connection_state(self, new_value):
+        self.send_message('change_setting', (setting_name, new_value))
         
+    def validate_settings(self):
+        
+        for setting_name, setting_value in self._settings.items():
+            self.update_setting(setting_name, setting_value)
+        
+    def connection_state_changed(self, new_state):
+        '''Called from parent Connection class whenever state changes.'''
+
         # Auto close if connection state closes or goes bad.
-        if new_value in ['closed', 'error', 'timed_out'] and not self.is_closed():
+        if new_state in ['closed', 'error', 'timed_out'] and not self.is_closed():
             self.close()
         
-        if self.connection_state == new_value:
-            return 
-        
-        self.connection_state = new_value
-        self.connection_health = SensorConnection.possible_states[new_value]
-        self.observer.notify_sensor_changed(self.sensor_id, 'connection_state', self.connection_state)
-        self.observer.notify_sensor_changed(self.sensor_id, 'connection_health', self.connection_health)
+        self.notify_controller('connection_state', self._connection_state)
+        self.notify_controller('connection_health', self._connection_health)
         self.update_overall_health()
+        
+        if self._connection_state == 'opened':
+            # Update any session-dependent settings that were lost when sensor was closed.
+            self.update_data_file_directory(self._desired_data_file_path)
         
         # Show user (and log) changes in connection state.  Don't show opened since printing two
         # messages is obnoxious.  If it's not opened then it will throw an error or timeout.
-        if new_value != 'opened':
-            self.observer.handle_new_sensor_text(self, 'Driver {}'.format(pretty(new_value)))
-        
-    def update_sensor_state(self, new_value):
-        self.sensor_state = new_value
-        self.observer.notify_sensor_changed(self.sensor_id, 'sensor_state', self.sensor_state)
-        
-    def update_sensor_health(self, new_value):
-        self.sensor_health = new_value
-        self.observer.notify_sensor_changed(self.sensor_id, 'sensor_health', self.sensor_health)
-        self.update_overall_health()
-        
-    def update_sensor_paused(self, new_value):
-        self.sensor_paused = new_value
-        self.observer.notify_sensor_changed(self.sensor_id, 'sensor_paused', self.sensor_paused)
+        if new_state != 'opened':
+            self.controller.handle_new_sensor_text(self, 'Driver {}'.format(pretty(new_state)))
         
     def update_overall_health(self):
         
-        if self.connection_health == 'bad' or self.sensor_health == 'bad':
+        if self._connection_health == 'bad' or self.sensor_health == 'bad':
             self.overall_health = 'bad'
-        elif self.connection_health == 'good' and self.sensor_health == 'good':
+        elif self._connection_health == 'good' and self.sensor_health == 'good':
             self.overall_health = 'good'
         else:
             self.overall_health = 'neutral'
-        self.observer.notify_sensor_changed(self.sensor_id, 'overall_health', self.overall_health)
+        self.notify_controller('overall_health', self.overall_health)
         
         # Make sure an issue is active if the health is bad.
         if self.overall_health == 'bad':
-            if self.connection_health == 'bad' and self.sensor_health == 'bad':
-                issue_reason = "Bad driver state '{}' and bad sensor state '{}'".format(self.connection_state, self.sensor_state)
-            elif self.connection_health == 'bad':
-                issue_reason = "Bad driver state '{}'".format(self.connection_state)
+            if self._connection_health == 'bad' and self.sensor_health == 'bad':
+                issue_reason = "Bad driver state '{}' and bad sensor state '{}'".format(self._connection_state, self.sensor_state)
+            elif self._connection_health == 'bad':
+                issue_reason = "Bad driver state '{}'".format(self._connection_state)
             else: # just sensor health is bad
                 issue_reason = "Bad sensor state '{}'".format(self.sensor_state)
         
-            self.observer.try_create_issue(self.observer.controller_id, self.sensor_id, 'unhealthy_sensor', issue_reason, 'error')
+            self.controller.try_create_issue(self.controller.controller_id, self.sensor_id, 'unhealthy_sensor', issue_reason, 'error')
         else:
             # Resolve any possible old issues dealing with sensor health.
-            self.observer.try_resolve_issue(self.sensor_id, 'unhealthy_sensor')
-        
-    def update_position_offsets(self, new_value):
-        
-        validated_offsets = []
-        for offset in new_value:
-            validated_offsets.append(validate_type(offset, 'float'))
-        
-        self.position_offsets = validated_offsets
-        self.observer.notify_sensor_changed(self.sensor_id, 'position_offsets', self.position_offsets)
-        
-    def update_orientation_offsets(self, new_value):
-        
-        validated_offsets = []
-        for offset in new_value:
-            validated_offsets.append(validate_type(offset, 'float'))
-        
-        self.orientation_offsets = validated_offsets
-        self.observer.notify_sensor_changed(self.sensor_id, 'orientation_offsets', self.orientation_offsets)
-        
-    def update_instrument_type(self, new_value):
-        self.instrument_type = new_value
-        self.observer.notify_sensor_changed(self.sensor_id, 'instrument_type', self.instrument_type)
-        
-    def update_instrument_tag(self, new_value):
-        self.instrument_tag = new_value
-        self.observer.notify_sensor_changed(self.sensor_id, 'instrument_tag', self.instrument_tag)
+            self.controller.try_resolve_issue(self.sensor_id, 'unhealthy_sensor')
         
     def reset(self):
         '''Reset all fields that may have changed last time sensor was setup/running.'''
         
-        self.update_connection_state('closed')
-        self.update_sensor_state('closed')
-        self.update_sensor_health('neutral')
-        self.update_sensor_paused(True)
+        ComponentConnection.reset(self)
+        
+        self.sensor_state ='closed'
+        self.sensor_health = 'neutral'
+        self.sensor_paused = True
         self.text_messages = []
-        self.closing = False
-        self.last_message_processing_time = 0
-        self.last_received_message_time = 0
-        self.last_sent_heartbeat_time = 0
-        self.interface_connection_time = 0
-        self.num_messages_received = 0
         
     def setup(self):
         
         if self.sensor_driver:
             return # Need to call close() first before making a new sensor driver instance
         
-        self.reset();
+        self.reset()
         
         try:
-            self.sensor_driver = self.driver_factory.create_sensor(self.sensor_type, self.sensor_id, self.instrument_id, self.settings)
+            self.sensor_driver = self.driver_factory.create_sensor(self.sensor_type, self.sensor_id, self.instrument_id, self._settings)
         except Exception as e:
-            self.observer.handle_new_sensor_text(self, "{}".format(repr(e)))
+            self.controller.handle_new_sensor_text(self, "{}".format(repr(e)))
         
         if self.sensor_driver:
             self.update_connection_state('setup')
-            # Save when we setup sensor to help for detecting timeout if sensor never responds at all.
-            self.interface_connection_time = time.time()
         else:
             self.update_connection_state('error')
 
     def close(self):
         '''Close down process or thread associated with connection.  Need to send close message before calling this.'''
         
-        # Mark that sensor is closing so it doesn't try to re-open when new messages arrive.
-        self.closing = True
+        self.send_command('close')
         
         try:
             if self.sensor_driver:
@@ -256,38 +249,27 @@ class SensorConnection(object):
             else:
                 # There's no driver to close down.  Most likely this is the user hitting close after there's been an error
                 # so just reset the driver state since the user is essentially 'acknowledging' they say what was wrong.
-                self.update_sensor_state('closed')
-                self.update_sensor_health('neutral')
-                self.update_sensor_paused(True)
+                self.sensor_state = 'closed'
+                self.sensor_health = 'neutral'
+                self.sensor_paused = True
         except SensorCloseTimeout:
             pass # TODO notify that sensor didn't close down in required time
-            
-        self.update_connection_state('closed')
-        
+
+        ComponentConnection.close(self)
+
     def is_closed(self):
-        '''Return true if sensor driver isn't closed.'''
+        '''Return true if sensor driver is closed.'''
         return self.sensor_driver is None
 
-    def stopped_responding(self):
-        '''Return true if it's been too long since we've received a new message from sensor.'''
+    def update_data_file_directory(self, new_directory_path):
         
-        if self.connection_state in ['closed']:
-            return False # Shouldn't be receiving messages.
+        self._desired_data_file_path = new_directory_path
+        self.send_message('change_setting', ('data_file_directory', new_directory_path))
         
-        if self.interface_connection_time == 0 or self.last_message_processing_time == 0:
-            # Haven't tried to receive any messages yet so can't know if we're timed out.
-            return False 
+    def send_time(self, new_time):
         
-        if self.num_messages_received == 0:
-            # Give sensor more time to send first message.
-            time_since_connecting = self.last_message_processing_time - self.interface_connection_time
-            return time_since_connecting > self.max_time_to_receive_message
-            
-        # We're getting messages so use normal timeout.
-        time_since_last_message = self.last_message_processing_time - self.last_received_message_time
-        return time_since_last_message > self.sensor_timeout_thresh
-            
-    def need_to_send_heartbeat(self):
-        '''Return true if it's time to send a heartbeat message to sensor.'''
-        time_since_last_heartbeat = time.time() - self.last_sent_heartbeat_time 
-        return time_since_last_heartbeat > self.heartbeat_period
+        self.send_message('time', new_time)
+        
+    def send_command(self, command_name, command_args=None):
+        
+        self.send_message('command', (command_name, command_args))
