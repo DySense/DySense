@@ -60,25 +60,23 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     c2m_server = ServerInterface(zmq_context, 'controller', 'c2m', ports=range(60120, 60130), all_addresses=True)
     
     # Server for manager to talk to presenters, and client so managers can talk to controllers.
-    #m2p_server = ServerInterface(client='presenter', server='manager', ports=None)
+    m2p_server = ServerInterface(zmq_context, 'manager', 'm2p', ports=None)
     m2c_client = ClientInterface(zmq_context, 'manager')
     
     # Client for presenter to talk to managers.
-    #p2m_client = ClientInterface(m2p_server.local_endpoint)
+    p2m_client = ClientInterface(zmq_context, 'gui_presenter')
 
     # Wire clients to servers so that when they are setup they will automatically connect.
     m2c_client.wire_locally_to(c2m_server)
+    p2m_client.wire_locally_to(m2p_server)
 
     # Configure system.
-    controller_manager = ControllerManager(zmq_context, m2c_client)
-    gui_presenter = GUIPresenter(zmq_context, controller_manager, sensor_metadata)
+    controller_manager = ControllerManager(m2c_client, m2p_server)
+    gui_presenter = GUIPresenter(p2m_client, sensor_metadata)
     main_window = DysenseMainWindow(gui_presenter, sensor_metadata['sensors'])   
     sensor_controller = SensorController(zmq_context, sensor_metadata, main_window.local_controller_name, c2s_server, c2m_server)
     
     gui_presenter.setup_view(main_window)
-    
-    # Tell presenter how to connect to manager.
-    gui_presenter.connect_endpoint(controller_manager.presenter_local_endpoint)
     
     # Start up component threads.
     controller_manager_thread = threading.Thread(target=controller_manager.run)
@@ -86,7 +84,6 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     controller_manager_thread.start()
     sensor_controller_thread.start()
     
-    # Must do this after starting up threads so socket has a peer to connect with.
     gui_presenter.add_controller(c2m_server.local_endpoint, sensor_controller.controller_id)
     gui_presenter.receive_messages()
     

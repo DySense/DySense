@@ -19,12 +19,11 @@ RECEIVE_TIMER_INTERVAL = 0.1 # seconds
 
 class GUIPresenter(QObject):
     
-    def __init__(self, context, manager, metadata, view=None):
+    def __init__(self, manager_interface, metadata, view=None):
         
         super(GUIPresenter, self).__init__()
         
-        self.context = context
-        self.manager = manager
+        self.manager_interface = manager_interface
         self.sensor_metadata = metadata['sensors']
         if view:
             self.setup_view(view)
@@ -60,7 +59,8 @@ class GUIPresenter(QObject):
                                   'new_source_data': self.handle_new_source_data,
                                   }
         
-        self.manager_socket = self.context.socket(zmq.DEALER)
+        self.manager_interface.register_callbacks(self.message_callbacks)
+        self.manager_interface.setup()
        
     def setup_view(self, view):
         
@@ -168,7 +168,7 @@ class GUIPresenter(QObject):
 
     def connect_endpoint(self, manager_endpoint):
         
-        self.manager_socket.connect(manager_endpoint)
+        self.manager_interface.connect_to_endpoint('manager', manager_endpoint)
         
     def update_active_sensor(self, active_controller_id, active_sensor_id):
         self.active_controller_id = active_controller_id
@@ -318,7 +318,7 @@ class GUIPresenter(QObject):
 
     def receive_messages(self):
         ''''''
-        self.process_new_messages()
+        self.manager_interface.process_new_messages()
         
         # Constantly reschedule timer to avoid overlapping calls
         QTimer.singleShot(RECEIVE_TIMER_INTERVAL * 1000, self.receive_messages)
@@ -326,7 +326,7 @@ class GUIPresenter(QObject):
     #def change_sensor_parameter(self, parameter_name, value):   
     #   self._send_message_to_active_sensor('parameter_name', (parameter_name, value))
 
-    def handle_entire_sensor_update(self, controller_id, sensor_info):
+    def handle_entire_sensor_update(self, connection, controller_id, sensor_info):
         sensor_id = sensor_info['sensor_id']
 
         is_new_sensor = (controller_id, sensor_id) not in self.sensors
@@ -338,14 +338,14 @@ class GUIPresenter(QObject):
         else:
             self.view.update_all_sensor_info(controller_id, sensor_id, sensor_info)                   
         
-    def handle_sensor_changed(self, controller_id, sensor_id, info_name, value): #this also applies to 'settings' where value = its dictionary
+    def handle_sensor_changed(self, connection, controller_id, sensor_id, info_name, value): #this also applies to 'settings' where value = its dictionary
         #update the dictionary of sensors
         sensor_info = self.sensors[(controller_id, sensor_id)]
         sensor_info[info_name] = value
         
         self.view.update_sensor_info(controller_id, sensor_id, info_name, value)         
             
-    def handle_sensor_removed(self, controller_id, sensor_id):
+    def handle_sensor_removed(self, connection, controller_id, sensor_id):
         
         try:
             del self.sensors[(controller_id, sensor_id)]
@@ -354,13 +354,13 @@ class GUIPresenter(QObject):
         
         self.view.remove_sensor(controller_id, sensor_id)
     
-    def handle_new_sensor_data(self, controller_id, sensor_id, utc_time, sys_time, data, data_ok):
+    def handle_new_sensor_data(self, connection, controller_id, sensor_id, utc_time, sys_time, data, data_ok):
         self.view.show_new_sensor_data(controller_id, sensor_id, data)
     
-    def handle_new_sensor_text(self, controller_id, sensor_id, text):
+    def handle_new_sensor_text(self, connection, controller_id, sensor_id, text):
         self.view.append_sensor_message(controller_id, sensor_id, text)
         
-    def handle_entire_controller_update(self, controller_info):
+    def handle_entire_controller_update(self, connection, controller_info):
         
         controller_id = controller_info['id']
         
@@ -382,7 +382,7 @@ class GUIPresenter(QObject):
                     
         self.view.update_all_controller_info(controller_info['id'], controller_info)
 
-    def handle_controller_event(self, controller_id, event_type, event_args):
+    def handle_controller_event(self, connection, controller_id, event_type, event_args):
         
         if event_type == 'session_started':
             pass 
@@ -438,7 +438,7 @@ class GUIPresenter(QObject):
             # This will cause app.exec_() to return.
             QCoreApplication.exit(1)
         
-    def handle_controller_removed(self, controller_id):
+    def handle_controller_removed(self, connection, controller_id):
         self.view.remove_sensor(controller_id)
         
     def handle_error_message(self, message, level):
@@ -448,10 +448,10 @@ class GUIPresenter(QObject):
 
         self.view.show_user_message(message, level)
     
-    def handle_new_controller_text(self, controller, text):
+    def handle_new_controller_text(self, connection, controller, text):
         self.view.display_message(text)
         
-    def handle_new_source_data(self, controller_id, sensor_id, source_type, utc_time, sys_time, data):
+    def handle_new_source_data(self, connection, controller_id, sensor_id, source_type, utc_time, sys_time, data):
         
         if source_type == 'position':
             self.view.update_map(controller_id, sensor_id, source_type, utc_time, sys_time, data)
@@ -488,25 +488,10 @@ class GUIPresenter(QObject):
 
     def _send_message(self, message_type, message_body):
 
-        self.manager_socket.send(json_dumps_unicode({'type': message_type, 'body': message_body}))
-
-    def process_new_messages(self):
-        
-        while True:
-            try:
-                message = json.loads(self.manager_socket.recv(zmq.NOBLOCK))
-                message_body = message['body']
-                message_callback = self.message_callbacks[message['type']]
-                if isinstance(message_body, (tuple, list)):
-                    message_callback(*message_body)
-                else:
-                    message_callback(message_body)
-            except zmq.ZMQError:
-                break # no more messages right now
+        # TODO don't hardcode manager ID
+        self.manager_interface.send_message('manager', message_type, message_body)
             
     def close(self):
         
-        self.manager.stop_request.set()
-        
-        self.manager_socket.close()
+        self.manager_interface.close()
         

@@ -19,28 +19,14 @@ class ControllerConnection(ComponentConnection):
 
 class ControllerManager(object):
     
-    def __init__(self, context, controller_interface):
-        
-        self.context = context
+    def __init__(self, controller_interface, presenter_interface):
         
         self.controller_interface = controller_interface
+        self.presenter_interface = presenter_interface
         
         self.controllers = []
-        self.presenters = []
         
         self.stop_request = threading.Event()
-        
-        # Endpoint for presenters to connect to.
-        self.presenter_local_endpoint = 'inproc://presenters'
-        
-        # ZMQ sockets aren't threadsafe so need to wait until thread starts to create them.
-        self.presenter_socket = None
-        
-        # Just support a single presenter right now for simplicity.
-        self.presenter_id = 1
-        
-        # Lookup tables of {client_id: router_id} so we can figure out how to address clients.
-        self.presenter_router_ids = {}
         
         self.message_callbacks = {  # From Presenters
                                   'add_controller': self.handle_add_controller,
@@ -61,6 +47,7 @@ class ControllerManager(object):
                                   }
         
         self.controller_interface.register_callbacks(self.message_callbacks)
+        self.presenter_interface.register_callbacks(self.message_callbacks)
 
     def run(self):
 
@@ -86,15 +73,10 @@ class ControllerManager(object):
     def close_down(self):
         
         self.controller_interface.close()
-            
-        if self.presenter_socket:
-            self.presenter_socket.close()
+        self.presenter_interface.close()
     
     def run_message_loop(self):
         
-        self.presenter_socket = self.context.socket(zmq.ROUTER)
-        self.presenter_socket.bind(self.presenter_local_endpoint)
-    
         # Amount of time to wait for new messages before timing out.
         message_timeout = 1000 # milliseconds
     
@@ -102,10 +84,10 @@ class ControllerManager(object):
         # Note this must be done BEFORE setting up interfaces so that sockets will get registered correctly.
         self.poller = zmq.Poller()
         self.controller_interface.register_poller(self.poller)
+        self.presenter_interface.register_poller(self.poller)
         
         self.controller_interface.setup()
-        
-        self.poller.register(self.presenter_socket, zmq.POLLIN)
+        self.presenter_interface.setup()
     
         while True:
             
@@ -124,29 +106,10 @@ class ControllerManager(object):
         # Block until a new message is waiting or timeout occurs.
         msgs = dict(self.poller.poll(timeout))
         
-        #if socket in msgs and msgs[socket] == zmq.POLLIN
-        
-        if self.presenter_socket in msgs and msgs[self.presenter_socket] == zmq.POLLIN:
-            self.process_new_message_from_presenter()
-        
+        self.presenter_interface.process_new_messages()
         self.controller_interface.process_new_messages()
-                
-    def process_new_message_from_presenter(self):
-        
-        router_id, message = self.presenter_socket.recv_multipart()
-        message = json.loads(message)
-        
-        if self.presenter_id not in self.presenter_router_ids:
-            self.presenter_router_ids[self.presenter_id] = router_id
-        
-        message_callback = self.message_callbacks[message['type']]
-        message_body = message['body']
-        if isinstance(message_body, (tuple, list)):
-            message_callback(*message_body)
-        else:
-            message_callback(message_body)
-        
-    def handle_add_controller(self, endpoint, controller_id):
+                    
+    def handle_add_controller(self, presenter, endpoint, controller_id):
 
         controller = ControllerConnection(self.controller_interface, controller_id)
         self.controllers.append(controller)
@@ -154,7 +117,7 @@ class ControllerManager(object):
         self.controller_interface.connect_to_endpoint(controller_id, endpoint)
         controller.send_message('request_connect', '')
 
-    def handle_remove_controller(self, controller_id):
+    def handle_remove_controller(self, presenter, controller_id):
         
         controller = self.find_controller(controller_id)
     
@@ -162,7 +125,7 @@ class ControllerManager(object):
         self.controllers.remove(controller)
         self._send_message_to_presenter('controller_removed', controller_id)
 
-    def handle_forward_to_controller(self, controller_id, controller_message):
+    def handle_forward_to_controller(self, presenter, controller_id, controller_message):
 
         # self.controller_interface.send_forwarded_message(controller_id, controller_message)
         self._send_message_to_controller_by_id(controller_message['type'], controller_message['body'], controller_id)
@@ -208,10 +171,8 @@ class ControllerManager(object):
         
     def _send_message_to_presenter(self, message_type, message_body):
 
-        message = {'type': message_type, 'body': message_body}
-        
-        router_id = self.presenter_router_ids[self.presenter_id]
-        self.presenter_socket.send_multipart([router_id, json_dumps_unicode(message)])
+        # TODO dont hardcode presenter ID
+        self.presenter_interface.send_message('gui_presenter', message_type, message_body)
         
     def _send_message_to_controller_by_id(self, message_type, message_body, controller_id):
 
