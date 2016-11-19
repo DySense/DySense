@@ -49,6 +49,9 @@ class ServerInterface(ComponentInterface):
        
         self._socket = self._context.socket(zmq.ROUTER)
         
+        for poller in self._pollers:
+            poller.register(self._socket, zmq.POLLIN)
+        
         self.bind_to_endpoint(self.local_endpoint)
         if len(self._remote_endpoints) > 0:
             self._remote_endpoint = self._bind_to_first_open_endpoint()
@@ -75,7 +78,7 @@ class ServerInterface(ComponentInterface):
         '''Bind the server socket to the specified endpoint.'''
         
         self._socket.bind(endpoint)
-            
+        
     def _receive_new_message(self):
         '''
         Return next waiting message if available, otherwise raise ZMQError

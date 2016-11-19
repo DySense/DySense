@@ -63,6 +63,9 @@ class ComponentInterface(object):
         # Associate connected component ID with it's corresponding ComponetConnection object.
         self._component_id_to_connection = {}
         
+        # List of pollers that new sockets will automatically be registered with.
+        self._pollers = []
+        
     def register_callbacks(self, callbacks):
         '''Register each item {message_type: callback} in specified dictionary.'''
         
@@ -79,8 +82,11 @@ class ComponentInterface(object):
         Register the connection object for a component that is expected to connect.  This is 
         useful for custom connection objects which track additional information.
         '''
-        component_id = connection.connected_component_id
-        self._component_id_to_connection[component_id] = connection
+        self._component_id_to_connection[connection.id] = connection
+        
+    def register_poller(self, poller):
+        
+        self._pollers.append(poller)
         
     def close_connection(self, component_id):
         

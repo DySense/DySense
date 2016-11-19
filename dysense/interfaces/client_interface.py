@@ -108,6 +108,10 @@ class ClientInterface(ComponentInterface):
         socket.connect(endpoint)
         self._server_id_to_socket[server_id] = socket
         
+        # Register socket with pollers
+        for poller in self._pollers:
+            poller.register(socket, zmq.POLLIN)
+        
         try:
             connection = self.lookup_connection(server_id)
         except KeyError:

@@ -74,7 +74,7 @@ class ComponentConnection(object):
         return self._num_messages_received
         
     @property
-    def connected_component_id(self):
+    def id(self):
         return self._connected_component_id
         
     def update_heartbeat_period(self, new_value):

@@ -9,28 +9,21 @@ import json
 import traceback
 
 from dysense.core.utility import json_dumps_unicode, make_unicode
+from dysense.interfaces.component_connection import ComponentConnection
 
-class ControllerConnection(object):
+class ControllerConnection(ComponentConnection):
     
-    def __init__(self, socket, controller_name='N/A', controller_id=None):
+    def __init__(self, interface, controller_id):
 
-        self.name = controller_name
-        self.id = controller_id
-        self.socket = socket
-        
-    @property
-    def public_info(self):
-        return { 'name': self.name,
-                 'id': self.id }
-        
-    def stopped_responding(self):
-        return False
+        super(ControllerConnection, self).__init__(interface, controller_id)
 
 class ControllerManager(object):
     
-    def __init__(self, context):
+    def __init__(self, context, controller_interface):
         
         self.context = context
+        
+        self.controller_interface = controller_interface
         
         self.controllers = []
         self.presenters = []
@@ -66,6 +59,8 @@ class ControllerManager(object):
                                   'new_controller_text': self.handle_new_controller_text,
                                   'new_source_data': self.handle_new_source_data,
                                   }
+        
+        self.controller_interface.register_callbacks(self.message_callbacks)
 
     def run(self):
 
@@ -88,11 +83,9 @@ class ControllerManager(object):
         finally:
             self.close_down()
 
-    
     def close_down(self):
         
-        for controller in self.controllers:
-            controller.socket.close()
+        self.controller_interface.close()
             
         if self.presenter_socket:
             self.presenter_socket.close()
@@ -101,10 +94,17 @@ class ControllerManager(object):
         
         self.presenter_socket = self.context.socket(zmq.ROUTER)
         self.presenter_socket.bind(self.presenter_local_endpoint)
-        
-        # Use a poller so we can use timeout to check if any controllers aren't responding.
-        self.timeout = 1000  # milliseconds
+    
+        # Amount of time to wait for new messages before timing out.
+        message_timeout = 1000 # milliseconds
+    
+        # Use a poller to receive from multiple interfaces, and to allow timeouts when waiting.
+        # Note this must be done BEFORE setting up interfaces so that sockets will get registered correctly.
         self.poller = zmq.Poller()
+        self.controller_interface.register_poller(self.poller)
+        
+        self.controller_interface.setup()
+        
         self.poller.register(self.presenter_socket, zmq.POLLIN)
     
         while True:
@@ -112,25 +112,24 @@ class ControllerManager(object):
             if self.stop_request.is_set():
                 break  # from main loop
             
-            self.process_new_messages()
+            self.process_new_messages(message_timeout)
 
             for controller in self.controllers:
-                if controller.stopped_responding():
+                if controller.connection_state == 'timed_out':
                     # TODO Notify UI and close down controller.
                     pass
             
-    def process_new_messages(self):
+    def process_new_messages(self, timeout):
         
-        msgs = dict(self.poller.poll(self.timeout)) 
+        # Block until a new message is waiting or timeout occurs.
+        msgs = dict(self.poller.poll(timeout))
+        
+        #if socket in msgs and msgs[socket] == zmq.POLLIN
         
         if self.presenter_socket in msgs and msgs[self.presenter_socket] == zmq.POLLIN:
-            # New message is waiting.
             self.process_new_message_from_presenter()
-            
-        for controller in self.controllers:
-            if controller.socket in msgs and msgs[controller.socket] == zmq.POLLIN:
-                # New message is waiting.
-                self.process_new_message_from_controller(controller)
+        
+        self.controller_interface.process_new_messages()
                 
     def process_new_message_from_presenter(self):
         
@@ -147,38 +146,25 @@ class ControllerManager(object):
         else:
             message_callback(message_body)
         
-    def process_new_message_from_controller(self, controller):
-        
-        message = json.loads(controller.socket.recv())
-        controller.id = message['id']
-        message_body = message['body']
-        
-        message_callback = self.message_callbacks[message['type']]
-        
-        if isinstance(message_body, (tuple, list)):
-            message_callback(controller, *message_body)
-        else:
-            message_callback(controller, message_body)
-        
-    def handle_add_controller(self, endpoint, controller_name):
+    def handle_add_controller(self, endpoint, controller_id):
 
-        socket = self.context.socket(zmq.DEALER)
-        socket.connect(endpoint)
-        controller = ControllerConnection(socket, controller_name)
+        controller = ControllerConnection(self.controller_interface, controller_id)
         self.controllers.append(controller)
-        self.poller.register(socket, zmq.POLLIN)
-        self._send_message_to_controller('request_connect', '', controller)
+        self.controller_interface.register_connection(controller)
+        self.controller_interface.connect_to_endpoint(controller_id, endpoint)
+        controller.send_message('request_connect', '')
 
     def handle_remove_controller(self, controller_id):
         
         controller = self.find_controller(controller_id)
     
-        controller.sock.close()
+        controller.close() # close connection in interface
         self.controllers.remove(controller)
         self._send_message_to_presenter('controller_removed', controller_id)
 
     def handle_forward_to_controller(self, controller_id, controller_message):
 
+        # self.controller_interface.send_forwarded_message(controller_id, controller_message)
         self._send_message_to_controller_by_id(controller_message['type'], controller_message['body'], controller_id)
 
     def handle_entire_controller_update(self, controller, controller_info):
@@ -229,22 +215,13 @@ class ControllerManager(object):
         
     def _send_message_to_controller_by_id(self, message_type, message_body, controller_id):
 
-        message = {'type': message_type, 'body': message_body}
-
         if controller_id == 'all':  # send to all controllers
-            for controller in self.controllers:
-                controller.socket.send(json_dumps_unicode(message))
-        else:  # just send to single controller
-            controller = self.find_controller(controller_id)
-            controller.socket.send(json_dumps_unicode(message))
-            
-    def _send_message_to_controller(self, message_type, message_body, controller):
-
-        message = {'type': message_type, 'body': message_body}
-        controller.socket.send(json_dumps_unicode(message))
+            self.controller_interface.send_message_to_all(message_type, message_body)
+        else:
+            self.controller_interface.send_message(controller_id, message_type, message_body)
         
     def find_controller(self, controller_id):
-    
+
         for controller in self.controllers:
             if controller.id == controller_id:
                 return controller

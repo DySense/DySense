@@ -54,22 +54,26 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     with open("../metadata/sensor_metadata.yaml", 'r') as stream:
         sensor_metadata = yaml_load_unicode(stream)
 
-    # Servers for controllers to talk to sensors and managers
+    # Servers for controllers to talk to sensors and managers.
+    # Manager server needs to bind on all address since it could receive connections from other computers.
     c2s_server = ServerInterface(zmq_context, 'controller', 'c2s', ports=range(60110, 60120), all_addresses=False)
-    #c2m_server = ServerInterface(client='manager', server='controller', ports=range(60120, 60130), all_addresses=True)
+    c2m_server = ServerInterface(zmq_context, 'controller', 'c2m', ports=range(60120, 60130), all_addresses=True)
     
     # Server for manager to talk to presenters, and client so managers can talk to controllers.
     #m2p_server = ServerInterface(client='presenter', server='manager', ports=None)
-    #m2c_client = ClientInterface(c2m_server.local_endpoint)
+    m2c_client = ClientInterface(zmq_context, 'manager')
     
     # Client for presenter to talk to managers.
     #p2m_client = ClientInterface(m2p_server.local_endpoint)
 
+    # Wire clients to servers so that when they are setup they will automatically connect.
+    m2c_client.wire_locally_to(c2m_server)
+
     # Configure system.
-    controller_manager = ControllerManager(zmq_context)
+    controller_manager = ControllerManager(zmq_context, m2c_client)
     gui_presenter = GUIPresenter(zmq_context, controller_manager, sensor_metadata)
     main_window = DysenseMainWindow(gui_presenter, sensor_metadata['sensors'])   
-    sensor_controller = SensorController(zmq_context, sensor_metadata, main_window.local_controller_name, c2s_server)
+    sensor_controller = SensorController(zmq_context, sensor_metadata, main_window.local_controller_name, c2s_server, c2m_server)
     
     gui_presenter.setup_view(main_window)
     
@@ -83,7 +87,7 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     sensor_controller_thread.start()
     
     # Must do this after starting up threads so socket has a peer to connect with.
-    gui_presenter.add_controller(sensor_controller.manager_local_endpoint, 'this_computer')
+    gui_presenter.add_controller(c2m_server.local_endpoint, sensor_controller.controller_id)
     gui_presenter.receive_messages()
     
     try:
