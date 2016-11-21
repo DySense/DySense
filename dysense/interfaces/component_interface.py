@@ -46,7 +46,7 @@ class ComponentInterface(object):
     connection that is made through the interface using ComponentConnection objects.  Part of this 
     connection tracking is using a heartbeat message to ensure the other component hasn't crashed.
     '''
-    def __init__(self, context, component_id):
+    def __init__(self, context, component_id, version):
         '''
         Constructor.  
         
@@ -55,6 +55,7 @@ class ComponentInterface(object):
         '''
         self._context = context
         self.component_id = component_id
+        self.version = version
         self.heartbeat_period = 2 # (seconds) how quickly heartbeat messages should be sent out.
         
         # Dictionary holding user-defined callbacks for when a certain type of message is received.
@@ -181,7 +182,7 @@ class ComponentInterface(object):
         if self.heartbeat_period is None:
             raise Exception("Setup error: Heartbeat period not set.")
        
-        message_body = {'sender_id': self.component_id, 'heartbeat_period': self.heartbeat_period}
+        message_body = {'sender_id': self.component_id, 'heartbeat_period': self.heartbeat_period, 'version': self.version}
         
         self.send_message(recipient_id, 'introduction', message_body)
         

@@ -24,6 +24,7 @@ from dysense.gui.except_hook import excepthook
 from dysense.core.controller_manager import ControllerManager
 from dysense.core.sensor_controller import SensorController
 from dysense.core.utility import yaml_load_unicode, make_unicode
+from dysense.core.version import *
 
 from dysense.interfaces.server_interface import ServerInterface
 from dysense.interfaces.client_interface import ClientInterface
@@ -56,15 +57,15 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
 
     # Servers for controllers to talk to sensors and managers.
     # Manager server needs to bind on all address since it could receive connections from other computers.
-    c2s_server = ServerInterface(zmq_context, 'controller', 'c2s', ports=range(60110, 60120), all_addresses=False)
-    c2m_server = ServerInterface(zmq_context, 'controller', 'c2m', ports=range(60120, 60130), all_addresses=True)
+    c2s_server = ServerInterface(zmq_context, 'controller', 'c2s', s2c_version, ports=range(60110, 60120), all_addresses=False)
+    c2m_server = ServerInterface(zmq_context, 'controller', 'c2m', m2c_version, ports=range(60120, 60130), all_addresses=True)
     
     # Server for manager to talk to presenters, and client so managers can talk to controllers.
-    m2p_server = ServerInterface(zmq_context, 'manager', 'm2p', ports=None)
-    m2c_client = ClientInterface(zmq_context, 'manager')
+    m2p_server = ServerInterface(zmq_context, 'manager', p2m_version, 'm2p', ports=None)
+    m2c_client = ClientInterface(zmq_context, 'manager', m2c_version)
     
     # Client for presenter to talk to managers.
-    p2m_client = ClientInterface(zmq_context, 'gui_presenter')
+    p2m_client = ClientInterface(zmq_context, 'gui_presenter', p2m_version)
 
     # Wire clients to servers so that when they are setup they will automatically connect.
     m2c_client.wire_locally_to(c2m_server)

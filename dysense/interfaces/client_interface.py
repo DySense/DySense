@@ -15,10 +15,10 @@ class ClientInterface(ComponentInterface):
     'wire_to' and 'connect_to' methods. This class maintains a separate ZMQ DEALER (i.e. client)
     socket for each connection in order to address individual servers when sending messages.
     '''
-    def __init__(self, context, component_id):
+    def __init__(self, context, component_id, version):
         '''Constructor.  See parent class for arguments.'''
 
-        super(ClientInterface, self).__init__(context, component_id)
+        super(ClientInterface, self).__init__(context, component_id, version)
         
         # Lookup tables of {server_id: socket} so we can figure out how to address servers.
         # This should only be used to hold valid sockets (i.e. the values should never be None).

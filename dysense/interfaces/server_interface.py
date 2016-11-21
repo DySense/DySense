@@ -14,7 +14,7 @@ class ServerInterface(ComponentInterface):
     ZMQ ROUTER (i.e. server) socket.  These clients can connect using the local (same process)
     endpoint, or optionally the socket can also be bound to a remote port to communicate over TCP.
     '''
-    def __init__(self, context, component_id, local_name, ports=None, all_addresses=True):
+    def __init__(self, context, component_id, local_name, version, ports=None, all_addresses=True):
         '''
         Constructor.  
         
@@ -24,7 +24,7 @@ class ServerInterface(ComponentInterface):
         :param bool all_addresses: If true then will bind remote port to all network addresses (0.0.0.0)
                                    rather than just the home address (127.0.0.1)
         '''
-        super(ServerInterface, self).__init__(context, component_id)
+        super(ServerInterface, self).__init__(context, component_id, version)
         
         self.local_endpoint = 'inproc://' + local_name
         

@@ -26,10 +26,11 @@ class TestLocalConnection(unittest.TestCase):
         
         server_id = 'test_server_1'
         client_id = 'test_client_1'
+        version = '1.0.0'
         
         # TODO do we need to specify what type of client?
-        server = ServerInterface(context, server_id, 'c2s')
-        client = ClientInterface(context, client_id)
+        server = ServerInterface(context, server_id, 'c2s', version)
+        client = ClientInterface(context, client_id, version)
         
         server.heartbeat_period = 3
     
@@ -106,9 +107,10 @@ class TestRemoteConnection(unittest.TestCase):
         
         server_id = 'test_server_1'
         client_id = 'test_client_1'
+        version = '1.0.0'
         
-        server = ServerInterface(context, server_id, 'c2s', [61110], all_addresses=False)
-        client = ClientInterface(context, client_id)
+        server = ServerInterface(context, server_id, 'c2s', version, [61110], all_addresses=False)
+        client = ClientInterface(context, client_id, version)
 
         client.wire_remotely_to(server, '127.0.0.1')
     
@@ -184,11 +186,12 @@ class TestMultiClientConnection(unittest.TestCase):
         server_id = 'test_server_1'
         client1_id = 'test_client_1'
         client2_id = 'test_client_2'
+        version = '1.0.0'
         
         # TODO do we need to specify what type of client?
-        server = ServerInterface(context, server_id, 'c2s')
-        client1 = ClientInterface(context, client1_id)
-        client2 = ClientInterface(context, client2_id)
+        server = ServerInterface(context, server_id, 'c2s', version)
+        client1 = ClientInterface(context, client1_id, version)
+        client2 = ClientInterface(context, client2_id, version)
 
         # Connect second client after first setup.
         client1.wire_locally_to(server)
@@ -245,11 +248,12 @@ class TestMultiServerConnection(unittest.TestCase):
         server1_id = 'test_server_1'
         server2_id = 'test_server_2'
         client_id = 'test_client_1'
+        version = '1.0.0'
         
         # TODO do we need to specify what type of client?
-        server1 = ServerInterface(context, server1_id, 'c2s_1')
-        server2 = ServerInterface(context, server2_id, 'c2s_2', [69999], all_addresses=True)
-        client = ClientInterface(context, client_id)
+        server1 = ServerInterface(context, server1_id, 'c2s_1', version)
+        server2 = ServerInterface(context, server2_id, 'c2s_2', version, [69999], all_addresses=True)
+        client = ClientInterface(context, client_id, version)
 
         # Connect second client after first setup.
         client.wire_locally_to(server1)
