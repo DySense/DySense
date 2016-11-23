@@ -13,7 +13,7 @@ from PyQt4.QtCore import QObject, QTimer, QCoreApplication
 
 from dysense.core.issue import Issue
 from dysense.core.utility import json_dumps_unicode, make_unicode, make_utf8
-from dysense.core.version import *
+from dysense.core.config_file import save_config_file, load_config_file
 
 RECEIVE_TIMER_INTERVAL = 0.1 # seconds
 
@@ -67,91 +67,23 @@ class GUIPresenter(QObject):
         self.view = view
         
     def try_save_config(self, file_path):
+        
         try:
-            self.save_config(file_path)
+            save_config_file(self, file_path)
         except:
-            self.handle_error_message("Unexpected error occurred when saving config.", logging.CRITICAL)
-        
-    def save_config(self, file_path):
-        '''Write current controller/sensors out to specified file path so the user can reload it later.'''
-        # Data is what gets dumped to the file using yaml.
-        data = {}
-       
-        controllers = []
-        for controller_id, controller_info in self.controllers.iteritems():
-            # TODO support multiple controllers
-            useful_info = {}
-            for info_name, info_value in controller_info.iteritems():
-                if info_name in ['settings', 'time_source', 'position_sources', 'orientation_sources', 'height_sources', 'fixed_height_source']:
-                    useful_info[info_name] = info_value
-            controllers.append(useful_info)
-        data['controllers'] = controllers
-
-        sensors = []
-        for (sensor_id, controller_id), sensor_info in self.sensors.iteritems():
-            # TODO save sensors in consistent order
-            # TODO save sensors underneath controllers?
-            useful_info = {}
-            for info_name, info_value in sensor_info.iteritems():
-                if info_name in ['sensor_type', 'sensor_id', 'settings', 'position_offsets', 'orientation_offsets', 'instrument_type', 'instrument_tag']:
-                    useful_info[info_name] = info_value
-            sensors.append(useful_info)
-        data['sensors'] = sensors
-        
-        # Save version number when config was saved for detecting issues when loading config on a different version.        
-        data['app_version'] = app_version
-    
-        with open(file_path, 'w') as outfile:
-            outfile.write(yaml.safe_dump(data, allow_unicode=True, default_flow_style=False))
+            self.new_error_message("Unexpected error occurred when saving config.", logging.CRITICAL)
         
     def try_load_config(self, file_path):
+        
         try:
-            self.load_config(file_path)
+            load_config_file(self, file_path)
         except:
-            self.handle_error_message("Unexpected error occurred when loading config.", logging.CRITICAL)
-        
-    def load_config(self, file_path):
-        '''Load controller/sensors out of specified yaml file path.'''
-        
-        if not os.path.exists(file_path):
-            self.handle_error_message("Config file '{}' does not exist.".format(file_path), logging.ERROR)
-            return
-        
-        # TODO update for multiple controllers
-        if self.local_controller['session_active']:
-            self.invalid_command_during_session('load config')
-            return
-        
-        # TODO remove other controllers (and their sensors?) once that's all supported
-        self.remove_all_sensors(only_on_active_controller=True)
-        
-        with open(file_path, 'r') as stream:
-            data = yaml.load(stream)
-        
-        # TODO support multiple controllers
-        if len(self.controllers) == 0:
-            self.handle_error_message("Need at least one controller before loading config", logging.ERROR)
-            return
-        
-        # Request that all data stored in saved controller info gets set to the active controller (which right now is the only allowed controller)
-        for saved_controller_info in data.get('controllers', []):
-            for info_name, info_value in saved_controller_info.iteritems():
-                if info_name == 'settings':
-                    for setting_name, setting_value in info_value.iteritems():
-                        self.change_controller_setting(setting_name, setting_value)
-                elif info_name == 'version':
-                    pass # TODO verify program version matches config version
-                else:
-                    self.change_controller_info(info_name, info_value) 
-                    
-        # Request that all saved sensors get added to the active controller (which right now is the only allowed controller)
-        for saved_sensor_info in data.get('sensors', []):
-            self.add_sensor(saved_sensor_info)
+            self.new_error_message("Unexpected error occurred when loading config.", logging.CRITICAL)
             
     def invalid_command_during_session(self, command_description):
         
         error_message = 'Cannot {} while session is active.'.format(command_description)
-        self.handle_error_message(error_message, logging.ERROR)
+        self.new_error_message(error_message, logging.ERROR)
         
     def new_sensor_selected(self, controller_id, sensor_id):
         
@@ -181,7 +113,7 @@ class GUIPresenter(QObject):
     def controller_name_changed(self, new_controller_name):
         
         if new_controller_name.strip() == '':
-            self.handle_error_message("Controller name can't be empty string.", logging.ERROR)
+            self.new_error_message("Controller name can't be empty string.", logging.ERROR)
             # 'Refresh' controller info to show the old name again.
             self.view.update_all_controller_info(self.local_controller['id'], self.local_controller)
             return
@@ -316,6 +248,13 @@ class GUIPresenter(QObject):
         else:
             self._send_message_to_active_controller('controller_command', (command_name, command_args))
 
+    def new_error_message(self, message, level):
+        
+        if level < logging.ERROR:
+            return # don't care about this level
+
+        self.view.show_user_message(message, level)
+
     def receive_messages(self):
         ''''''
         self.manager_interface.process_new_messages()
@@ -441,12 +380,9 @@ class GUIPresenter(QObject):
     def handle_controller_removed(self, connection, controller_id):
         self.view.remove_sensor(controller_id)
         
-    def handle_error_message(self, message, level):
+    def handle_error_message(self, connection, message, level):
         
-        if level < logging.ERROR:
-            return # don't care about this level
-
-        self.view.show_user_message(message, level)
+        self.new_error_message(message, level)
     
     def handle_new_controller_text(self, connection, controller, text):
         self.view.display_message(text)
