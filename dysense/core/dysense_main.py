@@ -41,6 +41,12 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     
     # Tell system to call our custom function when an unhandled exception occurs
     sys.excepthook = excepthook
+    
+    # Time is treated as a double-precision floating point number which should always be true.
+    # If for some reason it's not then notify a user that all times will be incorrect.
+    max_required_precision = 1e-13
+    if sys.float_info.epsilon > max_required_precision:
+        raise Exception('System doesn\'t support required precision. Time\'s will not be correct.')
 
     if os.name == 'nt':
         # If running on windows then need to unassociate process from python so that

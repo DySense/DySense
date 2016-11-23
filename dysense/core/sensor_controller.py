@@ -125,16 +125,6 @@ class SensorController(object):
         
         # TODO split callbacks up
         self.manager_interface.register_callbacks(self.message_callbacks)
-        
-        # TODO should this be in main? 
-        # |
-        # V
-        
-        # Time is treated as a double-precision floating point number which should always be true.
-        # If for some reason it's not then notify a user that all times will be incorrect.
-        max_required_precision = 1e-13
-        if sys.float_info.epsilon > max_required_precision:
-            raise Exception('System doesn\'t support required precision. Time\'s will not be correct.')
 
     @property
     def public_info(self):
