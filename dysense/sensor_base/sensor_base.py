@@ -11,6 +11,7 @@ import sys
 from dysense.core.utility import make_unicode
 from dysense.interfaces.client_interface import ClientInterface
 from dysense.interfaces.component_connection import ComponentConnection
+from dysense.core.version import s2c_version
 
 class SensorBase(object):
     '''
@@ -108,7 +109,7 @@ class SensorBase(object):
         self.sensor_setup_sys_time = 0
 
         # Setup interface used for communicating with controller.
-        self.interface = ClientInterface(context, sensor_id)
+        self.interface = ClientInterface(context, sensor_id, s2c_version)
         self.interface.register_callbacks(self.message_callbacks)
         self.interface.heartbeat_period = heartbeat_period
         self.interface.wire_to_endpoint('controller', connect_endpoint)
