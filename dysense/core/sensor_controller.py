@@ -21,6 +21,7 @@ from dysense.core.issue import Issue
 from dysense.core.utility import format_id, json_dumps_unicode, utf_8_encoder
 from dysense.core.utility import make_unicode, make_utf8, validate_type, make_filename_unique
 from dysense.core.version import app_version, output_version
+from dysense.core.session import Session
 
 class SensorController(object):
     
@@ -35,11 +36,6 @@ class SensorController(object):
         self.sensors = []
         self.managers = {}
         
-        self._session_active = False
-        self._session_name = 'N/A'
-        self._session_path = "None"
-        self.session_notes = None
-        
         self.text_messages = []
         
         self._time_source = None
@@ -52,6 +48,8 @@ class SensorController(object):
         
         self.sensor_interface = sensor_interface
         self.manager_interface = manager_interface
+        
+        self.session = Session(self)
         
         self.active_issues = []
         self.resolved_issues = []        
@@ -68,21 +66,8 @@ class SensorController(object):
         
         self.stop_request = threading.Event()
         
-        self._session_state = 'closed'
-        
         # The last manager that a message was received from.
         self.last_manager = None
-        
-        # If set to true then session state will be 'paused' instead of 'started'
-        # when session is resumed after all issues are cleared.
-        self.session_pause_on_resume = True
-        
-        # Set to true if session is invalidated.
-        self.session_invalidated = False
-        
-        # Start times associated with session, or if a session isn't active then will be from the last session.
-        self.session_start_utc = 0.0
-        self.session_start_sys_time = 0.0
         
         # Last received utc time and the corresponding sys time it was updated.
         self.last_utc_time = 0.0
@@ -129,10 +114,10 @@ class SensorController(object):
     @property
     def public_info(self):
         return {'id': self.controller_id,
-                'session_state': self.session_state,
-                'session_active': self.session_active,
-                'session_name': self.session_name,
-                'session_path': self.session_path,
+                'session_state': self.session.state,
+                'session_active': self.session.active,
+                'session_name': self.session.name,
+                'session_path': self.session.path,
                 'time_source': None if not self.time_source else self.time_source.public_info,
                 'position_sources': [source.public_info for source in self.position_sources],
                 'orientation_sources': [source.public_info for source in self.orientation_sources],
@@ -143,48 +128,7 @@ class SensorController(object):
                 'active_issues': [source.public_info for source in self.active_issues],
                 'resolved_issues': [source.public_info for source in self.resolved_issues],
                 }
-        
-    @property
-    def session_state(self):
-        return self._session_state
-    @session_state.setter
-    def session_state(self, new_value):
-        self._session_state = new_value
-        self.send_entire_controller_info()
-        
-    @property
-    def session_active(self):
-        return self._session_active
-    @session_active.setter
-    def session_active(self, new_value):
-        
-        if new_value == self._session_active:
-            return # value not changed
-        
-        self._session_active = new_value
-        self.send_entire_controller_info()
-        
-        if new_value == True:
-            self.send_session_event('session_started')
-        else:
-            self.send_session_event('session_ended')
-        
-    @property
-    def session_name(self):
-        return self._session_name
-    @session_name.setter
-    def session_name(self, new_value):
-        self._session_name = new_value
-        self.send_entire_controller_info()
-        
-    @property
-    def session_path(self):
-        return self._session_path
-    @session_path.setter
-    def session_path(self, new_value):
-        self._session_path = new_value
-        self.send_entire_controller_info()
-        
+    
     @property
     def time_source(self):
         return self._time_source
@@ -228,6 +172,10 @@ class SensorController(object):
         self.send_entire_controller_info()
         
     @property
+    def all_sources(self):
+        return [self.time_source] + self.position_sources + self.orientation_sources + self.height_sources
+        
+    @property
     def fixed_height_source(self):
         return self._fixed_height_source
     @fixed_height_source.setter
@@ -259,24 +207,6 @@ class SensorController(object):
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
         log.addHandler(handler)
-
-    def setup_session_logging(self, output_directory):
-
-        # Create logger to write out to a file.
-        log = logging.getLogger("session")
-        log.setLevel(logging.DEBUG)
-        handler = logging.FileHandler(os.path.join(output_directory, time.strftime("session_log.log")))
-        handler.setLevel(logging.DEBUG)
-        handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
-        log.addHandler(handler)
-    
-    def close_session_logging(self):
-        
-        session_log = logging.getLogger('session')
-        handlers = session_log.handlers[:]
-        for handler in handlers:
-            handler.close()
-            session_log.removeHandler(handler)
         
     def log_message(self, msg, level=logging.INFO, manager=None):
         
@@ -369,7 +299,7 @@ class SensorController(object):
                         self.send_entire_controller_info()
 
                 # TODO make this more efficient when receiving sources we're not constantly trying to resolve issues that don't exist.
-                if self.session_active:
+                if self.session.active:
                     if self.time_source and not self.time_source.receiving:
                         self.try_create_issue(self.controller_id, self.time_source.sensor_id, 'lost_time_source', 'Not receiving data from time source.', 'critical')
                     elif self.time_source:
@@ -400,7 +330,7 @@ class SensorController(object):
                     for source in self.height_sources:
                         self.try_resolve_issue(source.sensor_id, 'lost_height_source')
                             
-                self.update_session_state()
+                self.session.update_state()
                 
                 next_update_loop_time = current_time + update_loop_interval
             
@@ -408,7 +338,7 @@ class SensorController(object):
 
         self.log_message("Controller closing down.")
         
-        if self.session_active and not self.stopping_session:
+        if self.session.active and not self.stopping_session:
             self.stop_session(manager=None, interrupted=True)
         
         for sensor in self.sensors:
@@ -459,7 +389,7 @@ class SensorController(object):
     def handle_add_sensor(self, manager, sensor_info):
         '''Validate that sensor name is unique and adds to list of sensors.'''
 
-        if self.session_active:
+        if self.session.active:
             self.log_message('Cannot add sensor while session is active.', logging.ERROR, manager)
             return
         
@@ -519,7 +449,7 @@ class SensorController(object):
     def handle_remove_sensor(self, manager, sensor_id):
         '''Search through sensors and remove one that has matching id.'''
         
-        if self.session_active:
+        if self.session.active:
             self.log_message('Cannot remove sensor while session is active.', logging.ERROR, manager)
             return 
         
@@ -577,7 +507,7 @@ class SensorController(object):
         # KLM - disabled check on session active since it's convenient to be able to change a setting at the beginning of a session
         # if something isn't setup right.  
         value_can_change = True
-        #if self.session_active:
+        #if self.session.active:
         #    self.log_message('Cannot change setting while session is active.', logging.ERROR, manager)
         #    value_can_change = False
         if not sensor.is_closed() and not has_changeable_tag:
@@ -604,7 +534,7 @@ class SensorController(object):
         
         # Make sure value is allowed to be changed.
         value_can_change = True
-        if self.session_active:
+        if self.session.active:
             self.log_message('Cannot change info while session is active.', logging.ERROR, manager)
             value_can_change = False
         elif not sensor.is_closed():
@@ -664,7 +594,7 @@ class SensorController(object):
     def handle_change_controller_info(self, manager, info_name, info_value):
 
         # Make sure data source is allowed to be changed.
-        if self.session_active:
+        if self.session.active:
             self.log_message('Cannot change info while session is active.', logging.ERROR, manager)
             self.send_entire_controller_info() # so user can be notified didn't change.
             return 
@@ -691,7 +621,7 @@ class SensorController(object):
 
         # Make sure value is allowed to be changed.
         value_can_change = True
-        if self.session_active:
+        if self.session.active:
             if setting_name == 'base_out_directory':
                 self.log_message('Cannot change output directory while session is active.', logging.ERROR, manager)
                 value_can_change = False
@@ -788,7 +718,7 @@ class SensorController(object):
             self.process_height_source_data(source, utc_time, sys_time, data)
 
         # Check if we should log data. This assumes that data is ok.
-        need_to_log_data = (not sensor.sensor_paused) and self.session_state == 'started'
+        need_to_log_data = (not sensor.sensor_paused) and self.session.state == 'started'
 
         if need_to_log_data:
             # Write data to corresponding sensor log.
@@ -841,27 +771,27 @@ class SensorController(object):
     def handle_controller_command(self, manager, command_name, command_args):
         
         if command_name == 'start_session':
-            self.begin_session_startup_procedure(manager)
+            self.session.begin_startup_procedure(manager)
         elif command_name == 'pause_session':
-            if self.session_active:
-                self.session_state = 'paused'
+            if self.session.active:
+                self.session.state = 'paused'
                 self.log_message('Session paused.', logging.INFO)
                 
             # Set flag so if session is (or will be) suspended that session won't automatically resume when issues are resolved.
-            self.session_pause_on_resume = True
+            self.session.pause_on_resume = True
                 
             # Make sure sensors aren't saving data files.
             self.send_command_to_all_sensors('pause')
             
         elif command_name == 'stop_session':
-            self.session_notes = command_args
+            self.session.notes = command_args
             self.stop_session(manager)
         elif command_name == 'invalidate_session':
-            if not self.session_active:
+            if not self.session.active:
                 self.log_message("Can't invalidate session because there isn't one active.")
                 return
             self.log_message("Session invalidated.")
-            self.session_invalidated = True
+            self.session.invalidated = True
         else:
             self.log_message("Controller command {} not supported".format(command_name), logging.ERROR, manager)
 
@@ -898,116 +828,15 @@ class SensorController(object):
     def notify_sensor_changed(self, sensor_id, info_name, value):
         self.manager_interface.send_message_to_all('sensor_changed', (sensor_id, info_name, value))
         
-    def begin_session_startup_procedure(self, manager):
+    def notify_session_changed(self, info_name, value):
+        # TODO just send the info that changed...
+        self.send_entire_controller_info()
         
-        # Make sure flag is cleared so that if session is (or will be) suspended that the session will automatically resume once issues are resolved.
-        self.session_pause_on_resume = False
-        
-        if self.session_active:
-            
-            if self.session_state == 'suspended':
-                self.log_message("Session is suspended because of a critical issue. Please resolve all issues and then session will resume automatically.", logging.ERROR, manager)
-                return False 
-            
-            if self.session_state == 'paused':
-                self.session_state = 'started'
-                self.log_message('Session resumed.', logging.INFO)
-            
-            # Already have a session started, so make sure all sensors are un-paused.
-            self.send_command_to_all_sensors('resume')
-                
-            return True # session already setup and in a good state so consider successful
-        
-        if not self.verify_controller_settings(manager):
-            return False
-        
-        if self.time_source is None:
-            self.log_message("Can't start session without a selected time source.", logging.ERROR, manager)
-            return False
-        
-        if len(self.position_sources) == 0:
-            self.log_message("Can't start session without at least one selected position source.", logging.ERROR, manager)
-            return False
-        
-        for source in [self.time_source] + self.position_sources + self.orientation_sources + self.height_sources:
-            if (source.controller_id.lower() not in ['none', 'derived']) and source.controller_id != self.controller_id:
-                self.log_message("Can't start session because source '{}' is part of a controller '{}' that's not connected.".format(source.sensor_id, source.controller_id), logging.ERROR, manager)
-                return False
-                
-        for sensor in self.sensors:
-            if sensor.is_closed() or sensor.num_messages_received == 0:
-                self.log_message("Can't start session until sensor '{}' is setup.".format(sensor.sensor_id), logging.ERROR, manager)
-                return False
-            
-        self.log_message("Initial startup successful.")
-        self.session_state = 'waiting_for_time'
-        
-        return True # initial startup successful
-        
-    def update_session_state(self):
-        
-        if self.session_state == 'closed':
-            return
-        
-        if self.session_state == 'waiting_for_time':
-            seconds_since_last_utc_time = time.time() - self.last_sys_time_update
-            if seconds_since_last_utc_time < 3:
-                self.session_start_sys_time = self.last_sys_time_update
-                self.session_start_utc = self.last_utc_time
-                self.session_state = 'waiting_for_position'
-        
-        if self.session_state == 'waiting_for_position':
-            for source in self.position_sources:
-                if not source.receiving:
-                    return
-            # All sources receiving.    
-            self.session_state = 'waiting_for_orientation'
-        
-        if self.session_state == 'waiting_for_orientation':
-            for source in self.orientation_sources:
-                if not source.receiving:
-                    return
-            # All sources receiving.    
-            self.session_state = 'waiting_for_height'
-            
-        if self.session_state == 'waiting_for_height':
-            for source in self.height_sources:
-                if not source.receiving:
-                    return
-            # All sources receiving.    
-            self.session_state = 'starting'
-        
-        if self.session_state == 'starting':
-            # Re-verify things in case they changed while waiting for data sources.
-            if not self.verify_controller_settings(manager=None):
-                self.session_state = 'closed'      
-                return      
-            self.start_session(self.session_start_utc)
-            self.session_state = 'started'
-            
-        if self.session_state in ['started', 'paused']:
-            for issue in self.active_issues:
-                if issue.level == 'critical':
-                    self.session_state = 'suspended'
-
-        if self.session_state == 'suspended':
-            
-            still_have_critical_issue = False
-            for issue in self.active_issues:
-                if issue.level == 'critical':
-                    still_have_critical_issue = True 
-                    break
-
-            if still_have_critical_issue:
-                # Make sure all sensors aren't saving data files because data isn't being logged.
-                self.send_command_to_all_sensors('pause')
-            else: 
-                if self.session_pause_on_resume:
-                    self.session_state = 'paused'
-                else:
-                    # Automatically resume session.
-                    self.session_state = 'started'
-                    self.send_command_to_all_sensors('resume')
+        if info_name == 'active':
+            if value == True:
+                self.send_session_event('started')
+            else:
+                self.send_session_event('ended')
                     
     def verify_controller_settings(self, manager):
         
@@ -1027,58 +856,6 @@ class SensorController(object):
             return False
         
         return True # all settings valid
-        
-    def start_session(self, utc_time):
-        
-        formatted_time = datetime.datetime.fromtimestamp(utc_time).strftime("%Y%m%d_%H%M%S")
-        
-        self.session_name = "{}_{}_{}".format(self.settings['platform_type'],
-                                              self.settings['platform_tag'],
-                                              formatted_time)
-        
-        self.session_name = make_filename_unique(self.settings['base_out_directory'], self.session_name)
-        
-        self.session_path = os.path.join(self.settings['base_out_directory'], self.session_name)
-        
-        self.session_active = True
-        
-        self.log_message("Session started.")
-
-        # Go through and tell every sensor where to save it's data files.
-        # Need to have each sensor have it's own sub-directory since some sensors (like the canon_edsdk)
-        # won't work when multiple sensors are trying to write to the same directory.
-        data_files_path = os.path.join(self.session_path, 'data_files/')
-        for sensor in self.sensors:
-            sensor_data_file_directory = "{}_{}_{}".format(sensor.sensor_id, sensor.instrument_type, sensor.instrument_tag)
-            sensor_data_file_path = os.path.join(data_files_path, sensor_data_file_directory)
-            sensor.update_data_file_directory(sensor_data_file_path)
-
-        data_logs_path = os.path.join(self.session_path, 'data_logs/')
-        
-        if not os.path.exists(data_logs_path):
-            os.makedirs(data_logs_path)
-            
-        self.setup_session_logging(self.session_path)
-
-        for sensor in self.sensors:
-            
-            sensor_csv_file_name = "{}_{}_{}_{}.csv".format(sensor.sensor_id,
-                                                            sensor.instrument_type,
-                                                            sensor.instrument_tag,
-                                                            formatted_time)
-            
-            sensor_csv_file_path = os.path.join(data_logs_path, sensor_csv_file_name)
-            
-            sensor.output_file = CSVLog(sensor_csv_file_path, buffer_size=1)
-            
-            # Store the names (e.g. latitude) of the sensor output data in the file.
-            # The file will only be created once the sensor starts outputting data.
-            sensor_data_names = [setting['name'] for setting in sensor.metadata['data']]
-            sensor.output_file.handle_metadata(['utc_time'] + sensor_data_names)
-            
-        # Start all other sensors now that session is started.
-        self.log_message("Starting all sensors.")
-        self.send_command_to_all_sensors('resume')
 
     def send_command_to_all_sensors(self, command_name, command_args=None):
         
@@ -1086,89 +863,42 @@ class SensorController(object):
             sensor.send_command(command_name, command_args)
 
     def stop_session(self, manager, interrupted=False):
-
+        
         self.stopping_session = True
-        self.try_stop_session(manager, interrupted)
+        self.session.stop(interrupted)
         self.stopping_session = False
-
-    def try_stop_session(self, manager, interrupted):
-        
-        if not self.session_active:
-            self.log_message("Session already closed.")
-            self.session_state = 'closed' # make sure state is reset
-            return # already closed
-        
-        self.send_command_to_all_sensors('pause')
-        
-        for sensor in self.sensors:
-            sensor.output_file.terminate()
-            
-        # Go through and tell every sensor to stop saving data files to the current session.
-        for sensor in self.sensors:
-            sensor.update_data_file_directory(None)
-        
-        self.close_session_logging()
-        self.session_active = False
-        self.session_state = 'closed'
-        
-        self.write_session_file()
-        # KLM - removed sensor offset file since offsets are already stored in sensor info and duplicating data is usually bad.
-        #self.write_offsets_file()
-        self.write_sensor_info_files()
-        self.write_data_source_info_files()
-        
-        if self.session_invalidated:
-            # Create file to show that session is invalid.  Can't rename directory because sometimes we don't have permission to because
-            # other files in the directory are still closing down, or the user has the directory open in an explorer window.
-            invalidated_file_path = os.path.join(self.session_path, 'invalidated.txt')
-            with open(invalidated_file_path, 'w') as invalidated_file:
-                invalidated_file.write('The existence of this file means this session should not be uploaded to the database.')
-            # Reset flag for next session.
-            self.session_invalidated = False
-            
-        # Create file to show session wasn't closed by user.
-        if interrupted:
-            interrupted_file_path = os.path.join(self.session_path, 'interrupted.txt')
-            with open(interrupted_file_path, 'w') as interrupted_file:
-                interrupted_file.write('The existence of this file means the session was not closed by the user.  ' \
-                                       'Either the program crashed or the user exited the application.  ' \
-                                       'The data should still be valid.')
-
-        self.session_notes = None
-
-        self.log_message("Session closed.")
 
     def write_session_file(self):
         
-        file_path = os.path.join(self.session_path, 'session_info.csv')
+        file_path = os.path.join(self.session.path, 'session_info.csv')
         with open(file_path, 'wb') as outfile:
             writer = csv.writer(outfile)
             
-            writer.writerow(utf_8_encoder(['start_utc', self.session_start_utc]))
-            formatted_start_time = datetime.datetime.fromtimestamp(self.session_start_utc).strftime("%Y/%m/%d %H:%M:%S")
+            writer.writerow(utf_8_encoder(['start_utc', self.session.start_utc]))
+            formatted_start_time = datetime.datetime.fromtimestamp(self.session.start_utc).strftime("%Y/%m/%d %H:%M:%S")
             writer.writerow(utf_8_encoder(['start_utc_human', formatted_start_time]))
             
             writer.writerow(utf_8_encoder(['end_utc', self.last_utc_time]))
             formatted_end_time = datetime.datetime.fromtimestamp(self.last_utc_time).strftime("%Y/%m/%d %H:%M:%S")
             writer.writerow(utf_8_encoder(['end_utc_human', formatted_end_time]))
             
-            writer.writerow(utf_8_encoder(['start_sys_time', self.session_start_sys_time]))
+            writer.writerow(utf_8_encoder(['start_sys_time', self.session.start_sys_time]))
             writer.writerow(utf_8_encoder(['end_sys_time', self.last_sys_time_update]))
             
             writer.writerow(utf_8_encoder(['controller_id', self.controller_id]))
             writer.writerow(utf_8_encoder(['app_version', app_version]))
             writer.writerow(utf_8_encoder(['output_version', output_version]))
-            #writer.writerow(utf_8_encoder(['utc_difference', self.session_start_utc - self.session_start_sys_time]))
+            #writer.writerow(utf_8_encoder(['utc_difference', self.session.start_utc - self.session.start_sys_time]))
             
             for key, value in sorted(self.settings.items()):
                 writer.writerow(utf_8_encoder([key, value]))
                 
-            if self.session_notes is not None:
-                writer.writerow(utf_8_encoder(['notes', self.session_notes]))
+            if self.session.notes is not None:
+                writer.writerow(utf_8_encoder(['notes', self.session.notes]))
                     
     def write_offsets_file(self):
         
-        file_path = os.path.join(self.session_path, 'sensor_offsets.csv')
+        file_path = os.path.join(self.session.path, 'sensor_offsets.csv')
         with open(file_path, 'wb') as outfile:
             writer = csv.writer(outfile)
             
@@ -1179,7 +909,7 @@ class SensorController(object):
 
     def write_sensor_info_files(self):
         
-        info_directory = os.path.join(self.session_path, 'sensor_info/')
+        info_directory = os.path.join(self.session.path, 'sensor_info/')
         
         if not os.path.exists(info_directory):
             os.makedirs(info_directory)
@@ -1198,7 +928,7 @@ class SensorController(object):
 
     def write_data_source_info_files(self):
         
-        info_file_path = os.path.join(self.session_path, 'source_info.yaml')
+        info_file_path = os.path.join(self.session.path, 'source_info.yaml')
         
         outdata = {}
 
