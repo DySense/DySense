@@ -32,7 +32,7 @@ class SensorBase(object):
                        'bad_data_quality': 'bad'
                        }
 
-    def __init__(self, sensor_id, instrument_id, context, connect_endpoint, desired_read_period=0.25, max_closing_time=0.1, 
+    def __init__(self, sensor_id, instrument_id, context, connect_endpoint, desired_read_period=0.25, max_closing_time=2, 
                  heartbeat_period=0.5, wait_for_valid_time=True, throttle_sensor_read=True):
         '''
         Base constructor.
@@ -112,6 +112,8 @@ class SensorBase(object):
         self.interface = ClientInterface(context, sensor_id, s2c_version)
         self.interface.register_callbacks(self.message_callbacks)
         self.interface.heartbeat_period = heartbeat_period
+        self.interface.max_closing_duration = self.max_closing_time
+        
         self.interface.wire_to_endpoint('controller', connect_endpoint)
         
         # Register connection instead of having one created automatically so can monitor it

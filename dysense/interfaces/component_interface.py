@@ -57,6 +57,7 @@ class ComponentInterface(object):
         self.component_id = component_id
         self.version = version
         self.heartbeat_period = 2 # (seconds) how quickly heartbeat messages should be sent out.
+        self.max_closing_duration = 3 # (seconds) how much time connected component needs to close down on its own.
         
         # Dictionary holding user-defined callbacks for when a certain type of message is received.
         self._message_type_to_callback = {}
@@ -182,7 +183,7 @@ class ComponentInterface(object):
         if self.heartbeat_period is None:
             raise Exception("Setup error: Heartbeat period not set.")
        
-        message_body = {'sender_id': self.component_id, 'heartbeat_period': self.heartbeat_period, 'version': self.version}
+        message_body = {'sender_id': self.component_id, 'heartbeat_period': self.heartbeat_period, 'max_closing_duration': self.max_closing_duration, 'version': self.version}
         
         self.send_message(recipient_id, 'introduction', message_body)
         
