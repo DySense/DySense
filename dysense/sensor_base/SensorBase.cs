@@ -10,10 +10,10 @@ using ZeroMQ;
 namespace DySense
 {
     /// <summary>
-    /// Base class for all sensor drivers.
-    /// All sensor drivers written in C# should inherit from this class. Most of its public interface
-    /// is over sockets where inputs are time/commands and outputs are data/messages/status. The only
-    /// public method is run() which handles everything.
+    /// Base class for all sensor drivers in C#.
+    /// Sensor drivers should inherit from this class. Most of its public interface
+    /// is over a socket where inputs are time/commands and outputs are data/messages/status. 
+    /// The only public method is run() which handles everything.
     /// </summary>
     abstract public class SensorBase
     {
@@ -44,8 +44,11 @@ namespace DySense
         // Maximum number of seconds sensor needs to wrap up before being force closed.
         protected double MaxClosingTime { get; set; }
 
-        // How often (in seconds) we should receive a new message from controller and how often we should send one back.
-        double heartbeatPeriod = 0.1;
+        // How often (in seconds) we should send a new message to controller.
+        double heartbeatPeriod = 0.5;
+
+        // How often (in seconds) we should receive a new message from controller.
+        double controllerHeartbeatPeriod = 0.5;
 
         // If set to true then sensor won't start collecting data until it has a valid UTC time.
         bool waitForValidTime = true;
@@ -103,8 +106,11 @@ namespace DySense
         // System time that data was last received from the sensor.
         double lastReceivedDataTime = 0;
 
+        // Current protocol version for talking to sensor controller.
+        string interfaceVersion = "2.0.0";
+
         // If we don't receive a new message in this time then consider controller dead. (in seconds) 
-        double clientTimeoutThresh;
+        double controllerTimeoutThresh;
         
         // How long to wait for controller to send first message before timing out. (in seconds)
         double maxTimeToReceiveMessage;
@@ -149,9 +155,11 @@ namespace DySense
             this.MaxReadNewDataPeriod = this.mainLoopProcessingPeriod * .9;
             this.waitForValidTime = waitForValidTime;
             this.DecideTimeout = decideTimeout;
-            this.clientTimeoutThresh = this.heartbeatPeriod * 10;
-            this.maxTimeToReceiveMessage = this.clientTimeoutThresh * 1.5;
             this.NumDataMessageSent = 0;
+            this.maxTimeToReceiveMessage = 10;
+
+            // Set default value until receive introduction message and we know what it should be.
+            updateHeartbeatPeriod(1);
 
             messageTable = new Dictionary<string,Func<object, bool>> 
             { 
@@ -159,6 +167,7 @@ namespace DySense
                 { "time", HandleNewTime },
                 { "heartbeat", HandleNewHeartbeat },
                 { "change_setting", HandleChangeSetting },
+                { "introduction", HandleIntroductionMessage },
             };
         }
 
@@ -326,10 +335,7 @@ namespace DySense
 	        {
                 State = "error";
 		        SendText(e.ToString());
-
-                // Also print in case exception had to do with ZMQ and SendText() never went through.
-                System.Console.WriteLine(e.ToString());
-            }
+	        }
             finally
             {
                 if (Health != "bad")
@@ -386,6 +392,7 @@ namespace DySense
             socket = new ZSocket(context, ZSocketType.DEALER);
             socket.Connect(this.connectEndpoint);
 
+            SendIntroductionMessage();
             SendStatusUpdate();
             interfaceConnectionTime = SysTime;
         }
@@ -401,6 +408,26 @@ namespace DySense
             {
                 context.Terminate();
             }
+        }
+
+        private void updateHeartbeatPeriod(double newValue)
+        {
+            this.controllerHeartbeatPeriod = Math.Max(0.1, newValue);
+            this.controllerTimeoutThresh = this.controllerHeartbeatPeriod * 5;
+        }
+
+        // First message that must be sent as part of the communication protocol.
+        private void SendIntroductionMessage()
+        {
+            Dictionary<string, object> messageBody = new Dictionary<string, object> 
+            {
+                {"sender_id", sensorID},
+                {"heartbeat_period", heartbeatPeriod},
+                {"max_closing_duration", MaxClosingTime},
+                {"version", interfaceVersion}
+            };
+    
+            SendMessage("introduction", messageBody);
         }
 
         // Notify controller of status change (status = state + health + paused)
@@ -444,7 +471,6 @@ namespace DySense
         {
             var message = new Dictionary<string, object>
             {
-                { "sensor_id", this.sensorID },
                 { "type", messageType },
                 { "body", messageBody },
             };
@@ -549,6 +575,18 @@ namespace DySense
             return true;
         }
 
+        private bool HandleIntroductionMessage(object body)
+        {
+            Newtonsoft.Json.Linq.JObject jObjectBody = (Newtonsoft.Json.Linq.JObject)body;
+            var message = jObjectBody.ToObject<Dictionary<string, object>>();
+
+            double controllerHeartbeat = Convert.ToDouble(message["heartbeat_period"]);
+
+            updateHeartbeatPeriod(controllerHeartbeat);
+
+            return true;
+        }
+
         // Return true if it's been too long since we've received a new message from controller.
         private bool ClientTimedOut()
         {
@@ -566,7 +604,7 @@ namespace DySense
             }
 
             double timeSinceLastMessage = lastMessageProcessingTime - lastReceivedMessageTime;
-            return timeSinceLastMessage > clientTimeoutThresh;
+            return timeSinceLastMessage > controllerTimeoutThresh;
         }
 
         // Return true if it's time to run interface processing loop.
