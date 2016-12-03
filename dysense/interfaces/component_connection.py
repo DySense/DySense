@@ -41,11 +41,11 @@ class ComponentConnection(object):
         # Set to true when the connected component reports that it's closing down.
         self._closing = False
         
-        # Set to a default value that can be overridden later.
-        self.update_heartbeat_period(2)
+        # Set to a default value that can be overridden once receive introduction message.
+        self.update_heartbeat_period(0.5)
         
         # How long to wait for component to send first message before timing out. (in seconds)
-        self._max_time_to_receive_message = self._component_timeout_thresh * 1.5
+        self._max_time_to_receive_message = 4
         
         # Last system time that we tried to process new messages from component.
         self._last_message_processing_time = 0
@@ -83,7 +83,7 @@ class ComponentConnection(object):
         self._connected_component_heartbeat_period = new_value
         
         # If we don't receive a new message in this time then consider component dead. (in seconds) 
-        self._component_timeout_thresh = self._connected_component_heartbeat_period * 10
+        self._component_timeout_thresh = self._connected_component_heartbeat_period * 5
         
     def send_message(self, message_type, message_body):
         '''Client ID is recipient'''

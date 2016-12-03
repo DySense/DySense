@@ -56,7 +56,7 @@ class ComponentInterface(object):
         self._context = context
         self.component_id = component_id
         self.version = version
-        self.heartbeat_period = 2 # (seconds) how quickly heartbeat messages should be sent out.
+        self.heartbeat_period = 0.5 # (seconds) how quickly heartbeat messages should be sent out.
         self.max_closing_duration = 3 # (seconds) how much time connected component needs to close down on its own.
         
         # Dictionary holding user-defined callbacks for when a certain type of message is received.
