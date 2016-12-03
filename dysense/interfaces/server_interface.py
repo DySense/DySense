@@ -54,7 +54,7 @@ class ServerInterface(ComponentInterface):
         
         self.bind_to_endpoint(self.local_endpoint)
         if len(self._remote_endpoints) > 0:
-            self._remote_endpoint = self._bind_to_first_open_endpoint()
+            self.remote_endpoint = self._bind_to_first_open_endpoint()
             
     def close_connection(self, component_id):
         
