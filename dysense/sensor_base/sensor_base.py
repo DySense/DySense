@@ -319,7 +319,9 @@ class SensorBase(object):
     def should_have_new_reading(self):
         '''Return true if enough time has elapsed that the sensor should have returned a new reading.'''
         time_since_last_data = self.sys_time - self.last_received_data_time
-        return time_since_last_data >= self.desired_read_period
+        # Increase read period a little bit since some sensors aren't 100% consistent in their
+        # output rate. Don't want to report time-out if only a fraction late reading data.
+        return time_since_last_data >= (self.desired_read_period * 1.2)
         
     def should_record_data(self):
         '''Return true if the sensor is in a state where it should be trying to record data.'''
