@@ -272,22 +272,28 @@ class SensorController(object):
     def run_message_loop(self):
     
         # How often to run slower rate 'update' loop.
+        # Note: Don't change this without considering effect on slower inside loop.
         update_loop_interval = 0.1
         next_update_loop_time = time.time()
     
+        # How many times loop has ran.
+        loop_counter = 0
+    
         # Timeout when waiting for new messages.
-        message_timeout = 500  # milliseconds
+        # Multiply by 1000 to convert to milliseconds.
+        message_timeout = update_loop_interval * 1000
     
         while True:
-            
-            if self.stop_request.is_set():
-                break  # from main loop
             
             self.process_new_messages(message_timeout)
 
             current_time = time.time()
             if current_time >= next_update_loop_time:
                     
+                if self.stop_request.is_set():
+                    break  # from main loop
+                    
+                # See if any issues have been resolved.
                 for issue in self.active_issues[:]:
                     if issue.expired:
                         self.active_issues.remove(issue)
@@ -295,41 +301,15 @@ class SensorController(object):
                         self.send_controller_issue_event('issue_resolved', issue)
                         self.send_entire_controller_info()
 
-                # TODO make this more efficient when receiving sources we're not constantly trying to resolve issues that don't exist.
-                if self.session.active:
-                    if self.time_source and not self.time_source.receiving:
-                        self.try_create_issue(self.controller_id, self.time_source.sensor_id, 'lost_time_source', 'Not receiving data from time source.', 'critical')
-                    elif self.time_source:
-                        self.try_resolve_issue(self.time_source.sensor_id, 'lost_time_source')
-                    for source in self.position_sources:
-                        if not source.receiving:
-                            self.try_create_issue(self.controller_id, source.sensor_id, 'lost_position_source', 'Not receiving data from position source.', 'critical')
-                        else:
-                            self.try_resolve_issue(source.sensor_id, 'lost_position_source')
-                    for source in self.orientation_sources:
-                        if not source.receiving:
-                            self.try_create_issue(self.controller_id, source.sensor_id, 'lost_orientation_source', 'Not receiving data from orientation source.', 'critical')
-                        else:
-                            self.try_resolve_issue(source.sensor_id, 'lost_orientation_source')
-                    for source in self.height_sources:
-                        if not source.receiving:
-                            self.try_create_issue(self.controller_id, source.sensor_id, 'lost_height_source', 'Not receiving data from height source.', 'critical')
-                        else:
-                            self.try_resolve_issue(source.sensor_id, 'lost_height_source')
-                else: 
-                    # TODO make this more efficient when receiving sources we're not constantly trying to resolve issues that don't exist. 
-                    if self.time_source:
-                        self.try_resolve_issue(self.time_source.sensor_id, 'lost_time_source')
-                    for source in self.position_sources:
-                        self.try_resolve_issue(source.sensor_id, 'lost_position_source')
-                    for source in self.orientation_sources:
-                        self.try_resolve_issue(source.sensor_id, 'lost_orientation_source')
-                    for source in self.height_sources:
-                        self.try_resolve_issue(source.sensor_id, 'lost_height_source')
-                            
+                if loop_counter % 5 == 0:
+                    # Run this at a slower rate since it involves a lot of checks and isn't very efficient.
+                    self.update_source_issues()
+    
                 self.session.update_state()
                 
                 next_update_loop_time = current_time + update_loop_interval
+                
+                loop_counter += 1
             
     def close_down(self):
 
@@ -981,6 +961,38 @@ class SensorController(object):
                 return sensor
             
         raise ValueError("Sensor {} not in list of sensor IDs {}".format(sensor_id, [s.sensor_id for s in self.sensors]))
+    
+    def update_source_issues(self):
+       
+        if self.session.active:
+            if self.time_source and not self.time_source.receiving:
+                self.try_create_issue(self.controller_id, self.time_source.sensor_id, 'lost_time_source', 'Not receiving data from time source.', 'critical')
+            elif self.time_source:
+                self.try_resolve_issue(self.time_source.sensor_id, 'lost_time_source')
+            for source in self.position_sources:
+                if not source.receiving:
+                    self.try_create_issue(self.controller_id, source.sensor_id, 'lost_position_source', 'Not receiving data from position source.', 'critical')
+                else:
+                    self.try_resolve_issue(source.sensor_id, 'lost_position_source')
+            for source in self.orientation_sources:
+                if not source.receiving:
+                    self.try_create_issue(self.controller_id, source.sensor_id, 'lost_orientation_source', 'Not receiving data from orientation source.', 'critical')
+                else:
+                    self.try_resolve_issue(source.sensor_id, 'lost_orientation_source')
+            for source in self.height_sources:
+                if not source.receiving:
+                    self.try_create_issue(self.controller_id, source.sensor_id, 'lost_height_source', 'Not receiving data from height source.', 'critical')
+                else:
+                    self.try_resolve_issue(source.sensor_id, 'lost_height_source')
+        else: 
+            if self.time_source:
+                self.try_resolve_issue(self.time_source.sensor_id, 'lost_time_source')
+            for source in self.position_sources:
+                self.try_resolve_issue(source.sensor_id, 'lost_position_source')
+            for source in self.orientation_sources:
+                self.try_resolve_issue(source.sensor_id, 'lost_orientation_source')
+            for source in self.height_sources:
+                self.try_resolve_issue(source.sensor_id, 'lost_height_source')
     
     def try_create_issue(self, main_id, sub_id, issue_type, reason, level):
         
