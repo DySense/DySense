@@ -287,9 +287,6 @@ class SensorController(object):
 
             current_time = time.time()
             if current_time >= next_update_loop_time:
-                
-                for sensor in self.sensors:
-                    sensor.refresh_state()
                     
                 for issue in self.active_issues[:]:
                     if issue.expired:
