@@ -156,6 +156,12 @@ class ComponentInterface(object):
         except KeyError:
             return # component doesn't exist, it was likely recently removed.
         
+        if not component.received_introduction:
+            # Don't process any messages from component until receive introduction message.
+            # An example of where this might happen is if a new component is registered 
+            # with the same name as an old one, it might accidentally receive the old messages.
+            return
+        
         try:
             message_callback = self._message_type_to_callback[message['type']]
         except KeyError:
@@ -205,7 +211,8 @@ class ComponentInterface(object):
             # The connection will register itself.
             connection = ComponentConnection(self, sender_id)
             
-        connection.update_heartbeat_period(heartbeat_period) 
+        connection.update_heartbeat_period(heartbeat_period)
+        connection.received_introduction = True
         
         self._post_introduction_hook(message)
         

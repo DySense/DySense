@@ -38,6 +38,9 @@ class ComponentConnection(object):
         self._connection_state = 'closed'
         self._connection_health = ComponentConnection.possible_states[self._connection_state]
 
+        # Needs to be set to true once receive introduction message.
+        self.received_introduction = False
+
         # Set to true when the connected component reports that it's closing down.
         self._closing = False
         
