@@ -33,7 +33,7 @@ class SensorBase(object):
                        }
 
     def __init__(self, sensor_id, instrument_id, context, connect_endpoint, desired_read_period=0.25, max_closing_time=2, 
-                 heartbeat_period=0.5, wait_for_valid_time=True, throttle_sensor_read=True):
+                 heartbeat_period=0.5, wait_for_valid_time=True, throttle_sensor_read=True, decide_timeout=True):
         '''
         Base constructor.
         
@@ -51,6 +51,11 @@ class SensorBase(object):
         self.max_closing_time = max(0.1, max_closing_time)
         self.wait_for_valid_time = wait_for_valid_time
         self.throttle_sensor_read = throttle_sensor_read
+        
+        # If set to true then if the sensor base will determine if a time out is caused by the sensor actually timing out
+        # or just returning to run the process loop.  This can be set to false if the sensor has multiple sources that come
+        # in at different times and need to be monitored separately.
+        self.decide_timeout = decide_timeout
         
         # Set to true when receive 'close' command from controller.
         self.received_close_request = False
@@ -223,7 +228,7 @@ class SensorBase(object):
                     reported_state = self.read_new_data()
 
                     if reported_state == 'timed_out':
-                        if self.should_have_new_reading():
+                        if self.should_have_new_reading() or not self.decide_timeout:
                             # Sensor actually did time out so we want to request new data.
                             self.still_waiting_for_data = False
                         else:
