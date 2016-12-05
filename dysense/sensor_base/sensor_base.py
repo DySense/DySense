@@ -59,12 +59,14 @@ class SensorBase(object):
         # The corresponding health can be requested from the health property.
         self._state = 'closed'
         
-        # How often the main processing in run() should be executed. At least run
-        # at 5Hz to keep things responsive.
+        # How often sensor reports new heartbeat.
         heartbeat_period = max(0.1, heartbeat_period)
+        
+        # How often the message receive loop in run() should be executed. 
         self.main_loop_processing_period = min(heartbeat_period, 0.2)
         
         # How long the read_new_data() method is allowed to run without returning.
+        # This assumes the request_new_data() method doesn't take very much time.
         self.max_read_new_data_period = self.main_loop_processing_period * .9
         
         # True if sensor shouldn't be saving/sending any data.
@@ -96,8 +98,8 @@ class SensorBase(object):
                                   'change_setting': self.handle_change_setting}
         
         # The time to run next run each loop.  Used to figure out how long to wait after each run.
-        self.next_processing_loop_start_time = 0;
-        self.next_sensor_loop_start_time = 0;
+        self.next_processing_loop_start_time = 0
+        self.next_sensor_loop_start_time = 0
         
         # System time that data was last received from the sensor.
         self.last_received_data_time = 0
@@ -188,7 +190,7 @@ class SensorBase(object):
     def run(self):
         '''Set everything up, collect data and then close everything down when finished.'''
         try:
-            # Setup ZMQ sockets and then give sensor driver a chance to set itself up.
+            # Setup ZMQ socket and then give sensor driver a chance to set itself up.
             self.interface.setup()
             self.send_status_update()
             self.setup()
@@ -210,13 +212,13 @@ class SensorBase(object):
                     if self.received_close_request:
                         break # end main loop
                     
-                if self._need_to_run_sensor_loop() or not self.throttle_sensor_read:
-                    
-                    # Save off time so we can limit how fast the loop runs.
-                    self.next_sensor_loop_start_time = self.sys_time + self.desired_read_period
+                if self._need_to_run_sensor_loop():
                     
                     if not self.still_waiting_for_data:
                         self.request_new_data()
+                        
+                        # Save off time so we can limit how fast the loop runs.
+                        self.next_sensor_loop_start_time = self.sys_time + self.desired_read_period
     
                     reported_state = self.read_new_data()
 
@@ -225,9 +227,12 @@ class SensorBase(object):
                             # Sensor actually did time out so we want to request new data.
                             self.still_waiting_for_data = False
                         else:
-                            # Didn't actually time out.. just returned to process new controller messages.
+                            # Didn't actually time out.. just returned to process new controller messages. 
                             reported_state = self.state
                             self.still_waiting_for_data = True
+                    else:
+                        # Not timed-out so not still waiting for data. 
+                        self.still_waiting_for_data = False
                         
                     # If sensor is ok then override state if we're still waiting for a valid time.
                     reported_bad_state = SensorBase.possible_states[reported_state] == 'bad'
@@ -238,7 +243,8 @@ class SensorBase(object):
                     self.state = reported_state
                     
                 # Figure out how long to wait before one of the loops needs to run again.
-                if self.throttle_sensor_read:
+                # If not throttling sensor then the read_new_data() is in charge of waiting.
+                if self.throttle_sensor_read and not self.still_waiting_for_data:
                     next_time_to_run = min(self.next_processing_loop_start_time, self.next_sensor_loop_start_time)
                     time_to_wait = next_time_to_run - self.sys_time
                     time.sleep(max(0, time_to_wait))
@@ -382,4 +388,6 @@ class SensorBase(object):
             
     def _need_to_run_sensor_loop(self):
         '''Return true if it's time to run sensor processing loop.'''
-        return self.sys_time >= self.next_sensor_loop_start_time
+        enough_time_elapsed = self.sys_time >= self.next_sensor_loop_start_time
+        
+        return enough_time_elapsed or (not self.throttle_sensor_read) or self.still_waiting_for_data 
