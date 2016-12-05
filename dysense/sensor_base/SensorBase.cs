@@ -53,6 +53,9 @@ namespace DySense
         // If set to true then sensor won't start collecting data until it has a valid UTC time.
         bool waitForValidTime = true;
 
+        // If set to true then will automatically limit how fast readNewData() is called.
+        bool throttleSensorRead = true;
+
         // If set to true then if the sensor base will determine if a time out is caused by the sensor actually timing out
         // or just returning to run the process loop.  This can be set to false if the sensor has multiple sources that come
         // in at different times and need to be monitored separately.
@@ -84,15 +87,14 @@ namespace DySense
         double lastReceivedSysTime = 0;
         double lastReceivedUTCTime = 0;
 
-        // Where the controller wants 
+        // Where the controller wants to save files (e.g. images) during a session. 
         protected string overrideDataFileDirectory = String.Empty;
         
         // If set to false then any directory specified by controller will be ignored.  
-        // Sensor driver can assign directory to this field.
         protected bool overrideDataFileDirectoryAllowed = true;
         
-        // Default location to store data files if one isn't set by controller.  Sensor driver
-        // can assign directly to this field.
+        // Default location to store data files if one isn't set by controller.  
+        // Sensor driver can assign directly to this field.
         protected string defaultDataFileDirectory = String.Empty;
 
         // ZMQ socket for talking to sensor controller.
@@ -133,7 +135,7 @@ namespace DySense
         // System time when sensor was setup.
         double sensorSetupSysTime = 0;
 
-        // How many message 'data' messages have been sent to controller.
+        // How many 'data' messages have been sent to controller.
         protected int NumDataMessageSent { get; private set; }
 
         // How much time has elapsed since sensor was setup.
@@ -142,8 +144,8 @@ namespace DySense
         // Associate callback methods with different message types.
         Dictionary<string, Func<object, bool>> messageTable;
 
-        public SensorBase(string sensorID, string instrumentID, string connectEndpoint, double desiredReadPeriod = 0.25, double maxClosingTime=0,
-                          double heartbeatPeriod=0.5, bool waitForValidTime=true, bool decideTimeout=true)
+        public SensorBase(string sensorID, string instrumentID, string connectEndpoint, double desiredReadPeriod = 0.25, double maxClosingTime=3,
+                          double heartbeatPeriod=0.5, bool waitForValidTime=true, bool throttleSensorRead = true, bool decideTimeout=true)
         {
             this.sensorID = sensorID;
             this.InstrumentID = instrumentID;
@@ -154,6 +156,7 @@ namespace DySense
             this.mainLoopProcessingPeriod = Math.Min(this.heartbeatPeriod, 0.2);
             this.MaxReadNewDataPeriod = this.mainLoopProcessingPeriod * .9;
             this.waitForValidTime = waitForValidTime;
+            this.throttleSensorRead = throttleSensorRead;
             this.DecideTimeout = decideTimeout;
             this.NumDataMessageSent = 0;
             this.maxTimeToReceiveMessage = 10;
@@ -289,12 +292,12 @@ namespace DySense
 
                     if (NeedToRunSensorLoop())
                     {
-                        // Save off time so we can limit how fast the loop runs.
-                        nextSensorLoopStartTime = SysTime + DesiredReadPeriod;
-
                         if (!stillWaitingForData)
                         {
                             RequestNewData();
+
+                            // Save off time so we can limit how fast the loop runs.
+                            nextSensorLoopStartTime = SysTime + DesiredReadPeriod;
                         }
 
                         string reportedState = ReadNewData();
@@ -313,6 +316,11 @@ namespace DySense
                                 stillWaitingForData = true;
                             }
                         }
+                        else
+                        {
+                            // Not timed-out so can't still be waiting for data.
+                            stillWaitingForData = false;
+                        }
 
                         // If sensor is ok then override state if we're still waiting for a valid time.
                         bool reportedBadState = possibleStates[reportedState] == "bad";
@@ -326,9 +334,12 @@ namespace DySense
                     }
 
                     // Figure out how long to wait before one of the loops needs to run again.
-                    double nextTimeToRun = Math.Min(nextProcessingLoopStartTime, nextSensorLoopStartTime);
-                    double timeToWait = nextTimeToRun - SysTime;
-                    Thread.Sleep((int)(Math.Max(0, timeToWait) * 1000));
+                    if (throttleSensorRead && !stillWaitingForData)
+                    {
+                        double nextTimeToRun = Math.Min(nextProcessingLoopStartTime, nextSensorLoopStartTime);
+                        double timeToWait = nextTimeToRun - SysTime;
+                        Thread.Sleep((int)(Math.Max(0, timeToWait) * 1000));
+                    }
                 }
 	        }
 	        catch (Exception e)
@@ -381,8 +392,10 @@ namespace DySense
         // Return true if enough time has elapsed that the sensor should have returned a new reading.
         private bool ShouldHaveNewReading()
         {
+            // Increase read period a little bit since some sensors aren't 100% consistent in their
+            // output rate. Don't want to report time-out if only a fraction late reading data.
             double timeSinceLastData = SysTime - lastReceivedDataTime;
-            return timeSinceLastData >= DesiredReadPeriod;
+            return timeSinceLastData >= (DesiredReadPeriod * 1.2);
         }
 
         // Set up controller socket and then send status update to controller.
@@ -556,6 +569,7 @@ namespace DySense
             return true;
         }
 
+        // Update setting that controller requested.  This will also get passed to the sensor driver to handle.
         private bool HandleChangeSetting(object body)
         {
             var array = (Newtonsoft.Json.Linq.JArray)body;
@@ -575,6 +589,7 @@ namespace DySense
             return true;
         }
 
+        // First message that's received from controller.   
         private bool HandleIntroductionMessage(object body)
         {
             Newtonsoft.Json.Linq.JObject jObjectBody = (Newtonsoft.Json.Linq.JObject)body;
@@ -616,7 +631,8 @@ namespace DySense
         // Return true if it's time to run sensor processing loop.
         private bool NeedToRunSensorLoop()
         {
-            return SysTime >= nextSensorLoopStartTime;
+            bool enoughTimeElapsed = SysTime >= nextSensorLoopStartTime;
+            return enoughTimeElapsed || !throttleSensorRead || stillWaitingForData;
         }
 
         // Return true if it's time to send a heartbeat message to controller.
