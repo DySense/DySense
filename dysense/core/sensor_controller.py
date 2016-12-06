@@ -58,7 +58,6 @@ class SensorController(object):
                          'operator_name': '',
                          'platform_type': '',
                          'platform_tag': '',
-                         'experiment_id': '',
                          'surveyed': True}
         
         # Allow settings to optionally define a type (e.g. bool) that will be enforced. 

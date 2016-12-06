@@ -35,18 +35,16 @@ class ControllerSettingsWidget(QWidget):
         # Override certain settings so they show something different for the text label.
         # (e.g. replace 'id' with 'controller id' since it's more descriptive for the user to see)
         settings_name_override = {'id': 'Controller ID',
-                                  'base_out_directory': 'Output Folder',
-                                  'experiment_id': 'Experiment ID'}
+                                  'base_out_directory': 'Output Folder'}
         
         # Define what order settings will show up in widget.
-        settings_order = ['id', 'base_out_directory', 'operator_name', 'platform_type', 'platform_tag', 'experiment_id', 'surveyed']
+        settings_order = ['id', 'base_out_directory', 'operator_name', 'platform_type', 'platform_tag', 'surveyed']
         
         setting_name_to_tooltip = {'id': 'Name of this computer. Should be unique.',
                                    'base_out_directory': 'Base folder where new session folders will be saved.',
                                    'operator_name': 'First and last name of person in charge of session.',
                                    'platform_type': 'Name associated with this type of platform.',
                                    'platform_tag': 'Unique ID of platform (e.g. serial number)',
-                                   'experiment_id': 'ID of experiment being covered by this session.',
                                    'surveyed': 'If using RTK then set to False if base station location is not surveyed. If not using RTK then always set to True',
                                    }
         
