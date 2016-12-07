@@ -18,7 +18,7 @@ from dysense.core.sensor_creation import SensorDriverFactory, SensorCloseTimeout
 from dysense.core.csv_log import CSVLog
 from dysense.core.controller_data_sources import *
 from dysense.core.issue import Issue
-from dysense.core.utility import format_id, json_dumps_unicode, utf_8_encoder
+from dysense.core.utility import format_id, format_setting, utf_8_encoder
 from dysense.core.utility import make_unicode, make_utf8, validate_type, make_filename_unique
 from dysense.core.version import app_version, output_version
 from dysense.core.session import Session
@@ -54,11 +54,14 @@ class SensorController(object):
         self.active_issues = []
         self.resolved_issues = []        
         
-        self.settings = {'base_out_directory': '',
-                         'operator_name': '',
-                         'platform_type': '',
-                         'platform_tag': '',
-                         'surveyed': True}
+        self.core_settings = {'base_out_directory': '',
+                              'operator_name': '',
+                              'platform_type': '',
+                              'platform_tag': '',
+                              'surveyed': True}
+        
+        # Additional settings that can be specified by user.
+        self.extra_settings = {}
         
         # Allow settings to optionally define a type (e.g. bool) that will be enforced. 
         self.setting_name_to_type = {'surveyed': 'bool'}
@@ -122,11 +125,19 @@ class SensorController(object):
                 'orientation_sources': [source.public_info for source in self.orientation_sources],
                 'height_sources': [source.public_info for source in self.height_sources],
                 'fixed_height_source': self.fixed_height_source,
-                'settings': self.settings,
+                'settings': self.core_settings,
+                'extra_settings': self.extra_settings,
+                'setting_types': self.setting_name_to_type,
                 'text_messages': self.text_messages,
                 'active_issues': [source.public_info for source in self.active_issues],
                 'resolved_issues': [source.public_info for source in self.resolved_issues],
                 }
+        
+    @property
+    def all_settings(self):
+        settings = self.core_settings.copy()
+        settings.update(self.extra_settings)
+        return settings
     
     @property
     def time_source(self):
@@ -344,6 +355,14 @@ class SensorController(object):
     def send_controller_issue_event(self, event_type, issue):
     
         self.manager_interface.send_message_to_all('controller_event', (event_type, issue.public_info))
+        
+    def send_controller_extra_setting_added_event(self):
+    
+        self.manager_interface.send_message_to_all('controller_event', ('extra_setting_added', self.extra_settings))
+        
+    def send_controller_extra_setting_removed_event(self):
+    
+        self.manager_interface.send_message_to_all('controller_event', ('extra_setting_removed', self.extra_settings))
         
     def send_session_event(self, event_type, event_args=None):
     
@@ -605,8 +624,11 @@ class SensorController(object):
                 self.log_message('Cannot change platform type/tag while session is active. If you need to you must manually rename session '
                                  'output folder AND change value in session_info.csv after session has ended.', logging.ERROR, manager)
                 value_can_change = False
-        elif not setting_name in self.settings:
-            self.log_message('Cannot change setting {} because that settings does not exist.'.format(setting_name), logging.ERROR, manager)
+        elif not setting_name in self.all_settings:
+            if setting_name != 'experiment_id':
+                # Experiment ID was removed, but it's still stored in old config files, so prevent
+                # showing error message and confusing user.
+                self.log_message('Cannot change setting {} because that settings does not exist.'.format(setting_name), logging.ERROR, manager)
             value_can_change = False
         
         if not value_can_change:
@@ -614,7 +636,7 @@ class SensorController(object):
             return 
         
         try:
-            settings_value = setting_name.strip()
+            setting_value = setting_value.strip()
         except AttributeError:
             pass
         
@@ -635,13 +657,20 @@ class SensorController(object):
         except KeyError:
             pass # setting doesn't have type so can't validate it, just set it below
         
-        if setting_name not in self.settings:
-            self.log_message("Can't add new controller setting {}".format(setting_name), logging.ERROR, manager)
+        if setting_name not in self.all_settings:
+            
             self.send_entire_controller_info() # so user can be notified setting didn't take effect.
             return # don't add new setting
         
-        self.settings[setting_name] = setting_value
-        self.send_entire_controller_info() # so user can be notified setting changed 
+        if setting_name in self.core_settings:
+            self.core_settings[setting_name] = setting_value
+        elif setting_name in self.extra_settings:
+            self.extra_settings[setting_name] = setting_value
+        else:
+            self.log_message("Controller setting {} does not exist.".format(setting_name), logging.ERROR, manager)
+            
+        # Notify controller that setting value changed, or that it didn't, either way.
+        self.send_entire_controller_info()
 
     def handle_setup_sensor(self, manager, sensor_id, message_body):
         
@@ -768,8 +797,42 @@ class SensorController(object):
                 return
             self.log_message("Session invalidated.")
             self.session.invalidated = True
+        elif command_name == 'add_extra_setting':
+            setting_name, setting_type, setting_value = command_args
+            self.add_extra_controller_setting(setting_name, setting_type, setting_value, manager)
+        elif command_name == 'remove_extra_setting':
+            self.remove_extra_controller_setting(command_args, manager)
+        elif command_name == 'remove_all_extra_settings':
+            for extra_setting_name in self.extra_settings.keys():
+                self.remove_extra_controller_setting(extra_setting_name, manager)
         else:
             self.log_message("Controller command {} not supported".format(command_name), logging.ERROR, manager)
+
+    def add_extra_controller_setting(self, setting_name, setting_type, setting_value, manager):
+        
+        setting_name = format_setting(setting_name)
+        
+        if setting_name in self.core_settings:
+            self.log_message("Cannot add new controller setting {} because that setting already exists.", logging.ERROR, manager)
+            return
+        
+        setting_value = validate_type(setting_value, setting_type)
+        self.extra_settings[setting_name] = setting_value
+        self.setting_name_to_type[setting_name] = setting_type
+        self.send_controller_extra_setting_added_event()
+        self.send_entire_controller_info()
+        
+    def remove_extra_controller_setting(self, setting_name, manager):
+        
+        try:
+            self.extra_settings.pop(setting_name)
+        except KeyError:
+            self.log_message('Cannot remove extra setting {} because it does not exist.'.format(setting_name), logging.ERROR, manager)
+            return
+        
+        self.setting_name_to_type.pop(setting_name, None)
+        self.send_controller_extra_setting_removed_event()
+        self.send_entire_controller_info()
 
     def handle_new_sensor_text(self, sensor, text):
         
@@ -818,7 +881,7 @@ class SensorController(object):
         
         # Need to make sure settings are valid before starting a session.
         empty_setting_names = []
-        for key, value in self.settings.iteritems():
+        for key, value in self.all_settings.iteritems():
             if value is None or (isinstance(value, basestring) and value.strip() == ''):
                 empty_setting_names.append(key)
         if len(empty_setting_names) > 0:
@@ -827,7 +890,7 @@ class SensorController(object):
             return False
         
         # Make sure output directory exists.
-        if not os.path.exists(self.settings['base_out_directory']):
+        if not os.path.exists(self.core_settings['base_out_directory']):
             self.log_message("Can't start session because the output directory doesn't exist.", logging.ERROR, manager)
             return False
         
@@ -866,7 +929,7 @@ class SensorController(object):
             writer.writerow(utf_8_encoder(['output_version', output_version]))
             #writer.writerow(utf_8_encoder(['utc_difference', self.session.start_utc - self.session.start_sys_time]))
             
-            for key, value in sorted(self.settings.items()):
+            for key, value in sorted(self.all_settings.items()):
                 writer.writerow(utf_8_encoder([key, value]))
                 
             if self.session.notes is not None:

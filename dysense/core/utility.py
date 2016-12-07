@@ -40,6 +40,9 @@ def pretty(text):
 def format_id(id_str):
     return id_str.strip().replace(' ', '-').replace('_','-')
 
+def format_setting(setting):
+    return setting.strip().replace(' ', '_').replace('-','_')
+
 def make_unicode(val, errors='replace'):
     '''Return 'val' but as a unicode object. 'val' must be able to be converted to a bytestring (i.e. str).''' 
     if type(val) != unicode:

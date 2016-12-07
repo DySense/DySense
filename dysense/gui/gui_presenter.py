@@ -358,6 +358,9 @@ class GUIPresenter(QObject):
                     issue.reason = issue_info['reason']
             self.view.refresh_current_issues(self.current_issues)
         
+        if event_type in ['extra_setting_added', 'extra_setting_removed']:
+            self.view.extra_setting_added_or_removed(updated_extra_settings=event_args)
+        
         if event_type == 'controller_crashed':
 
             message = "Oh no! Part of the program has crashed. If you had a session active don't worry it will be saved when the program closes.\n" \

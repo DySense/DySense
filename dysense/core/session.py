@@ -205,7 +205,7 @@ class Session(object):
         
         self.start_utc = self.controller.last_utc_time
         
-        settings = self.controller.settings
+        settings = self.controller.core_settings
         
         formatted_time = datetime.datetime.fromtimestamp(self.start_utc).strftime("%Y%m%d_%H%M%S")
         

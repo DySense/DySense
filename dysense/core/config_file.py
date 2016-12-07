@@ -17,14 +17,13 @@ def save_config_file(presenter, file_path):
         # TODO support multiple controllers
         useful_info = {}
         for info_name, info_value in controller_info.iteritems():
-            if info_name in ['settings', 'time_source', 'position_sources', 'orientation_sources', 'height_sources', 'fixed_height_source']:
+            if info_name in ['settings', 'extra_settings', 'setting_types', 'time_source', 'position_sources', 'orientation_sources', 'height_sources', 'fixed_height_source']:
                 useful_info[info_name] = info_value
         controllers.append(useful_info)
     data['controllers'] = controllers
 
     sensors = []
     for (sensor_id, controller_id), sensor_info in presenter.sensors.iteritems():
-        # TODO save sensors in consistent order
         # TODO save sensors underneath controllers?
         useful_info = {}
         for info_name, info_value in sensor_info.iteritems():
@@ -59,6 +58,8 @@ def load_config_file(presenter, file_path):
     # TODO remove other controllers (and their sensors?) once that's all supported
     presenter.remove_all_sensors(only_on_active_controller=True)
         
+    presenter.send_controller_command('remove_all_extra_settings')     
+        
     with open(file_path, 'r') as stream:
         data = yaml.load(stream)
     
@@ -68,8 +69,15 @@ def load_config_file(presenter, file_path):
             if info_name == 'settings':
                 for setting_name, setting_value in info_value.iteritems():
                     presenter.change_controller_setting(setting_name, setting_value)
+            elif info_name == 'extra_settings':
+                for setting_name, setting_value in info_value.iteritems():
+                    setting_type = saved_controller_info.get('setting_types',{}).get(setting_name,'string')
+                    command_args = (setting_name, setting_type, setting_value)
+                    presenter.send_controller_command('add_extra_setting', command_args)
             elif info_name == 'version':
                 pass # TODO verify program version matches config version
+            elif info_name == 'setting_types':
+                pass # don't do anything with this.. it's used above to lookup extra setting types
             else:
                 presenter.change_controller_info(info_name, info_value) 
                 

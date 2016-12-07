@@ -448,6 +448,10 @@ class DysenseMainWindow(QMainWindow, Ui_main_window):
         #self.new_issue_popup.setModal(True)
         self.new_issue_popup.show()
         
+    def extra_setting_added_or_removed(self, updated_extra_settings):
+        # TODO support multiple controllers
+        self.local_controller_view.extra_setting_added_or_removed(updated_extra_settings)
+        
     def clear_session_notes(self, controller_id):
         # TODO support multiple controllers
         self.local_controller_view.clear_session_notes()

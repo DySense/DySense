@@ -207,26 +207,27 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
         
         self.controller_info = controller_info
 
-        # Update widget
-        for info_name, info_value in controller_info.iteritems():
-
-            if info_name == 'id':
-                # Treat controller ID as a setting.
-                self.settings_widget.update_setting(info_name, info_value)
+        # Treat controller ID as a setting.
+        self.settings_widget.update_setting('id', controller_info['id'])
                 
-            if info_name == 'session_state':
-                if info_value.lower() == 'closed':
-                    session_status = 'Not Started'
-                else:
-                    session_status = info_value
-                self.session_status_label.setText(make_unicode(pretty(session_status)))
-            
-            if info_name == 'settings':
-                settings = info_value 
-                for setting_name, setting_value in settings.iteritems():               
-                    self.settings_widget.update_setting(setting_name, setting_value)
-                    if self.end_session_dialog is not None and self.end_session_dialog.isVisible():
-                        self.end_session_dialog.update_controller_setting(setting_name, setting_value)
+        session_state = controller_info['session_state']
+        if session_state.lower() == 'closed':
+            session_status = 'Not Started'
+        else:
+            session_status = session_state
+        self.session_status_label.setText(make_unicode(pretty(session_status)))
+
+        settings = controller_info['settings'] 
+        for setting_name, setting_value in settings.iteritems():               
+            self.settings_widget.update_setting(setting_name, setting_value)
+            if self.end_session_dialog is not None and self.end_session_dialog.isVisible():
+                self.end_session_dialog.update_controller_setting(setting_name, setting_value)
+                    
+        extra_settings = controller_info['extra_settings']
+        for setting_name, setting_value in extra_settings.iteritems():               
+            self.settings_widget.update_setting(setting_name, setting_value)
+            if self.end_session_dialog is not None and self.end_session_dialog.isVisible():
+                self.end_session_dialog.update_controller_setting(setting_name, setting_value)
                     
     def update_session_notes(self, notes):
         
@@ -239,6 +240,10 @@ class ControllerViewWidget(QWidget, Ui_controller_view):
     def refresh_current_issues(self, current_issues):
         
         self.issues_widget.refresh_current_issues(current_issues)
+        
+    def extra_setting_added_or_removed(self, updated_extra_settings):
+ 
+        self.settings_widget.setup_settings_frame(self.controller_info['settings'], updated_extra_settings)
         
     def clear_session_notes(self):
         self.session_notes = ""
