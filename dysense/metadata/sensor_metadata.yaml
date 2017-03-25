@@ -251,7 +251,7 @@ sensors:
         - name: test_file_path
           type: string
           description: Absolute path to text file with NMEA messages.
-          default_value: ..\test_data_logs\nmea_logs\gga10_gst10_sxblue_normal.txt
+          default_value: ../test_data_logs/nmea_logs/gga10_gst10_sxblue_normal.txt
         - name: output_rate
           type: float
           description: How fast sensor should output data.
@@ -404,7 +404,7 @@ sensors:
         - name: test_file_path
           type: string
           description: Absolute path to text file with GGK and AVR messages.
-          default_value: ..\test_data_logs\nmea_logs\ggk50_avr50_bx982_normal.txt
+          default_value: ../test_data_logs/nmea_logs/ggk50_avr50_bx982_normal.txt
         - name: output_rate
           type: float
           description: How fast to read new messages from test file.
