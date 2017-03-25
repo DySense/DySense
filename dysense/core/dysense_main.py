@@ -127,6 +127,7 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
         controller_manager.stop_request.set()
         controller_manager_thread.join()
         gui_presenter.close()
+        app.exit()
         
 if __name__ == '__main__':
         
