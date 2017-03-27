@@ -97,16 +97,13 @@ def dysense_main():
 
     try:
         show_window_at_best_size(main_window)
-        print "about to exec"
         app.exec_()
-        print "done exec"
     finally:
         sensor_controller.stop_request.set()
         sensor_controller_thread.join()
         controller_manager.stop_request.set()
         controller_manager_thread.join()
         gui_presenter.close()
-        print "calling exit"
         app.exit()
 
 if __name__ == '__main__':

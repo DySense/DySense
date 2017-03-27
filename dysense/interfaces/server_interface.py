@@ -107,9 +107,11 @@ class ServerInterface(ComponentInterface):
 
         try:
             router_id = self._client_id_to_router_id[client_id]
-            self._socket.send_multipart([router_id, message])
+            self._socket.send_multipart([router_id, message], zmq.NOBLOCK)
         except KeyError:
-            pass  # haven't received message from component yet so don't know how to address it.
+            return  # haven't received message from component yet so don't know how to address it.
+        except zmq.ZMQError:
+            return # can't send message
 
     def _bind_to_first_open_endpoint(self):
         '''Connect to the first remote endpoint that's not already occupied. Raise Exception if cannot bind to any.'''

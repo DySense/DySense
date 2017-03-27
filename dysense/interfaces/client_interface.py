@@ -142,7 +142,9 @@ class ClientInterface(ComponentInterface):
 
         try:
             socket = self._server_id_to_socket[server_id]
-            socket.send(message)
+            socket.send(message, zmq.NOBLOCK)
         except KeyError:
             # TODO log some kind of error message
             return # haven't connected to the server yet
+        except zmq.ZMQError:
+            return # can't send message
