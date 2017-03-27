@@ -11,11 +11,11 @@ port_num = 50002
 socks = []
 
 class TestData(object):
-    
+
     def __init__(self, m):
-        
+
         self.m = m
-        
+
     @property
     def some_property(self):
         return self.m

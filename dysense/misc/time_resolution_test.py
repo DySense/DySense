@@ -13,8 +13,8 @@ def measure():
     return (t0, t1, t1-t0)
 
 # 1000 sample average
-print reduce(lambda a,b:a+b, [measure()[2] for i in range(1000)], 0.0) / 1000.0    
-    
+print reduce(lambda a,b:a+b, [measure()[2] for i in range(1000)], 0.0) / 1000.0
+
 # print off 10 results
 samples = [measure() for i in range(10)]
 for s in samples:

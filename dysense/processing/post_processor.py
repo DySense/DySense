@@ -12,15 +12,15 @@ class PostProcessor(object):
     '''
     Process session to calculate state of platform and every sensor measurement.
     This functionality is represented by a single public run() method.
-    A new instance of this class should be created for each session to be processed.  
+    A new instance of this class should be created for each session to be processed.
     '''
     def __init__(self, session_output, geotagger, max_time_diff):
         '''Constructor'''
-        
+
         self.session_output = session_output
         self.geotagger = geotagger
         self.max_time_diff = max_time_diff
-        
+
         # Default values related to platform state that are calculated from session output.
         self.multiple_platform_positions = False
         self.platform_postitions = None
@@ -31,13 +31,13 @@ class PostProcessor(object):
         self.yaw_angles = None
         self.platform_heights = None
         self.fixed_height = None
-        
+
         # This will the hold the final results.
         self.processed_session = None
-    
+
     class ExitReason:
         '''Map reason for a exiting run() method to a unique ID.'''
-        
+
         success = 0
         session_invalid = 1
         no_platform_states = 2
@@ -52,50 +52,50 @@ class PostProcessor(object):
         if not self.session_output.session_valid:
             log().error("Session marked as invalid. Delete invalidated.txt before processing.")
             return PostProcessor.ExitReason.session_invalid
-        
+
         # Read in generic session info (start time, end time, operator name, etc).
         session_info = self.session_output.read_session_info()
-        
+
         # Determine different components of platform state from the session output.
         # These methods store results as class fields since there's a lot of dependency between them,
         # and it would get messy to pass everything around as local references.
         self._calculate_platform_positions()
         self._calculate_platform_orientation()
 
-        # Determine platform state at common time stamps.  
+        # Determine platform state at common time stamps.
         platform_states = self._calculate_platform_state()
-        
+
         if len(platform_states) == 0:
             log().critical("No platform states could be calculated.")
             return self.ExitReason.no_platform_states
-        
+
         # Read in sensor log data and use the time stamp of each entry to associate it with state of the sensor.
         sensors = self.session_output.get_complete_sensors()
         sensors = self._calculate_sensor_states(sensors, platform_states)
-            
+
         # Save results so user can choose what to do with them.
         self.processed_session = {'session_info': session_info,
                                   'sensors': sensors,
                                   'platform_states': platform_states,
                                   }
-        
+
         return PostProcessor.ExitReason.success
-    
+
     def _calculate_platform_positions(self):
         '''Read in position measurements and average into a single sequence of positions (if multiple sensors)'''
-        
+
         position_measurements_by_source = self.session_output.read_positions()
-        
+
         # There could be more than one source if multiple GPS's are used (e.g. for yaw)
         self.multiple_position_sensors = len(position_measurements_by_source) > 1
-        
+
         if self.multiple_position_sensors:
             # First need to get all positions to be relative to the same time stamps.
             self.synced_platform_positions = sync_platform_positions(position_measurements_by_source, self.max_time_diff)
             self.synced_platform_positions = remove_unmatched_positions(self.synced_platform_positions)
-            
+
             # Average positions and account for platform offset which is the difference between the
-            # platform origin (0,0,0) and the averaged position.  
+            # platform origin (0,0,0) and the averaged position.
             self.platform_positions = average_platform_positions(self.synced_platform_positions)
             self.platform_position_offsets = [source['position_offsets'] for source in self.session_output.position_sources_info]
             self.platform_position_offset = np.mean(self.platform_position_offsets, axis=0)
@@ -103,28 +103,28 @@ class PostProcessor(object):
             # Only one position source so use it directly.
             self.platform_positions = position_measurements_by_source.values()[0]
             self.platform_position_offset = self.session_output.position_sources_info[0]['position_offsets']
-    
+
     def _calculate_platform_orientation(self):
         '''Read in Euler angles from sensors and optionally derive them from position sources.'''
-        
+
         orientation_angles = self.session_output.read_orientations()
         self.roll_angles = orientation_angles[0]
         self.pitch_angles = orientation_angles[1]
         self.yaw_angles = orientation_angles[2]
-        
+
         self._standardize_angles()
         self._derive_angles()
-    
+
     def _standardize_angles(self):
         '''Ensure all platform Euler angles are in degrees and between +/- 180.'''
-    
+
         self.roll_angles = self._standardize_angle(self.roll_angles, self.session_output.roll_source, 'roll')
         self.pitch_angles = self._standardize_angle(self.pitch_angles, self.session_output.pitch_source, 'pitch')
         self.yaw_angles = self._standardize_angle(self.yaw_angles, self.session_output.yaw_source, 'yaw')
-        
+
     def _standardize_angle(self, angles, source, angle_type):
         '''Return updated list of angles for the specified source that are in degrees and between +/- 180'''
-        
+
         if contains_measurements(angles):
             sensor_info = self.session_output.find_matching_sensor_info(source)
             try:
@@ -133,12 +133,12 @@ class PostProcessor(object):
                 log().warn('Units not listed for {} source. Assuming degrees.'.format(angle_type))
                 units = 'degrees'
             angles = standardize_to_degrees(angles, units, angle_type)
-            
+
         return angles
-        
+
     def _derive_angles(self):
         '''Use platform position source(s) to calculate any Euler angle marked as "derived"'''
-        
+
         if self.roll_angles == 'derived':
             self.roll_angles = derive_roll_angles(self.synced_platform_positions)
         if self.pitch_angles == 'derived':
@@ -150,37 +150,37 @@ class PostProcessor(object):
                 self.yaw_angles = derive_yaw_angles_multi(self.synced_platform_positions, position_sensor_infos)
             else:
                 self.yaw_angles = derive_yaw_angles_single(self.platform_positions)
-    
+
     def _update_platform_states_to_include_heights(self, platform_states, correct_for_platform_orientation):
         '''
         This will update the height of each state in platform_states to be the height above the ground measured
-        at same point that the platform state position is measured at. 
-        If correct_for_platform_orientation is true then will use platform roll/pitch to adjust height measurements. 
+        at same point that the platform state position is measured at.
+        If correct_for_platform_orientation is true then will use platform roll/pitch to adjust height measurements.
         '''
         height_measurements_by_source = self.session_output.read_heights_above_ground()
-        
+
         # Make sure all units are in meters.
         for source_name, height_measurements in height_measurements_by_source.iteritems():
             height_source = self.session_output.find_matching_height_source(source_name)
-            standard_heights = self._standardize_heights(height_measurements, height_source) 
+            standard_heights = self._standardize_heights(height_measurements, height_source)
             height_measurements_by_source[source_name] = standard_heights
-            
+
         # Convert distance (height) readings from sensor frame to world frame so they can be treated as "height above ground"
-        # relative to the same point that platform positions are measured from. 
+        # relative to the same point that platform positions are measured from.
         for source_name, height_measurements in height_measurements_by_source.iteritems():
-            
+
             height_sensor = self.session_output.find_matching_sensor_info_by_name(source_name)
-    
+
             # Determine rotation matrix to rotate vector in sensor (child) frame to platform (parent) frame.
             offsets_in_radians = [angle * math.pi/180.0 for angle in height_sensor['orientation_offsets']]
             sensor_to_platform_rot_matrix = rot_child_to_parent(*offsets_in_radians)
-            
+
             # Account for fact that platform positions and sensor offsets may not have the same origin.
             position_offsets = np.asarray(height_sensor['position_offsets']) - np.asarray(self.platform_position_offset)
-            
+
             height_measurement_times = [h.utc_time for h in height_measurements]
             platform_state_at_same_times = platform_state_at_times(platform_states, height_measurement_times, self.max_time_diff)
-            
+
             for stamped_height, platform_state in zip(height_measurements, platform_state_at_same_times):
                 # Convert height to platform frame, this accounts for sensor orientation offsets and 'down' offset relative to platform positions.
                 stamped_height.height = sensor_distance_to_platform_frame(stamped_height.height, sensor_to_platform_rot_matrix, position_offsets)
@@ -191,38 +191,38 @@ class PostProcessor(object):
                     vector = (position_offsets[0], position_offsets[1], stamped_height.height)
                     _, _, correct_height = rotate_platform_vector_to_world_frame(vector, platform_state.orientation)
                     stamped_height.height = correct_height
-                
+
         num_height_sources = len(height_measurements_by_source)
-                
+
         if num_height_sources > 1:
             # First need to get all heights to be relative to the same time stamps and then average.
-            synced_platform_heights = sync_platform_heights(height_measurements_by_source, self.max_time_diff) 
+            synced_platform_heights = sync_platform_heights(height_measurements_by_source, self.max_time_diff)
             self.platform_heights = average_multiple_height_sources(synced_platform_heights)
         elif num_height_sources == 1:
             self.platform_heights = height_measurements_by_source.values()[0]
-            
+
         # User can also specify a fixed height above ground if no sensor is available or to use as a backup.
         self.fixed_height = self.session_output.read_fixed_height_above_ground()
         try:
             self.fixed_height = float(self.fixed_height)
         except (ValueError, TypeError):
             self.fixed_height = None
-            
+
         valid_height_measurements = num_height_sources >= 1
         valid_fixed_height = self.fixed_height is not None and self.fixed_height >= 0
-        
+
         # Split values from times so can interpolate below.
         if valid_height_measurements:
             height_values = [height.height for height in self.platform_heights]
             height_times = [height.utc_time for height in self.platform_heights]
-            
+
         for platform_state in platform_states:
-            
+
             if valid_height_measurements:
                 height = interp_single_from_set(platform_state.utc_time, height_times, height_values, max_x_diff=self.max_time_diff)
             else:
                 height = float('NaN')
-                    
+
             # Use fixed height as a backup if no valid height measurements.
             if math.isnan(height) and valid_fixed_height:
                 if correct_for_platform_orientation:
@@ -233,12 +233,12 @@ class PostProcessor(object):
                     height = corrected_fixed_height
                 else:
                     height = self.fixed_height
-                    
+
             platform_state.height_above_ground = height
-        
+
     def _standardize_heights(self, distances, source):
         '''Return updated list of height distances for the specified source that are in meters.'''
-        
+
         if contains_measurements(distances):
             sensor_info = self.session_output.find_matching_sensor_info(source)
             try:
@@ -247,9 +247,9 @@ class PostProcessor(object):
                 log().warn('Units not listed for height source. Assuming meters.')
                 units = 'meters'
             distances = standardize_to_meters(distances, units, 'height')
-            
+
         return distances
-    
+
     def _calculate_platform_state(self):
         '''
         Synchronize different parts of platform state (position, orientation, etc) to occur at
@@ -259,7 +259,7 @@ class PostProcessor(object):
         valid_roll_angles = contains_measurements(self.roll_angles)
         valid_pitch_angles = contains_measurements(self.pitch_angles)
         valid_yaw_angles = contains_measurements(self.yaw_angles)
-        
+
         # Separate into time/value parts to get ready to interpolate below.
         if valid_roll_angles:
             roll_values = [a.angle for a in self.roll_angles]
@@ -271,26 +271,26 @@ class PostProcessor(object):
             yaw_values = [a.angle for a in self.yaw_angles]
             yaw_times = [a.utc_time for a in self.yaw_angles]
 
-        
+
         # Calculate state at same time as each position.
         platform_states = []
-        
+
         for position in self.platform_positions:
-            
+
             if valid_roll_angles:
                 roll = interp_angle_deg_from_set(position.utc_time, roll_times, roll_values, max_x_diff=self.max_time_diff)
                 if math.isnan(roll):
                     continue # don't use this position because it's missing roll information
             else:
                 roll = float('NaN')
-            
+
             if valid_pitch_angles:
                 pitch = interp_angle_deg_from_set(position.utc_time, pitch_times, pitch_values, max_x_diff=self.max_time_diff)
                 if math.isnan(pitch):
                     continue # don't use this position because it's missing pitch information
             else:
                 pitch = float('NaN')
-                
+
             if valid_yaw_angles:
                 yaw = interp_angle_deg_from_set(position.utc_time, yaw_times, yaw_values, max_x_diff=self.max_time_diff)
                 if math.isnan(yaw):
@@ -305,15 +305,15 @@ class PostProcessor(object):
             platform_state = ObjectState(position.utc_time, position.lat, position.long, position.alt,
                                          roll, pitch, yaw, height_above_ground=height)
 
-            
+
             platform_states.append(platform_state)
-            
+
         # Only account for platform orientation if we have valid readings.
         correct_for_platform_orientation = valid_pitch_angles or valid_roll_angles
         self._update_platform_states_to_include_heights(platform_states, correct_for_platform_orientation)
-            
+
         return platform_states
-    
+
     def _calculate_sensor_states(self, sensors, platform_states):
         '''
         Return new list of sensors where each piece of data contains a 'state' key
@@ -323,39 +323,38 @@ class PostProcessor(object):
         '''
         # Remove any sensors that don't have any log data since they essentially weren't used.
         sensors = [sensor for sensor in sensors if sensor['log_data'] is not None]
-        
+
         # Go through and calculate position and orientations of all sensor measurements.
         # This will add a 'state' key for each data entry.
         for sensor in sensors:
-    
+
             offsets_in_radians = [angle * math.pi/180.0 for angle in sensor['orientation_offsets']]
-            
+
             # Account for fact that platform positions and sensor offsets may not have the same origin.
             position_offsets = np.asarray(sensor['position_offsets']) - np.asarray(self.platform_position_offset)
-            
+
             # Save these 'adjusted' position offsets so we can upload them to the database.
             sensor['adjusted_position_offsets'] = list(position_offsets)
-            
+
             self.geotagger.tag_all_readings(sensor['log_data'], position_offsets, offsets_in_radians, platform_states)
-            
+
             # Keep track of how many measurements didn't match up with platform state based on time-stamps.
             num_unmatched_states = 0
 
             # Iterate over copy so we can delete data entries as we go.
             log_data_copy = sensor['log_data'][:]
             for data in log_data_copy:
-                
+
                 # Make sure sensor was assigned a position before trying to convert back to lat/lon.
                 if math.isnan(data['state'].lat):
                     num_unmatched_states += 1
                     # Measurement is only valid if it has a position.  No point in keeping it otherwise.
-                    # TODO could write unmatched entries out to another 'unmatched' log file. 
+                    # TODO could write unmatched entries out to another 'unmatched' log file.
                     sensor['log_data'].remove(data)
                     continue
-                
+
             if num_unmatched_states > 0:
                 log().warn("Removed {} readings from {} since no matching state.".format(num_unmatched_states, sensor['sensor_id']))
-                
+
         return sensors
-    
-    
+

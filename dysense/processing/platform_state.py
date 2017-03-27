@@ -14,8 +14,8 @@ def platform_state_at_times(platform_states, utc_times, max_time_diff):
     platform_roll_angles = [state.roll for state in platform_states]
     platform_pitch_angles = [state.pitch for state in platform_states]
     platform_yaw_angles = [state.yaw for state in platform_states]
-    platform_heights = [state.height_above_ground for state in platform_states]  
-    
+    platform_heights = [state.height_above_ground for state in platform_states]
+
     platform_states_at_times = []
 
     for utc_time in utc_times:
@@ -27,7 +27,7 @@ def platform_state_at_times(platform_states, utc_times, max_time_diff):
         height = interp_single_from_set(utc_time, platform_times, platform_heights, max_x_diff=max_time_diff)
 
         new_state = ObjectState(utc_time, lat, long, alt, roll, pitch, yaw, height)
-        
+
         platform_states_at_times.append(new_state)
 
     return platform_states_at_times
@@ -38,15 +38,15 @@ def filter_down_platform_state(session, max_rate):
     If rate is less than or equal to zero then won't limit entries at all.
     '''
     states = session['platform_states']
-    
+
     if max_rate <= 0.0 or len(states) == 0:
         return # Don't limit platform state at all.
-    
+
     min_time_between_states = 1.0 / max_rate
-    
-    # Add in a little wiggle room since time won't be exact. 
+
+    # Add in a little wiggle room since time won't be exact.
     min_time_between_states *= 0.9
-    
+
     filtered_states = []
     last_state_time = states[0].utc_time
     for state in states[1:]:
@@ -55,15 +55,15 @@ def filter_down_platform_state(session, max_rate):
             last_state_time = state.utc_time
 
     session['platform_states'] = filtered_states
-    
+
 def effective_platform_orientation(platform_orientation_deg):
-    
-    roll_rad = effective_angle_rad(platform_orientation_deg[0]) 
+
+    roll_rad = effective_angle_rad(platform_orientation_deg[0])
     pitch_rad = effective_angle_rad(platform_orientation_deg[1])
     yaw_rad = effective_angle_rad(platform_orientation_deg[2])
-    
+
     return roll_rad, pitch_rad, yaw_rad
-    
+
 def rotate_platform_vector_to_world_frame(vector, platform_orientation_deg):
     '''
     Return new numpy vector (np.array) that is specified in world frame (NED) rather than platform frame.
@@ -71,21 +71,21 @@ def rotate_platform_vector_to_world_frame(vector, platform_orientation_deg):
     # If an angle wasn't measured by the platform then want to treat it as 0 for these calculations since that's our best guess.
     # This will also convert the angles to radians.
     roll_rad, pitch_rad, yaw_rad = effective_platform_orientation(platform_orientation_deg)
-    
+
     # Rotate vector to be in world frame.
     platform_to_world_rot_matrix = rot_child_to_parent(roll_rad, pitch_rad, yaw_rad)
     vector_in_world_frame = np.dot(platform_to_world_rot_matrix, vector)
 
     return vector_in_world_frame
-    
+
 def sensor_distance_to_platform_frame(distance, sensor_to_platform_rot_matrix, position_offsets):
     '''
     Return new distance that is described in platform frame rather than sensor frame.
-    The specified rotation matrix should rotate a vector in the sensor frame to the platform frame. 
+    The specified rotation matrix should rotate a vector in the sensor frame to the platform frame.
     '''
     # Sensor frame has positive 'z' in direction of reading.
     distance_vector = np.array([0, 0, distance])
-    
+
     # Describe vector in terms of FRD platform coordinate system.
     forward, right, down = np.dot(sensor_to_platform_rot_matrix, distance_vector)
 

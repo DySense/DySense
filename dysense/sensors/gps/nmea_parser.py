@@ -148,20 +148,20 @@ parse_maps = {
     }
 
 def parse_nmea_sentence(nmea_sentence):
-        
+
     fields = [field.strip(',') for field in nmea_sentence.split(',')]
 
     if len(fields) < 2:
         raise ValueError
-    
+
     message_id = fields[0]
     if not message_id.startswith('$'):
         raise ValueError
-    
+
     message_id = message_id.strip('$')
-    
+
     is_trimble_sentence = (message_id == 'PTNL')
-        
+
     # Remove checksum from last field since it's already been checked.
     fields[-1] = (fields[-1].split('*')[0]).strip()
 
@@ -171,7 +171,7 @@ def parse_nmea_sentence(nmea_sentence):
     else: # assume it's a normal GPS sentence.
         # This removes the 2 character talker ID
         sentence_type = message_id[2:]
-  
+
     if not sentence_type in parse_maps:
         raise ValueError
 

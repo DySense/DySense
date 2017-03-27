@@ -9,7 +9,7 @@ failed = 0
 failed_nums = []
 
 for port_num in range(start, stop):
-    
+
     context = zmq.Context()
     zmq_sock = context.socket(zmq.ROUTER)
     try:
@@ -26,6 +26,6 @@ for port_num in range(start, stop):
     finally:
         #s.close()
         zmq_sock.close()
-        
+
 print "Failed {} ({}%)".format(failed, failed * 100.0 / (passed + failed))
 print str(failed_nums)

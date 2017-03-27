@@ -11,7 +11,7 @@ from dysense.processing.utility import *
 class TestRPYFromRotationMatrix(unittest.TestCase):
 
     def test_arbitrary_rpy(self):
-        
+
         roll = math.pi/5
         pitch = -math.pi/10
         yaw = math.pi/4
@@ -20,7 +20,7 @@ class TestRPYFromRotationMatrix(unittest.TestCase):
         self.assertAlmostEqual(roll, returned_roll, 10)
         self.assertAlmostEqual(pitch, returned_pitch, 10)
         self.assertAlmostEqual(yaw, returned_yaw, 10)
-        
+
     def test_outside_bounds_rpy(self):
         # Test roll and yaw returned within +/- PI and pitch returned within +/- PI/2
         roll = math.radians(210)
@@ -34,7 +34,7 @@ class TestRPYFromRotationMatrix(unittest.TestCase):
         self.assertAlmostEqual(expected_roll, returned_roll, 10)
         self.assertAlmostEqual(expected_pitch, returned_pitch, 10)
         self.assertAlmostEqual(expected_yaw, returned_yaw, 10)
-        
+
     def test_positive_gimbal_lock(self):
 
         roll = math.radians(0)
@@ -48,7 +48,7 @@ class TestRPYFromRotationMatrix(unittest.TestCase):
         self.assertAlmostEqual(expected_roll, returned_roll, 10)
         self.assertAlmostEqual(expected_pitch, returned_pitch, 10)
         self.assertAlmostEqual(expected_yaw, returned_yaw, 10)
-        
+
     def test_negative_gimbal_lock(self):
 
         roll = math.radians(0)
@@ -66,9 +66,9 @@ class TestRPYFromRotationMatrix(unittest.TestCase):
 class TestRotateChildVectorToParentFrame(unittest.TestCase):
 
     def test_zero_rotation(self):
-        
+
         np_test.assert_equal(rot_child_to_parent(0, 0, 0), np.identity(3))
-        
+
     def test_pointing_straight_up(self):
         # Rotate positive x by 90, 90, 90 deg. and that should be the vector pointing
         # out the top of the parent frame (negative Z since Z is positive downwards)
@@ -82,13 +82,13 @@ class TestRotateChildVectorToParentFrame(unittest.TestCase):
         rotation_matrix = rot_child_to_parent(math.pi/2, -math.pi/2, math.pi/2)
         rotated_vec = np.dot(rotation_matrix, np.array([1, 0, 0]))
         np_test.assert_almost_equal(rotated_vec, np.array([0, 0, 1]))
-        
+
     def test_pitch_only(self):
 
         rotation_matrix = rot_child_to_parent(0, math.pi/4, 0)
         rotated_vec = np.dot(rotation_matrix, np.array([1, 0, 1]))
         np_test.assert_almost_equal(rotated_vec, np.array([math.sqrt(2), 0, 0]))
-        
+
     def test_arbitrary_rotation(self):
         # Expected matrix taken from:
         # http://danceswithcode.net/engineeringnotes/rotations_in_3d/demo3D/rotations_in_3d_tool.html
@@ -101,51 +101,51 @@ class TestRotateChildVectorToParentFrame(unittest.TestCase):
 class TestRotationAboutZ(unittest.TestCase):
 
     def test_zero_rotation(self):
-        
+
         np_test.assert_equal(rot_z(0), np.identity(3))
-        
+
     def test_positive_rotation(self):
-        
+
         rotated_vec = np.dot(rot_z(math.pi/2), np.array([1, 1, 1]))
         np_test.assert_almost_equal(rotated_vec, np.array([-1, 1, 1]))
 
     def test_negative_rotation(self):
-        
+
         rotated_vec = np.dot(rot_z(-math.pi/2), np.array([1, 1, 1]))
         np_test.assert_almost_equal(rotated_vec, np.array([1, -1, 1]))
 
 class TestRotationAboutX(unittest.TestCase):
 
     def test_zero_rotation(self):
-        
+
         np_test.assert_equal(rot_x(0), np.identity(3))
-        
+
     def test_positive_rotation(self):
-        
+
         rotated_vec = np.dot(rot_x(math.pi/2), np.array([1, 1, 1]))
         np_test.assert_almost_equal(rotated_vec, np.array([1, -1, 1]))
 
     def test_negative_rotation(self):
-        
+
         rotated_vec = np.dot(rot_x(-math.pi/2), np.array([1, 1, 1]))
         np_test.assert_almost_equal(rotated_vec, np.array([1, 1, -1]))
-    
+
 class TestRotationAboutY(unittest.TestCase):
-        
+
     def test_zero_rotation(self):
-        
+
         np_test.assert_equal(rot_y(0), np.identity(3))
-        
+
     def test_positive_rotation(self):
-        
+
         rotated_vec = np.dot(rot_y(math.pi/2), np.array([1, 1, 1]))
         np_test.assert_almost_equal(rotated_vec, np.array([1, 1, -1]))
 
     def test_negative_rotation(self):
-        
+
         rotated_vec = np.dot(rot_y(-math.pi/2), np.array([1, 1, 1]))
         np_test.assert_almost_equal(rotated_vec, np.array([-1, 1, 1]))
 
 if __name__ == '__main__':
-    
+
     unittest.main()

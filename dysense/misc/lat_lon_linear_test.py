@@ -30,7 +30,7 @@ meters_per_deg_long = 111412.84*math.cos(ref_lat) - 93.5*math.cos(3.0*ref_lat) +
 dist1 = [] # local
 for ref_pos in refs:
     delta_north = (ref_pos[0] - home_lat) * meters_per_deg_lat
-    delta_east = (ref_pos[1] - home_long) * meters_per_deg_long 
+    delta_east = (ref_pos[1] - home_long) * meters_per_deg_long
     dist1.append((delta_north, delta_east))
 
 # Find distances using method 2
@@ -42,7 +42,7 @@ for ref_pos in refs:
     delta_north = north_ref - north_home
     delta_east = east_ref - east_home
     dist2.append((delta_north, delta_east))
-    
+
     dist2_utm.append((east_ref, north_ref))
 
 print "Errors (linear - UTM) in meters"
@@ -50,7 +50,7 @@ for d1, d2 in zip(dist1, dist2):
     north_error = d1[0] - d2[0]
     east_error = d1[1] - d2[1]
     print (north_error, east_error)
-    
+
 # Add in an offset to represent sensor offset
 offset_east = 0
 offset_north = 0
@@ -74,15 +74,15 @@ print "Offset Errors (north, east)"
 for r1_off, r2_off in zip(ref1_off, ref2_off):
     diff_lat = r1_off[0] - r2_off[0]
     diff_long = r1_off[1] - r2_off[1]
-    
+
     # Convert these back to meters for a reference
     ref_lat = r1_off[0] * math.pi / 180.0
     meters_per_deg_lat_at_ref = 111132.92 - 559.82*math.cos(2.0*ref_lat) + 1.175*math.cos(4.0*ref_lat) - 0.0023*math.cos(6*ref_lat)
     meters_per_deg_long_at_ref = 111412.84*math.cos(ref_lat) - 93.5*math.cos(3.0*ref_lat) + 0.118*math.cos(5.0*ref_lat)
-    
+
     diff_north = diff_lat * meters_per_deg_lat_at_ref
     diff_east = diff_long * meters_per_deg_long_at_ref
-    
+
     print (diff_north, diff_east)
 
 #print meters_per_deg_lat
@@ -97,7 +97,7 @@ meters_per_deg_lat = 111132.92 - 559.82*math.cos(2.0*ref_lat) + 1.175*math.cos(4
 meters_per_deg_long = 111412.84*math.cos(ref_lat) - 93.5*math.cos(3.0*ref_lat) + 0.118*math.cos(5.0*ref_lat)
 e, n, zone_num, zone_letter = utm.from_latlon(home_lat, home_long)
 new_lat, new_long = utm.to_latlon(e, n, zone_num, zone_letter)
-diff_lat = (new_lat - home_lat) 
+diff_lat = (new_lat - home_lat)
 diff_long = (new_long - home_long)
 print "Diff Lat {} ".format(diff_lat)
 print "Diff long {}".format(diff_long)

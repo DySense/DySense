@@ -18,13 +18,13 @@ def excepthook(excection_type, excection_value, traceback_object):
                 "Please report this error on the github issue tracker.\nPress Ctrl+C to copy text from this dialog."
     current_time = time.strftime("%Y-%m-%d, %H:%M:%S")
     version_info = "DySense Version {}".format(app_version)
-    
+
     # Get useful information from traceback object
     traceback_file = cStringIO.StringIO()
     traceback.print_tb(traceback_object, None, traceback_file)
     traceback_file.seek(0)
     traceback_info = traceback_file.read()
-    
+
     error_message = '{}: \n{}'.format(excection_type, make_unicode(excection_value))
     sections = [body_text, separator, version_info, current_time, separator,
                 error_message, separator, traceback_info]

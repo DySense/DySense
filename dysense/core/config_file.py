@@ -6,12 +6,12 @@ import os
 import logging
 
 from dysense.core.version import *
-    
+
 def save_config_file(presenter, file_path):
     '''Write current controller/sensors out to specified file path so the user can reload it later.'''
     # Data is what gets dumped to the file using yaml.
     data = {}
-   
+
     controllers = []
     for controller_id, controller_info in presenter.controllers.iteritems():
         # TODO support multiple controllers
@@ -31,38 +31,38 @@ def save_config_file(presenter, file_path):
                 useful_info[info_name] = info_value
         sensors.append(useful_info)
     data['sensors'] = sensors
-    
-    # Save version number when config was saved for detecting issues when loading config on a different version.        
+
+    # Save version number when config was saved for detecting issues when loading config on a different version.
     data['app_version'] = app_version
 
     with open(file_path, 'w') as outfile:
         outfile.write(yaml.safe_dump(data, allow_unicode=True, default_flow_style=False))
-    
+
 def load_config_file(presenter, file_path):
     '''Load controller/sensors out of specified yaml file path.'''
-        
+
     if not os.path.exists(file_path):
         presenter.new_error_message("Config file '{}' does not exist.".format(file_path), logging.ERROR)
         return
-    
+
     # TODO support multiple controllers
     if len(presenter.controllers) == 0:
         presenter.new_error_message("Need at least one controller before loading config", logging.ERROR)
         return
-    
+
     # TODO update for multiple controllers
     if presenter.local_controller['session_active']:
         presenter.invalid_command_during_session('load config')
         return
-    
+
     # TODO remove other controllers (and their sensors?) once that's all supported
     presenter.remove_all_sensors(only_on_active_controller=True)
-        
-    presenter.send_controller_command('remove_all_extra_settings')     
-        
+
+    presenter.send_controller_command('remove_all_extra_settings')
+
     with open(file_path, 'r') as stream:
         data = yaml.load(stream)
-    
+
     # Request that all data stored in saved controller info gets set to the active controller (which right now is the only allowed controller)
     for saved_controller_info in data.get('controllers', []):
         for info_name, info_value in saved_controller_info.iteritems():
@@ -79,8 +79,8 @@ def load_config_file(presenter, file_path):
             elif info_name == 'setting_types':
                 pass # don't do anything with this.. it's used above to lookup extra setting types
             else:
-                presenter.change_controller_info(info_name, info_value) 
-                
+                presenter.change_controller_info(info_name, info_value)
+
     # Request that all saved sensors get added to the active controller (which right now is the only allowed controller)
     for saved_sensor_info in data.get('sensors', []):
         presenter.add_sensor(saved_sensor_info)

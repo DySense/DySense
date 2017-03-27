@@ -11,9 +11,9 @@ from dysense.processing.platform_state import *
 class TestRotatePlatformVectorToWorldFrame(unittest.TestCase):
 
     def test_positive_vector_with_positive_pitch(self):
-        
+
         platform_vector = np.array([1, 0, 4])
-        
+
         platform_orientation_deg = [0, 10, 0]
 
         world_vector = rotate_platform_vector_to_world_frame(platform_vector, platform_orientation_deg)
@@ -23,11 +23,11 @@ class TestRotatePlatformVectorToWorldFrame(unittest.TestCase):
         self.assertTrue(world_vector[0] > platform_vector[0])
         self.assertTrue(world_vector[1] == 0)
         self.assertTrue(world_vector[2] < platform_vector[2])
-        
+
     def test_positive_vector_with_negative_roll(self):
-        
+
         platform_vector = np.array([0, 1, 4])
-        
+
         platform_orientation_deg = [-10, 0, 0]
 
         world_vector = rotate_platform_vector_to_world_frame(platform_vector, platform_orientation_deg)
@@ -39,5 +39,5 @@ class TestRotatePlatformVectorToWorldFrame(unittest.TestCase):
         self.assertTrue(world_vector[2] < platform_vector[2])
 
 if __name__ == '__main__':
-    
+
     unittest.main()
