@@ -12,6 +12,8 @@ import datetime
 import logging
 from decimal import Decimal
 
+from PyQt4 import QtGui, Qt
+
 def find_last_index(list_to_search, element):
     try:
         return (len(list_to_search) - 1) - list_to_search[::-1].index(element)
@@ -360,3 +362,28 @@ def make_filename_unique(directory, fname_no_ext):
             fname_no_ext = '{}_{}'.format(original_fname, 1)
 
     return fname_no_ext
+
+def show_window_at_best_size(main_window):
+    
+    # Set main window size based off screen size.  If screen size is small then maximize window from start.
+    screen_size = QtGui.QDesktopWidget().availableGeometry(main_window)
+    if screen_size.width() <= 800 or screen_size.height() <= 600:
+        main_window.showMaximized()
+    else:
+        if screen_size.width() > screen_size.height():
+            # Base desired width on height because GUI looks best square-ish.
+            # Use 'max' since we don't want to make window smaller than it wants to be.
+            desired_height = max(screen_size.height() * 0.75, main_window.height())
+            desired_width = max(desired_height * 1.2, main_window.width())
+            # Don't let width get bigger than screen.
+            desired_width = min(desired_width, screen_size.width())
+        else: 
+            # On a 'tall' screen (probably rotated). Makes sense to base height on width.
+            desired_width = max(screen_size.width() * 0.9, main_window.width())
+            desired_height = max(desired_width * 0.83, main_window.height())
+            # Don't let height get bigger than screen.
+            desired_height = min(desired_height, screen_size.height())
+        
+        main_window.resize(Qt.QSize(desired_width, desired_height))
+        main_window.show()
+

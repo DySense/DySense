@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import threading
-import zmq
-import sys
-import yaml
 import os
+import sys
+import threading
+
+import zmq
 
 # Automatically convert QString to unicode (in python 2.7)
 # and use default python types instead of QVariant.
@@ -23,13 +23,13 @@ from dysense.gui.except_hook import excepthook
 
 from dysense.core.controller_manager import ControllerManager
 from dysense.core.sensor_controller import SensorController
-from dysense.core.utility import yaml_load_unicode, make_unicode
+from dysense.core.utility import yaml_load_unicode, make_unicode, show_window_at_best_size
 from dysense.core.version import *
 
 from dysense.interfaces.server_interface import ServerInterface
 from dysense.interfaces.client_interface import ClientInterface
 
-def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=False):
+def dysense_main():
     
     # This program uses relative paths for finding sensors, so make sure the working directory
     # is set to the directory containing this function.
@@ -62,6 +62,7 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
         sensor_metadata = yaml_load_unicode(stream)
 
     # Servers for controllers to talk to sensors and managers.
+    # e.g. "c2s_server" means controller to sensors.
     # Manager server needs to bind on all address since it could receive connections from other computers.
     c2s_server = ServerInterface(zmq_context, 'controller', 'c2s', s2c_version, ports=range(60110, 60120), all_addresses=False)
     c2m_server = ServerInterface(zmq_context, 'controller', 'c2m', m2c_version, ports=range(60120, 60130), all_addresses=True)
@@ -95,33 +96,10 @@ def dysense_main(use_gui=True, use_webservice=False, config_filepath='', debug=F
     gui_presenter.receive_messages()
     
     try:
-
-        # Set main window size based off screen size.  If screen size is small then maximize window from start.
-        screen_size = QtGui.QDesktopWidget().availableGeometry(main_window)
-        if screen_size.width() <= 800 or screen_size.height() <= 600:
-            main_window.showMaximized()
-        else:
-            if screen_size.width() > screen_size.height():
-                # Base desired width on height because GUI looks best square-ish.
-                # Use 'max' since we don't want to make window smaller than it wants to be.
-                desired_height = max(screen_size.height() * 0.75, main_window.height())
-                desired_width = max(desired_height * 1.2, main_window.width())
-                # Don't let width get bigger than screen.
-                desired_width = min(desired_width, screen_size.width())
-            else: 
-                # On a 'tall' screen (probably rotated). Makes sense to base height on width.
-                desired_width = max(screen_size.width() * 0.9, main_window.width())
-                desired_height = max(desired_width * 0.83, main_window.height())
-                # Don't let height get bigger than screen.
-                desired_height = min(desired_height, screen_size.height())
-            
-            main_window.resize(Qt.QSize(desired_width, desired_height))
-            main_window.show()
-
+        show_window_at_best_size(main_window)
         app.exec_()
     
     finally:
-
         sensor_controller.stop_request.set()
         sensor_controller_thread.join()
         controller_manager.stop_request.set()
