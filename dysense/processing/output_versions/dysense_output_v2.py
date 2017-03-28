@@ -181,9 +181,12 @@ class SessionOutputV2(object):
         return measurements_by_source
 
     def read_fixed_height_above_ground(self):
-        '''Return fixed distance above ground in meters.'''
+        '''Return fixed distance above ground in meters or None if N/A.'''
 
-        return self.fixed_height_source.get('height', None)
+        try:
+            return self.fixed_height_source.get('height', None)
+        except AttributeError:
+            return None
 
     def get_complete_sensors(self):
 
