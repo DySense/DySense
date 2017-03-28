@@ -35,11 +35,11 @@ class GeoTagger(object):
 
         for reading, platform_state_at_reading in zip(readings, platform_state_at_readings):
 
-            sensor_state = self.caculate_sensor_state(reading['time'], position_offsets, sensor_to_platform_rot_matrix, platform_state_at_reading)
+            sensor_state = self.calculate_sensor_state(reading['time'], position_offsets, sensor_to_platform_rot_matrix, platform_state_at_reading)
 
             reading['state'] = sensor_state
 
-    def caculate_sensor_state(self, utc_time, position_offsets, sensor_to_platform_rot_matrix, platform):
+    def calculate_sensor_state(self, utc_time, position_offsets, sensor_to_platform_rot_matrix, platform):
         '''
         Return ObjectState associated with sensor at the specified UTC time.
 
